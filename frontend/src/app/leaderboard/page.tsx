@@ -205,7 +205,7 @@ export default async function LeaderboardPage({
                           {entry.streak_tier}
                         </span>
                         <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-[#525252] uppercase">
-                          {entry.correct_predictions}/{entry.total_predictions} HITS
+                          {entry.correct_predictions}/{entry.settled_predictions} HITS
                         </span>
                       </div>
                     </div>
@@ -249,7 +249,7 @@ export default async function LeaderboardPage({
                           {myEntry.streak_tier}
                         </span>
                         <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-[#525252] uppercase">
-                          {myEntry.correct_predictions}/{myEntry.total_predictions} HITS
+                          {myEntry.correct_predictions}/{myEntry.settled_predictions} HITS
                         </span>
                       </div>
                     </div>

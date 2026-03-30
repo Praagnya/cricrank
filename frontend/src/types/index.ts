@@ -64,6 +64,7 @@ export interface LeaderboardEntry {
   points: number;
   accuracy: number;
   total_predictions: number;
+  settled_predictions: number;
   correct_predictions: number;
   current_streak: number;
   streak_tier: string;

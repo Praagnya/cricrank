@@ -44,6 +44,7 @@ class LeaderboardEntry(BaseModel):
     points: int
     accuracy: float
     total_predictions: int
+    settled_predictions: int
     correct_predictions: int
     current_streak: int
     streak_tier: str
