@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, LogOut, LogIn, Zap, Menu, X, Home, Coins } from "lucide-react";
+import { Trophy, LogOut, LogIn, Zap, Menu, X, Home } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api-base";
@@ -48,12 +48,20 @@ export default function Header() {
 
           {/* Right side (Desktop Actions) */}
           <div className="flex items-center h-full">
+            {/* Mobile: bordered box like hamburger. Desktop: full-height bar */}
             <Link
               href="/leaderboard"
-              className="flex items-center justify-center gap-2 h-full w-12 sm:w-auto sm:px-6 text-xs font-bold uppercase tracking-widest text-[#ffffff] bg-[#111111] hover:text-gray-300 hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
+              className="sm:hidden flex flex-col items-center justify-center gap-0.5 w-12 h-10 border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors rounded ml-2 text-white"
             >
               <Trophy className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Leaderboard</span>
+              <span className="text-[7px] font-black uppercase tracking-widest text-[#a3a3a3]">Ranks</span>
+            </Link>
+            <Link
+              href="/leaderboard"
+              className="hidden sm:flex items-center justify-center gap-2 h-full px-6 text-xs font-bold uppercase tracking-widest text-[#ffffff] bg-[#111111] hover:text-gray-300 hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
+            >
+              <Trophy className="w-4 h-4 shrink-0" />
+              <span>Leaderboard</span>
             </Link>
 
             {!loading && user && coins !== null && (
@@ -99,7 +107,7 @@ export default function Header() {
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-50">
+                    <div className="fixed right-0 mt-1 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-50" style={{ top: '72px' }}>
                       <Link
                         href="/profile"
                         onClick={() => setUserMenuOpen(false)}
