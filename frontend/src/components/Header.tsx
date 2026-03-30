@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Trophy, LogOut, LogIn, Zap, Menu, X, Home } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 export default function Header() {
@@ -57,7 +58,7 @@ export default function Header() {
             )}
 
             {!loading && user ? (
-              <div className="relative z-[60]">
+              <div className="relative">
                 <button onClick={() => setUserMenuOpen((v) => !v)} className={`${btn} w-10 h-10`}>
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -74,10 +75,10 @@ export default function Header() {
                     </span>
                   )}
                 </button>
-                {userMenuOpen && (
+                {userMenuOpen && createPortal(
                   <>
-                    <div className="fixed inset-0 z-[190]" onClick={() => setUserMenuOpen(false)} />
-                    <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[200]" style={{ top: '64px' }}>
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setUserMenuOpen(false)} />
+                    <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[9999]" style={{ top: '64px' }}>
                       <Link href="/profile" onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors">
                         <Zap className="w-3.5 h-3.5 shrink-0" />My Profile
@@ -88,7 +89,8 @@ export default function Header() {
                         <LogOut className="w-3.5 h-3.5 shrink-0" />Sign Out
                       </button>
                     </div>
-                  </>
+                  </>,
+                  document.body
                 )}
               </div>
             ) : !loading && !user ? (
