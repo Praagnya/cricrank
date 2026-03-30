@@ -23,7 +23,7 @@ export default async function LeaderboardPage({
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const providerId = user?.user_metadata?.provider_id || user?.id;
+  const providerId = user?.id;
 
   const p = await searchParams;
   const period = p.period || "alltime";
