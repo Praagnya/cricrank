@@ -2,16 +2,34 @@
 
 export const dynamic = "force-dynamic";
 
+import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import Header from "@/components/Header";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import ProfileView from "@/components/ProfileView";
+import { getApiBaseUrl } from "@/lib/api-base";
 
 export default function PersonalProfilePage() {
   const { user, loading: authLoading } = useUser();
+  const [synced, setSynced] = useState(false);
 
-  if (authLoading) {
+  useEffect(() => {
+    if (!user) return;
+    const metadata = user.user_metadata;
+    fetch(`${getApiBaseUrl()}/users/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        google_id: user.id,
+        name: metadata?.full_name ?? user.email?.split("@")[0] ?? "Anonymous",
+        email: user.email ?? "unknown@example.com",
+        avatar_url: metadata?.avatar_url ?? null,
+      }),
+    }).finally(() => setSynced(true));
+  }, [user]);
+
+  if (authLoading || (user && !synced)) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center font-gaming text-white">
         <div className="animate-pulse tracking-[0.5em] text-[#525252]">LOADING PROFILE</div>
