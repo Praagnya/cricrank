@@ -1,0 +1,419 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://100.70.7.33:3000
+- Environments: .env.local
+✓ Ready in 273ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+ GET /leaderboard?period=monthly 200 in 464ms (next.js: 123ms, proxy.ts: 144ms, application-code: 197ms)
+ GET / 200 in 911ms (next.js: 19ms, proxy.ts: 817ms, application-code: 75ms)
+ GET /leaderboard?period=alltime 200 in 44ms (next.js: 4ms, proxy.ts: 6ms, application-code: 34ms)
+ GET /leaderboard?period=weekly 200 in 320ms (next.js: 2ms, proxy.ts: 136ms, application-code: 182ms)
+ GET /leaderboard?period=monthly 200 in 57ms (next.js: 4ms, proxy.ts: 7ms, application-code: 47ms)
+ GET /leaderboard?period=monthly 200 in 70ms (next.js: 4ms, proxy.ts: 9ms, application-code: 57ms)
+ GET /leaderboard?period=alltime 200 in 50ms (next.js: 5ms, proxy.ts: 9ms, application-code: 36ms)
+ GET /leaderboard?period=alltime 200 in 82ms (next.js: 8ms, proxy.ts: 15ms, application-code: 59ms)
+ GET /leaderboard?period=monthly 200 in 50ms (next.js: 7ms, proxy.ts: 9ms, application-code: 34ms)
+ GET /leaderboard?period=weekly 200 in 23ms (next.js: 1356µs, proxy.ts: 2ms, application-code: 20ms)
+ GET /leaderboard?period=monthly 200 in 48ms (next.js: 9ms, proxy.ts: 6ms, application-code: 34ms)
+ GET / 200 in 43ms (next.js: 6ms, proxy.ts: 8ms, application-code: 29ms)
+ GET / 200 in 28ms (next.js: 2ms, proxy.ts: 4ms, application-code: 22ms)
+ GET /leaderboard 200 in 50ms (next.js: 4ms, proxy.ts: 7ms, application-code: 39ms)
+ GET /profile/dummy_3 200 in 289ms (next.js: 271ms, proxy.ts: 8ms, application-code: 10ms)
+[browser] Failed to fetch profile data: TypeError: Failed to fetch
+    at fetchProfileData (src/components/ProfileView.tsx:37:31)
+    at ProfileView.useEffect (src/components/ProfileView.tsx:82:7)
+  35 |       try {
+  36 |         // Fetch User Stats
+> 37 |         const userRes = await fetch(`http://localhost:8000/users/${userId}`);
+     |                               ^
+  38 |         if (userRes.ok) {
+  39 |           const userData = await userRes.json();
+  40 |           setDbUser(userData); (src/components/ProfileView.tsx:75:17)
+[browser] Failed to fetch profile data: TypeError: Failed to fetch
+    at fetchProfileData (src/components/ProfileView.tsx:37:31)
+    at ProfileView.useEffect (src/components/ProfileView.tsx:82:7)
+  35 |       try {
+  36 |         // Fetch User Stats
+> 37 |         const userRes = await fetch(`http://localhost:8000/users/${userId}`);
+     |                               ^
+  38 |         if (userRes.ok) {
+  39 |           const userData = await userRes.json();
+  40 |           setDbUser(userData); (src/components/ProfileView.tsx:75:17)
+✓ Compiled in 325ms
+ GET /profile/dummy_god 200 in 48ms (next.js: 16ms, proxy.ts: 12ms, application-code: 20ms)
+ GET /profile/dummy_god 200 in 22ms (next.js: 10ms, proxy.ts: 7ms, application-code: 5ms)
+ GET /profile/dummy_god 200 in 14ms (next.js: 2ms, proxy.ts: 1675µs, application-code: 10ms)
+ GET /profile/dummy_3 200 in 30ms (next.js: 10ms, proxy.ts: 6ms, application-code: 15ms)
+ GET /leaderboard 200 in 72ms (next.js: 6ms, proxy.ts: 6ms, application-code: 61ms)
+ GET /profile/dummy_3 200 in 35ms (next.js: 12ms, proxy.ts: 6ms, application-code: 17ms)
+ GET /profile/dummy_3 200 in 72ms (next.js: 14ms, proxy.ts: 9ms, application-code: 49ms)
+✓ Compiled in 99ms
+✓ Compiled in 57ms
+ GET /profile/dummy_3 200 in 46ms (next.js: 9ms, proxy.ts: 8ms, application-code: 28ms)
+ GET /leaderboard 200 in 59ms (next.js: 10ms, proxy.ts: 9ms, application-code: 40ms)
+ GET /profile/dummy_3 200 in 24ms (next.js: 8ms, proxy.ts: 4ms, application-code: 12ms)
+ GET /leaderboard 200 in 36ms (next.js: 3ms, proxy.ts: 3ms, application-code: 30ms)
+ GET / 200 in 30ms (next.js: 5ms, proxy.ts: 3ms, application-code: 22ms)
+ GET /leaderboard 200 in 33ms (next.js: 5ms, proxy.ts: 2ms, application-code: 26ms)
+ GET /profile/dummy_5 200 in 20ms (next.js: 7ms, proxy.ts: 3ms, application-code: 10ms)
+ GET /leaderboard 200 in 42ms (next.js: 6ms, proxy.ts: 5ms, application-code: 32ms)
+ GET /leaderboard?period=monthly 200 in 35ms (next.js: 2ms, proxy.ts: 4ms, application-code: 29ms)
+ GET / 200 in 21ms (next.js: 3ms, proxy.ts: 1506µs, application-code: 17ms)
+✓ Compiled in 410ms
+ GET / 200 in 915ms (next.js: 51ms, proxy.ts: 642ms, application-code: 222ms)
+ GET / 200 in 187ms (next.js: 2ms, proxy.ts: 1251µs, application-code: 183ms)
+ GET / 200 in 192ms (next.js: 1427µs, proxy.ts: 162ms, application-code: 29ms)
+ GET /leaderboard?period=weekly 200 in 1018ms (next.js: 47ms, proxy.ts: 826ms, application-code: 145ms)
+ GET / 200 in 176ms (next.js: 1843µs, proxy.ts: 144ms, application-code: 30ms)
+ GET /leaderboard?period=weekly 200 in 212ms (next.js: 1747µs, proxy.ts: 148ms, application-code: 61ms)
+ GET / 200 in 174ms (next.js: 1761µs, proxy.ts: 152ms, application-code: 20ms)
+ GET /leaderboard?period=weekly 200 in 203ms (next.js: 1394µs, proxy.ts: 147ms, application-code: 55ms)
+ GET / 200 in 166ms (next.js: 1250µs, proxy.ts: 145ms, application-code: 20ms)
+ GET /leaderboard?period=weekly 200 in 199ms (next.js: 1113µs, proxy.ts: 145ms, application-code: 53ms)
+ GET / 200 in 228ms (next.js: 4ms, proxy.ts: 191ms, application-code: 33ms)
+ GET /leaderboard?period=weekly 200 in 259ms (next.js: 1331µs, proxy.ts: 138ms, application-code: 120ms)
+ GET /leaderboard?period=weekly 200 in 201ms (next.js: 1413µs, proxy.ts: 176ms, application-code: 24ms)
+✓ Compiled in 53ms
+ GET / 200 in 74ms (next.js: 13ms, proxy.ts: 8ms, application-code: 53ms)
+ GET / 200 in 46ms (next.js: 2ms, proxy.ts: 4ms, application-code: 40ms)
+ GET /leaderboard 200 in 70ms (next.js: 7ms, proxy.ts: 18ms, application-code: 45ms)
+ GET / 200 in 43ms (next.js: 7ms, proxy.ts: 6ms, application-code: 30ms)
+ GET / 200 in 10ms (next.js: 2ms, proxy.ts: 4ms, application-code: 4ms)
+ GET / 200 in 23ms (next.js: 1544µs, proxy.ts: 2ms, application-code: 20ms)
+ GET / 200 in 103ms (next.js: 11ms, proxy.ts: 27ms, application-code: 66ms)
+ GET / 200 in 40ms (next.js: 4ms, proxy.ts: 4ms, application-code: 31ms)
+✓ Compiled in 204ms
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '1191334856'
+}
+ GET /leaderboard?period=weekly 200 in 488ms (next.js: 4ms, proxy.ts: 458ms, application-code: 25ms)
+ GET / 200 in 538ms (next.js: 2ms, proxy.ts: 483ms, application-code: 53ms)
+ GET / 200 in 64ms (next.js: 3ms, proxy.ts: 6ms, application-code: 54ms)
+ GET / 200 in 46ms (next.js: 4ms, proxy.ts: 2ms, application-code: 40ms)
+ GET / 200 in 43ms (next.js: 1253µs, proxy.ts: 2ms, application-code: 39ms)
+ GET / 200 in 48ms (next.js: 1579µs, proxy.ts: 4ms, application-code: 43ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2900770502'
+}
+ GET /leaderboard?period=weekly 500 in 533ms (next.js: 7ms, proxy.ts: 334ms, application-code: 193ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+✓ Compiled in 248ms
+ GET / 200 in 333ms (next.js: 12ms, proxy.ts: 292ms, application-code: 28ms)
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2900770502'
+}
+ GET /leaderboard?period=weekly 500 in 611ms (next.js: 3ms, proxy.ts: 413ms, application-code: 196ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+ GET / 200 in 83ms (next.js: 5ms, proxy.ts: 19ms, application-code: 58ms)
+[browser] WebCrypto API is not supported. Code challenge method will default to use plain instead of sha256.
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '854339370'
+}
+ GET /leaderboard 500 in 86ms (next.js: 9ms, proxy.ts: 24ms, application-code: 53ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​LeaderboardPage' cannot have a negative time stamp.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 438ms
+ GET / 200 in 536ms (next.js: 14ms, proxy.ts: 499ms, application-code: 23ms)
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2875959091'
+}
+ GET /leaderboard?period=weekly 500 in 866ms (next.js: 56ms, proxy.ts: 563ms, application-code: 247ms)
+ GET / 200 in 170ms (next.js: 1618µs, proxy.ts: 126ms, application-code: 43ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+ GET / 200 in 186ms (next.js: 1649µs, proxy.ts: 155ms, application-code: 29ms)
+ GET / 200 in 162ms (next.js: 1496µs, proxy.ts: 140ms, application-code: 20ms)
+ GET / 200 in 168ms (next.js: 1737µs, proxy.ts: 142ms, application-code: 25ms)
+ GET / 200 in 173ms (next.js: 3ms, proxy.ts: 140ms, application-code: 30ms)
+ GET / 200 in 178ms (next.js: 2ms, proxy.ts: 148ms, application-code: 28ms)
+ GET / 200 in 176ms (next.js: 1670µs, proxy.ts: 153ms, application-code: 21ms)
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2427232287'
+}
+ GET /leaderboard 500 in 81ms (next.js: 10ms, proxy.ts: 16ms, application-code: 56ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​LeaderboardPage' cannot have a negative time stamp.
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2427232287'
+}
+ GET /leaderboard? 500 in 61ms (next.js: 9ms, proxy.ts: 8ms, application-code: 43ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​LeaderboardPage' cannot have a negative time stamp.
+⨯ ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0"> {
+  digest: '2427232287'
+}
+ GET /leaderboard 500 in 63ms (next.js: 6ms, proxy.ts: 11ms, application-code: 47ms)
+[browser] Uncaught ReferenceError: Zap is not defined
+    at LeaderboardPage (src/app/leaderboard/page.tsx:289:16)
+  287 |           <div className="border border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+  288 |             <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercas...
+> 289 |               <Zap className="w-3.5 h-3.5 text-[#525252]" />
+      |                ^
+  290 |               Scoring Rules
+  291 |             </p>
+  292 |             <div className="flex flex-col gap-0">
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​LeaderboardPage' cannot have a negative time stamp.
+✓ Compiled in 352ms
+ GET / 200 in 907ms (next.js: 12ms, proxy.ts: 872ms, application-code: 23ms)
+ GET / 200 in 242ms (next.js: 5ms, proxy.ts: 203ms, application-code: 33ms)
+ GET /leaderboard?period=weekly 200 in 1253ms (next.js: 107ms, proxy.ts: 802ms, application-code: 344ms)
+ GET / 200 in 172ms (next.js: 7ms, proxy.ts: 137ms, application-code: 28ms)
+ GET /leaderboard 200 in 91ms (next.js: 10ms, proxy.ts: 9ms, application-code: 72ms)
+ GET / 200 in 61ms (next.js: 8ms, proxy.ts: 11ms, application-code: 43ms)
+ GET /leaderboard 200 in 53ms (next.js: 8ms, proxy.ts: 12ms, application-code: 34ms)
+ GET /profile/dummy_god 200 in 32ms (next.js: 17ms, proxy.ts: 2ms, application-code: 12ms)
+✓ Compiled in 104ms
+✓ Compiled in 66ms
+ GET /profile/dummy_god 200 in 88ms (next.js: 17ms, proxy.ts: 13ms, application-code: 58ms)
+ GET /profile/dummy_god 200 in 75ms (next.js: 20ms, proxy.ts: 15ms, application-code: 41ms)
+ GET /leaderboard 200 in 84ms (next.js: 12ms, proxy.ts: 14ms, application-code: 58ms)
+ GET /leaderboard?period=monthly 200 in 32ms (next.js: 1485µs, proxy.ts: 3ms, application-code: 27ms)
+ GET /leaderboard?period=weekly 200 in 70ms (next.js: 5ms, proxy.ts: 10ms, application-code: 56ms)
+ GET /leaderboard?period=monthly 200 in 46ms (next.js: 4ms, proxy.ts: 7ms, application-code: 35ms)
+ GET /leaderboard?period=alltime 200 in 38ms (next.js: 3ms, proxy.ts: 6ms, application-code: 28ms)
+ GET /leaderboard?period=monthly 200 in 42ms (next.js: 7ms, proxy.ts: 6ms, application-code: 30ms)
+ GET /leaderboard?period=weekly 200 in 61ms (next.js: 5ms, proxy.ts: 6ms, application-code: 50ms)
+ GET /leaderboard?period=monthly 200 in 56ms (next.js: 6ms, proxy.ts: 8ms, application-code: 42ms)
+ GET /leaderboard?period=alltime 200 in 51ms (next.js: 5ms, proxy.ts: 8ms, application-code: 38ms)
+ GET /leaderboard?period=monthly 200 in 95ms (next.js: 30ms, proxy.ts: 18ms, application-code: 46ms)
+ GET /leaderboard?period=monthly 200 in 52ms (next.js: 7ms, proxy.ts: 8ms, application-code: 38ms)
+ GET /leaderboard?period=monthly 200 in 50ms (next.js: 4ms, proxy.ts: 8ms, application-code: 37ms)
+ GET /leaderboard?period=weekly 200 in 26ms (next.js: 1936µs, proxy.ts: 2ms, application-code: 22ms)
+ GET /leaderboard?period=alltime 200 in 86ms (next.js: 7ms, proxy.ts: 7ms, application-code: 72ms)
+ GET /leaderboard?period=monthly 200 in 84ms (next.js: 14ms, proxy.ts: 24ms, application-code: 47ms)
+ GET /leaderboard?period=weekly 200 in 58ms (next.js: 7ms, proxy.ts: 9ms, application-code: 41ms)
+ GET /leaderboard?period=monthly 200 in 40ms (next.js: 3ms, proxy.ts: 4ms, application-code: 33ms)
+ GET /leaderboard?period=alltime 200 in 50ms (next.js: 4ms, proxy.ts: 6ms, application-code: 40ms)
+ GET / 200 in 44ms (next.js: 8ms, proxy.ts: 8ms, application-code: 27ms)
+ GET / 200 in 96ms (next.js: 4ms, proxy.ts: 6ms, application-code: 85ms)
+ GET / 200 in 845ms (next.js: 12ms, proxy.ts: 812ms, application-code: 22ms)
+ GET / 200 in 202ms (next.js: 7ms, proxy.ts: 147ms, application-code: 48ms)
+ GET /leaderboard 200 in 504ms (next.js: 8ms, proxy.ts: 296ms, application-code: 200ms)
+ GET /leaderboard?period=monthly 200 in 496ms (next.js: 5ms, proxy.ts: 297ms, application-code: 193ms)
+ GET /leaderboard?period=weekly 200 in 286ms (next.js: 1499µs, proxy.ts: 126ms, application-code: 159ms)
+ GET /leaderboard?period=alltime 200 in 314ms (next.js: 4ms, proxy.ts: 145ms, application-code: 165ms)
+ GET / 200 in 161ms (next.js: 5ms, proxy.ts: 137ms, application-code: 20ms)
+ GET /leaderboard 200 in 788ms (next.js: 10ms, proxy.ts: 474ms, application-code: 304ms)
+ GET /profile/dummy_god 200 in 372ms (next.js: 15ms, proxy.ts: 341ms, application-code: 16ms)
+ GET / 200 in 620ms (next.js: 6ms, proxy.ts: 570ms, application-code: 44ms)
+ GET /leaderboard 200 in 594ms (next.js: 13ms, proxy.ts: 367ms, application-code: 214ms)
+ GET /leaderboard?period=weekly 200 in 595ms (next.js: 11ms, proxy.ts: 368ms, application-code: 216ms)
+ GET / 200 in 192ms (next.js: 9ms, proxy.ts: 157ms, application-code: 26ms)
+ GET /leaderboard 200 in 573ms (next.js: 8ms, proxy.ts: 346ms, application-code: 219ms)
+ GET /leaderboard?period=monthly 200 in 497ms (next.js: 6ms, proxy.ts: 296ms, application-code: 195ms)
+ GET /leaderboard?period=monthly 200 in 351ms (next.js: 4ms, proxy.ts: 152ms, application-code: 195ms)
+ GET /leaderboard?period=weekly 200 in 381ms (next.js: 5ms, proxy.ts: 166ms, application-code: 211ms)
+ GET / 200 in 337ms (next.js: 7ms, proxy.ts: 302ms, application-code: 28ms)
+ GET /leaderboard 200 in 1113ms (next.js: 11ms, proxy.ts: 889ms, application-code: 212ms)
+ GET /profile/dummy_3 200 in 344ms (next.js: 17ms, proxy.ts: 307ms, application-code: 20ms)
+ GET / 200 in 403ms (next.js: 16ms, proxy.ts: 330ms, application-code: 58ms)
+ GET /leaderboard 200 in 1003ms (next.js: 12ms, proxy.ts: 739ms, application-code: 252ms)
+ GET /leaderboard 200 in 546ms (next.js: 27ms, proxy.ts: 312ms, application-code: 207ms)
+ GET /leaderboard?period=weekly 200 in 336ms (next.js: 4ms, proxy.ts: 135ms, application-code: 196ms)
+ GET /leaderboard?period=monthly 200 in 319ms (next.js: 2ms, proxy.ts: 138ms, application-code: 179ms)
+ GET /leaderboard?period=weekly 200 in 324ms (next.js: 6ms, proxy.ts: 135ms, application-code: 184ms)
+ GET /leaderboard?period=monthly 200 in 317ms (next.js: 7ms, proxy.ts: 135ms, application-code: 175ms)
+ GET /leaderboard?period=weekly 200 in 279ms (next.js: 1390µs, proxy.ts: 122ms, application-code: 156ms)
+ GET / 200 in 346ms (next.js: 11ms, proxy.ts: 294ms, application-code: 40ms)
+ GET /leaderboard 200 in 89ms (next.js: 6ms, proxy.ts: 29ms, application-code: 53ms)
+ GET /leaderboard?period=monthly 200 in 36ms (next.js: 3ms, proxy.ts: 4ms, application-code: 29ms)
+ GET /leaderboard?period=weekly 200 in 54ms (next.js: 4ms, proxy.ts: 6ms, application-code: 44ms)
+ GET /leaderboard?period=monthly 200 in 115ms (next.js: 7ms, proxy.ts: 17ms, application-code: 91ms)
+ GET /leaderboard?period=monthly 200 in 90ms (next.js: 1495µs, proxy.ts: 2ms, application-code: 86ms)
+ GET /leaderboard?period=weekly 200 in 57ms (next.js: 4ms, proxy.ts: 9ms, application-code: 44ms)
+✓ Compiled in 124ms
+ GET /leaderboard?period=weekly 200 in 35ms (next.js: 5ms, proxy.ts: 1777µs, application-code: 29ms)
+ GET /leaderboard?period=weekly 200 in 54ms (next.js: 3ms, proxy.ts: 1789µs, application-code: 49ms)
+ GET /leaderboard?period=weekly 200 in 29ms (next.js: 3ms, proxy.ts: 2ms, application-code: 25ms)
+ GET / 200 in 1173ms (next.js: 5ms, proxy.ts: 1119ms, application-code: 48ms)
+ GET /leaderboard?period=weekly 200 in 1312ms (next.js: 1576µs, proxy.ts: 1129ms, application-code: 181ms)
+ GET / 200 in 277ms (next.js: 1797µs, proxy.ts: 254ms, application-code: 20ms)
+ GET / 200 in 330ms (next.js: 4ms, proxy.ts: 279ms, application-code: 47ms)
+ GET /leaderboard?period=weekly 200 in 716ms (next.js: 1675µs, proxy.ts: 559ms, application-code: 155ms)
+ GET /leaderboard?period=weekly 200 in 462ms (next.js: 2ms, proxy.ts: 263ms, application-code: 197ms)
+ GET / 200 in 51ms (next.js: 4ms, proxy.ts: 4ms, application-code: 42ms)
+ GET / 200 in 46ms (next.js: 6ms, proxy.ts: 9ms, application-code: 31ms)
+ GET / 200 in 451ms (next.js: 7ms, proxy.ts: 434ms, application-code: 10ms)
+ GET / 200 in 181ms (next.js: 5ms, proxy.ts: 132ms, application-code: 45ms)
+✓ Compiled in 40ms
+✓ Compiled in 24ms
+ GET / 200 in 543ms (next.js: 10ms, proxy.ts: 454ms, application-code: 80ms)
+ GET /leaderboard?period=weekly 200 in 540ms (next.js: 38ms, proxy.ts: 446ms, application-code: 55ms)
+ GET / 200 in 206ms (next.js: 10ms, proxy.ts: 152ms, application-code: 44ms)
+ GET /leaderboard?period=weekly 200 in 195ms (next.js: 1892µs, proxy.ts: 139ms, application-code: 54ms)
+ GET / 200 in 199ms (next.js: 1955µs, proxy.ts: 183ms, application-code: 14ms)
+ GET /leaderboard?period=weekly 200 in 201ms (next.js: 12ms, proxy.ts: 132ms, application-code: 57ms)
+ GET / 200 in 120ms (next.js: 28ms, proxy.ts: 16ms, application-code: 77ms)
+✓ Compiled in 55ms
+✓ Compiled in 45ms
+ GET / 200 in 584ms (next.js: 45ms, proxy.ts: 500ms, application-code: 39ms)
+ GET /leaderboard?period=weekly 200 in 583ms (next.js: 12ms, proxy.ts: 496ms, application-code: 75ms)
+ GET / 200 in 197ms (next.js: 1981µs, proxy.ts: 122ms, application-code: 73ms)
+ GET /leaderboard?period=weekly 200 in 207ms (next.js: 1248µs, proxy.ts: 154ms, application-code: 52ms)
+ GET / 200 in 147ms (next.js: 1294µs, proxy.ts: 130ms, application-code: 16ms)
+ GET /leaderboard?period=weekly 200 in 179ms (next.js: 3ms, proxy.ts: 137ms, application-code: 39ms)
+ GET /leaderboard 200 in 976ms (next.js: 22ms, proxy.ts: 699ms, application-code: 256ms)
+ GET /profile/dummy_3 200 in 437ms (next.js: 34ms, proxy.ts: 390ms, application-code: 14ms)
+ GET /leaderboard 200 in 517ms (next.js: 8ms, proxy.ts: 327ms, application-code: 183ms)
+ GET /leaderboard?period=weekly 200 in 323ms (next.js: 4ms, proxy.ts: 137ms, application-code: 182ms)
+ GET /leaderboard?period=monthly 200 in 299ms (next.js: 5ms, proxy.ts: 131ms, application-code: 163ms)
+ GET /leaderboard?period=alltime 200 in 277ms (next.js: 3ms, proxy.ts: 116ms, application-code: 158ms)
+ GET / 200 in 172ms (next.js: 6ms, proxy.ts: 134ms, application-code: 32ms)
+ GET /leaderboard 200 in 521ms (next.js: 6ms, proxy.ts: 340ms, application-code: 175ms)
+ GET /profile/dummy_god 200 in 538ms (next.js: 42ms, proxy.ts: 417ms, application-code: 79ms)
+ GET /profile 200 in 364ms (next.js: 159ms, proxy.ts: 151ms, application-code: 54ms)
+ GET / 200 in 469ms (next.js: 14ms, proxy.ts: 392ms, application-code: 63ms)
+ GET /leaderboard 200 in 555ms (next.js: 6ms, proxy.ts: 293ms, application-code: 257ms)
+ GET /leaderboard?period=monthly 200 in 478ms (next.js: 7ms, proxy.ts: 290ms, application-code: 182ms)
+ GET /leaderboard?period=weekly 200 in 331ms (next.js: 7ms, proxy.ts: 132ms, application-code: 192ms)
+✓ Compiled in 68ms
+ GET / 200 in 544ms (next.js: 9ms, proxy.ts: 479ms, application-code: 56ms)
+ GET /profile 200 in 316ms (next.js: 9ms, proxy.ts: 283ms, application-code: 23ms)
+✓ Compiled in 121ms
+ GET /profile 200 in 164ms (next.js: 5ms, proxy.ts: 127ms, application-code: 32ms)
+ GET /profile 200 in 140ms (next.js: 1961µs, proxy.ts: 124ms, application-code: 14ms)
+ GET /profile 200 in 161ms (next.js: 4ms, proxy.ts: 127ms, application-code: 29ms)
+ GET /leaderboard?period=weekly 200 in 446ms (next.js: 6ms, proxy.ts: 336ms, application-code: 103ms)
+ GET /profile 200 in 175ms (next.js: 2ms, proxy.ts: 157ms, application-code: 16ms)
+ GET /leaderboard?period=weekly 200 in 235ms (next.js: 3ms, proxy.ts: 144ms, application-code: 88ms)
+ GET /leaderboard?period=weekly 200 in 225ms (next.js: 3ms, proxy.ts: 170ms, application-code: 53ms)
+ GET /leaderboard?period=weekly 200 in 215ms (next.js: 5ms, proxy.ts: 140ms, application-code: 70ms)
+ GET /leaderboard 200 in 299ms (next.js: 3ms, proxy.ts: 127ms, application-code: 169ms)
+ GET / 200 in 362ms (next.js: 9ms, proxy.ts: 312ms, application-code: 42ms)
+ GET / 200 in 119ms (next.js: 10ms, proxy.ts: 17ms, application-code: 91ms)
+[browser] ⨯ unhandledRejection: TypeError: Failed to fetch
+    at fetchLeaders (src/components/LeaderboardSidebar.tsx:16:21)
+    at LeaderboardSidebar.useEffect.load (src/components/LeaderboardSidebar.tsx:44:27)
+  14 | async function fetchLeaders(period: Period, limit: number): Promise<LeaderboardEntry[]> {
+  15 |   const endpoint = period === "weekly" ? "weekly" : period === "monthly" ? "monthly" : "gl...
+> 16 |   const res = await fetch(`${BASE}/leaderboard/${endpoint}?limit=${limit}`, {
+     |                     ^
+  17 |     cache: "no-store",
+  18 |   });
+  19 |   if (!res.ok) return [];

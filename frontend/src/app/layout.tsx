@@ -1,0 +1,49 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import { Bebas_Neue, Inter, Chakra_Petch } from "next/font/google";
+
+const heading = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const gaming = Chakra_Petch({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-gaming",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "CricRank — Indian T20 CUP",
+  description: "Predict Indian T20 CUP match results, compete on the leaderboard.",
+};
+
+export const viewport: import("next").Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" className={`h-full ${heading.variable} ${sans.variable} ${gaming.variable}`}>
+      <body className="min-h-full flex flex-col antialiased">
+        {children}
+      </body>
+    </html>
+  );
+}

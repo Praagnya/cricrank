@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #141414;
+  --surface-3: #1f1f1f;
+  --border: #262626;
+  --border-subtle: #1a1a1a;
+  --text: #ffffff;
+  --text-muted: #a3a3a3;
+  --text-dim: #525252;
+  --accent: #ffffff; /* Sharp white accent */
+  --accent-2: #e5e5e5;
+  --success: #10b981; 
+  --danger: #ef4444; 
+}
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-gaming: var(--font-gaming);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main, header { position: relative; z-index: 1; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+::selection { background: var(--text); color: var(--background); }
+
+/* Sharp borders instead of glowing gradients */
+.sharp-border {
+  border: 1px solid var(--border);
+}
