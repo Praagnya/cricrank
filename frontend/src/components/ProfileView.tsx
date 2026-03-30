@@ -229,7 +229,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                     onClick={() => {
                       setEditName(dbUser?.name ?? "");
                       setEditNumber(dbUser?.jersey_number ?? "");
-                      setEditColor(dbUser?.jersey_color ?? "#ffffff");
+                      setEditColor(dbUser?.jersey_color ?? "#1e3a8a"); // fallback only for legacy null users
                       setNameError("");
                       setIsEditModalOpen(true);
                     }}

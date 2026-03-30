@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import random
 from database import get_db
-from models import User
+from models import User, JERSEY_COLORS
 from schemas import UserCreate, UserPublic, UserIdentityUpdate
 
 router = APIRouter()
@@ -30,7 +30,8 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
             name=name,
             email=payload.email,
             avatar_url=payload.avatar_url,
-            jersey_number=random.randint(1, 99)
+            jersey_number=random.randint(1, 99),
+            jersey_color=random.choice(JERSEY_COLORS),
         )
         db.add(user)
     else:

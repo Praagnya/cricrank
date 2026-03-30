@@ -36,6 +36,11 @@ STREAK_TIERS = [
 BASE_POINTS = 10
 POST_TOSS_MULTIPLIER = 0.5
 
+JERSEY_COLORS = [
+    "#1e3a8a", "#fbbf24", "#7f1d1d", "#831843", "#3730a3",
+    "#064e3b", "#991b1b", "#ea580c", "#0f172a", "#172554",
+]
+
 
 def get_streak_multiplier(streak: int) -> tuple[str, float]:
     """Return (tier_name, multiplier) for a given streak count."""
