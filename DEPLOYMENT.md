@@ -52,6 +52,7 @@ Make sure the full repo is pushed. The `.gitignore` excludes `.env*` files — d
 1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
 2. New Project → Import from GitHub → select this repo
 3. Set the **root directory** to `frontend/`
+   - If you leave this at the repo root, Vercel commonly serves its own `404: NOT_FOUND` page because the Next.js app lives in `frontend/`, not `/`
 4. Framework preset: Next.js (auto-detected)
 5. Add environment variables:
    ```
@@ -99,6 +100,12 @@ If using Railway for `api.cricrank.com`:
 - [ ] `https://api.cricrank.com/health` returns `{"status": "ok"}`
 - [ ] Match predictions can be submitted
 - [ ] Leaderboard loads
+
+## Troubleshooting
+
+- `404: NOT_FOUND` on a Vercel page usually means the request never reached your app. First confirm the Vercel project's Root Directory is `frontend/`.
+- If the frontend loads but API calls fail, confirm `NEXT_PUBLIC_API_URL` is set in Vercel to the live backend URL and redeploy after saving it.
+- Confirm the backend is separately deployed from `backend/` on Railway and that `https://<backend-url>/health` responds successfully.
 
 ---
 

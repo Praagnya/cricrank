@@ -55,7 +55,7 @@ export interface PredictionWithMatch extends Prediction {
   match: MatchPublic;
 }
 
-export interface MatchPublic extends Match {}
+export type MatchPublic = Match;
 
 export interface LeaderboardEntry {
   rank: number;
