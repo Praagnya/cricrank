@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { LeaderboardEntry } from "@/types";
 import { streakTierColor } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/api-base";
 import { Zap, Medal } from "lucide-react";
 import CricketAvatar from "@/components/CricketAvatar";
 import { createClient } from "@/utils/supabase/client";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = getApiBaseUrl();
 
 type Period = "alltime" | "weekly" | "monthly";
 
@@ -252,4 +253,3 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
     </aside>
   );
 }
-

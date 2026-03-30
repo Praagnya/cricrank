@@ -5,6 +5,7 @@ import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Sh
 import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry } from "@/types";
 import { streakTierColor, teamHex } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/api-base";
 import CricketAvatar from "./CricketAvatar";
 import CountdownTimer from "./CountdownTimer";
 
@@ -33,7 +34,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
   useEffect(() => {
     async function fetchProfileData() {
       try {
-        const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+        const BASE = getApiBaseUrl();
 
         // Fetch User Stats
         const userRes = await fetch(`${BASE}/users/${userId}`);
@@ -87,7 +88,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
   const handleChangePick = async (pred: PredictionWithMatch, newTeam: string) => {
     setChangingPredId(pred.id);
     try {
-      const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const BASE = getApiBaseUrl();
       const res = await fetch(`${BASE}/predictions/?google_id=${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +110,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
     if (!editNumber) return;
     setIsSaving(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/users/${userId}/identity`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -335,7 +336,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
           <div className="border border-[#262626] bg-[#000000] p-12 text-center">
             <Target className="w-8 h-8 text-[#262626] mx-auto mb-4" />
             <p className="text-sm font-bold tracking-widest text-[#737373] uppercase">No predictions yet</p>
-            <p className="text-[10px] text-[#525252] tracking-widest mt-2">{dbUser.name} hasn't made any predictions yet.</p>
+            <p className="text-[10px] text-[#525252] tracking-widest mt-2">{dbUser.name} hasn&apos;t made any predictions yet.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

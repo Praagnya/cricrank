@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import { Timer } from "lucide-react";
 
-function getTimeLeft(target: string) {
-  const diff = new Date(target).getTime() - Date.now();
+function getTimeLeft(target: string, now = Date.now()) {
+  const diff = new Date(target).getTime() - now;
   if (diff <= 0) return null;
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
@@ -14,18 +14,16 @@ function getTimeLeft(target: string) {
 }
 
 export default function CountdownTimer({ tossTime, variant = "pill" }: { tossTime: string, variant?: "pill" | "hero" }) {
-  const [timeLeft, setTimeLeft] = useState<ReturnType<typeof getTimeLeft>>(null);
-  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    setMounted(true);
-    const tick = () => setTimeLeft(getTimeLeft(tossTime));
-    tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [tossTime]);
+  }, []);
 
-  if (!mounted || !timeLeft) return null;
+  const timeLeft = getTimeLeft(tossTime, now);
+
+  if (!timeLeft) return null;
   if (timeLeft.total > 24 * 3600000) return null;
 
   const pad = (n: number) => String(n).padStart(2, "0");

@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { type NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { getApiBaseUrl } from "@/lib/api-base";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       
       // Sync the user to our fastAPI backend
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/users/`, {
+        await fetch(`${getApiBaseUrl()}/users/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
