@@ -20,119 +20,79 @@ export default function Header() {
       .catch(() => {});
   }, [user]);
 
+  // Shared button class for all header buttons
+  const btn = "flex items-center justify-center border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors rounded text-white";
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
-          
-          {/* Logo & Mobile Menu Toggle */}
-          <div className="flex items-center gap-4">
-            {/* Hamburger (Mobile Only) */}
-            <button 
-              className="lg:hidden flex items-center justify-center w-10 h-10 border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors rounded text-white"
-              onClick={() => setMenuOpen(true)}
-            >
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[64px] grid grid-cols-3 items-center">
+
+          {/* LEFT — hamburger + home */}
+          <div className="flex items-center gap-2">
+            <button className={`${btn} w-10 h-10 lg:hidden`} onClick={() => setMenuOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
+            <Link href="/" className={`${btn} w-10 h-10`}>
+              <Zap className="w-5 h-5" strokeWidth={1.5} />
+            </Link>
+            <span className="hidden sm:inline font-bold text-base tracking-tighter uppercase text-white ml-1">CricRank</span>
+          </div>
 
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-9 h-9 flex items-center justify-center shrink-0 border border-[#262626] bg-[#000]">
-                <Zap className="w-5 h-5 text-white" strokeWidth={1.5} />
-              </div>
-              <span className="hidden sm:inline font-bold text-lg tracking-tighter uppercase group-hover:text-gray-300 transition-colors" style={{ color: '#ffffff' }}>
-                CricRank
-              </span>
+          {/* CENTER — leaderboard */}
+          <div className="flex justify-center">
+            <Link href="/leaderboard" className={`${btn} flex-col gap-0.5 w-14 h-10 sm:w-auto sm:flex-row sm:gap-2 sm:px-5 sm:h-10`}>
+              <Trophy className="w-4 h-4 shrink-0" />
+              <span className="text-[7px] sm:text-xs font-black uppercase tracking-widest text-[#a3a3a3]">Ranks</span>
             </Link>
           </div>
 
-          {/* Right side (Desktop Actions) */}
-          <div className="flex items-center h-full">
-            {/* Mobile: bordered box like hamburger. Desktop: full-height bar */}
-            <Link
-              href="/leaderboard"
-              className="sm:hidden flex flex-col items-center justify-center gap-0.5 w-12 h-10 border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors rounded ml-2 text-white"
-            >
-              <Trophy className="w-4 h-4 shrink-0" />
-              <span className="text-[7px] font-black uppercase tracking-widest text-[#a3a3a3]">Ranks</span>
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="hidden sm:flex items-center justify-center gap-2 h-full px-6 text-xs font-bold uppercase tracking-widest text-[#ffffff] bg-[#111111] hover:text-gray-300 hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
-            >
-              <Trophy className="w-4 h-4 shrink-0" />
-              <span>Leaderboard</span>
-            </Link>
-
+          {/* RIGHT — coins + avatar/signin */}
+          <div className="flex items-center justify-end gap-2">
             {!loading && user && coins !== null && (
-              <Link
-                href="/profile"
-                title={`${coins.toLocaleString()} coins`}
-                className="flex flex-col items-center justify-center h-full px-3 sm:px-4 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
-              >
-                <span className="text-[8px] font-black uppercase tracking-widest text-[#fbbf24]/60 leading-none mb-0.5">Coins</span>
-                <span className="font-gaming text-sm text-[#fbbf24] tracking-wider leading-none">
-                  {coins.toLocaleString()}
-                </span>
+              <Link href="/profile" className={`${btn} flex-col gap-0 w-14 h-10`}>
+                <span className="text-[7px] font-black uppercase tracking-widest text-[#fbbf24]/60 leading-none">Coins</span>
+                <span className="font-gaming text-sm text-[#fbbf24] leading-none">{coins.toLocaleString()}</span>
               </Link>
             )}
 
             {!loading && user ? (
-              <div className="relative flex items-center h-full border-l border-[#262626]">
-                <button
-                  onClick={() => setUserMenuOpen((v) => !v)}
-                  className="flex items-center justify-center gap-3 h-full w-12 sm:w-auto sm:px-6 bg-[#111111] hover:bg-[#1a1a1a] transition-colors group"
-                >
+              <div className="relative">
+                <button onClick={() => setUserMenuOpen((v) => !v)} className={`${btn} w-10 h-10`}>
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={user.user_metadata.avatar_url}
                       alt={user.user_metadata?.full_name ?? "User"}
-                      width={32}
-                      height={32}
+                      width={28} height={28}
                       referrerPolicy="no-referrer"
-                      className="rounded-full grayscale group-hover:grayscale-0 transition-all border border-[#262626]"
+                      className="rounded-full grayscale hover:grayscale-0 transition-all"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#1f1f1f] flex items-center justify-center text-sm font-bold text-white border border-[#262626]">
+                    <span className="text-sm font-bold">
                       {user.user_metadata?.full_name?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? "U"}
-                    </div>
+                    </span>
                   )}
-                  <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest text-[#a3a3a3] group-hover:text-white transition-colors">
-                    {user.user_metadata?.full_name?.split(" ")[0] ?? "Profile"}
-                  </span>
                 </button>
-
-                {/* Dropdown */}
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div className="fixed right-0 mt-1 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-50" style={{ top: '72px' }}>
-                      <Link
-                        href="/profile"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors"
-                      >
-                        <Zap className="w-3.5 h-3.5 shrink-0" />
-                        My Profile
+                    <div className="fixed right-0 mt-1 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-50" style={{ top: '64px' }}>
+                      <Link href="/profile" onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                        <Zap className="w-3.5 h-3.5 shrink-0" />My Profile
                       </Link>
                       <div className="border-t border-[#1a1a1a]" />
-                      <button
-                        onClick={() => { setUserMenuOpen(false); signOut(); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors"
-                      >
-                        <LogOut className="w-3.5 h-3.5 shrink-0" />
-                        Sign Out
+                      <button onClick={() => { setUserMenuOpen(false); signOut(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors">
+                        <LogOut className="w-3.5 h-3.5 shrink-0" />Sign Out
                       </button>
                     </div>
                   </>
                 )}
               </div>
             ) : !loading && !user ? (
-              <button
-                onClick={signInWithGoogle}
-                className="flex items-center justify-center gap-2 h-full w-12 sm:w-auto sm:px-6 border-l border-[#262626] text-xs font-bold uppercase tracking-widest text-white bg-[#111111] hover:bg-white hover:text-black transition-colors"
-              >
+              <button onClick={signInWithGoogle} className={`${btn} gap-2 h-10 px-3 text-xs font-bold uppercase tracking-widest`}>
                 <LogIn className="w-4 h-4" />
                 <span className="hidden sm:inline">Sign In</span>
               </button>
@@ -152,7 +112,7 @@ export default function Header() {
           
           {/* Drawer */}
           <div className="relative w-[280px] h-full bg-[#000000] border-r border-[#262626] flex flex-col shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="h-[72px] flex items-center justify-between px-6 border-b border-[#262626] bg-[#050505]">
+            <div className="h-[64px] flex items-center justify-between px-6 border-b border-[#262626] bg-[#050505]">
               <span className="font-gaming text-xl tracking-widest uppercase text-white mt-1">Menu</span>
               <button 
                 onClick={() => setMenuOpen(false)} 
