@@ -197,6 +197,7 @@ export default function MatchCarousel({ matches }: Props) {
         team1={match.team1}
         team2={match.team2}
         tossTime={match.toss_time}
+        startTime={match.start_time}
         matchStatus={match.status}
       />
 

@@ -50,6 +50,7 @@ def dynamic_leaderboard(db: Session, limit: int, days: int):
             User,
             func.sum(Prediction.points_awarded).label("period_points"),
             func.count(Prediction.id).label("period_total"),
+            func.count(Prediction.is_correct).label("period_settled"),
             func.sum(Prediction.is_correct).label("period_correct")
         )
         .join(Prediction, User.id == Prediction.user_id)
@@ -59,14 +60,14 @@ def dynamic_leaderboard(db: Session, limit: int, days: int):
         .limit(limit)
         .all()
     )
-    
+
     return [
         LeaderboardEntry(
             google_id=user.google_id,
             rank=i + 1,
             name=user.name,
             points=points or 0,
-            accuracy=round((correct / total * 100), 1) if (total and correct) else 0.0,
+            accuracy=round((correct / settled * 100), 1) if (settled and correct) else 0.0,
             total_predictions=total or 0,
             correct_predictions=correct or 0,
             current_streak=user.current_streak,
@@ -74,7 +75,7 @@ def dynamic_leaderboard(db: Session, limit: int, days: int):
             jersey_number=user.jersey_number,
             jersey_color=user.jersey_color,
         )
-        for i, (user, points, total, correct) in enumerate(results)
+        for i, (user, points, total, settled, correct) in enumerate(results)
     ]
 
 @router.get("/weekly", response_model=list[LeaderboardEntry])
