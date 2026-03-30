@@ -17,7 +17,11 @@ def global_leaderboard(
     users = (
         db.query(User)
         .filter(User.total_predictions > 0)
-        .order_by(desc(User.points), desc(User.correct_predictions))
+        .order_by(
+            desc(User.points),
+            desc(User.correct_predictions * 1.0 / func.nullif(User.settled_predictions, 0)),
+            desc(User.current_streak),
+        )
         .limit(limit)
         .all()
     )
@@ -57,7 +61,7 @@ def dynamic_leaderboard(db: Session, limit: int, days: int):
         .join(Prediction, User.id == Prediction.user_id)
         .filter(Prediction.created_at >= min_date)
         .group_by(User.id)
-        .order_by(desc("period_points"), desc("period_correct"))
+        .order_by(desc("period_points"), desc("period_settled"), desc("period_correct"))
         .limit(limit)
         .all()
     )
