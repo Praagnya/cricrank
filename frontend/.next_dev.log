@@ -419,3 +419,7 @@
   19 |   if (!res.ok) return [];
  GET / 200 in 921ms (next.js: 14ms, proxy.ts: 883ms, application-code: 24ms)
  GET / 200 in 180ms (next.js: 4ms, proxy.ts: 133ms, application-code: 43ms)
+ GET / 200 in 167ms (next.js: 10ms, proxy.ts: 30ms, application-code: 128ms)
+ GET /leaderboard 200 in 110ms (next.js: 22ms, proxy.ts: 34ms, application-code: 53ms)
+ GET /leaderboard?period=monthly 200 in 67ms (next.js: 7ms, proxy.ts: 10ms, application-code: 51ms)
+ GET /leaderboard?period=weekly 200 in 110ms (next.js: 6ms, proxy.ts: 8ms, application-code: 97ms)
