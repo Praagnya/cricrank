@@ -79,7 +79,7 @@ export default function Header() {
                 </button>
                 {userMenuOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="fixed inset-0 z-[190]" onClick={() => setUserMenuOpen(false)} />
                     <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[200]" style={{ top: '64px' }}>
                       <Link href="/profile" onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors">
