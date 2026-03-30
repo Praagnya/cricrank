@@ -32,6 +32,7 @@ class UserPublic(BaseModel):
     streak_tier: str
     jersey_number: Optional[int] = None
     jersey_color: Optional[str] = None
+    coins: int = 1000
 
     model_config = {"from_attributes": True}
 

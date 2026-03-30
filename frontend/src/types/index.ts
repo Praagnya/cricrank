@@ -39,6 +39,7 @@ export interface User {
   jersey_number?: number | null;
   avatar_url?: string | null;
   jersey_color?: string;
+  coins: number;
 }
 
 export interface Prediction {
