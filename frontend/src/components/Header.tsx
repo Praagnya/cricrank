@@ -1,14 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, LogOut, LogIn, Zap, Menu, X, Home } from "lucide-react";
+import { Trophy, LogOut, LogIn, Zap, Menu, X, Home, Coins } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
-import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getApiBaseUrl } from "@/lib/api-base";
 
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [coins, setCoins] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user) { setCoins(null); return; }
+    fetch(`${getApiBaseUrl()}/users/${user.id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setCoins(data.coins); })
+      .catch(() => {});
+  }, [user]);
 
   return (
     <>
@@ -45,6 +54,19 @@ export default function Header() {
               <Trophy className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Leaderboard</span>
             </Link>
+
+            {!loading && user && coins !== null && (
+              <Link
+                href="/profile"
+                title={`${coins.toLocaleString()} coins`}
+                className="flex items-center justify-center gap-1.5 h-full px-3 sm:px-4 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626] group"
+              >
+                <Coins className="w-3.5 h-3.5 text-[#fbbf24] shrink-0" />
+                <span className="font-gaming text-sm text-[#fbbf24] tracking-wider leading-none">
+                  {coins.toLocaleString()}
+                </span>
+              </Link>
+            )}
 
             {!loading && user ? (
               <div className="flex items-center h-full">
