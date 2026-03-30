@@ -219,10 +219,14 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none mb-3 text-white">
                 {dbUser.name}
               </h1>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className={`px-3 py-1 bg-[#111111] border border-[#2a2a2a] inline-flex items-center gap-2 rounded-sm ${streakTierColor(dbUser.streak_tier)}`}>
                   <Zap className="w-3.5 h-3.5" />
                   <span className="text-[10px] font-black uppercase tracking-widest">{dbUser.streak_tier}</span>
+                </div>
+                <div className="px-3 py-1 bg-[#111111] border border-[#2a2a2a] inline-flex items-center gap-2 rounded-sm">
+                  <Coins className="w-3.5 h-3.5 text-[#fbbf24]" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{(dbUser.coins ?? 0).toLocaleString()}</span>
                 </div>
                 {isEditable && (
                   <button
@@ -286,7 +290,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
       </div>
 
       {/* LIFETIME STATS MODULE */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
         {/* Points */}
         <div className="border border-[#262626] bg-[#000000] p-4 sm:p-6 flex flex-col justify-between h-full hover:bg-[#0a0a0a] transition-colors group">
           <div className="flex items-start gap-2 sm:gap-3 mb-4 sm:mb-6">
@@ -329,14 +333,6 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
           <p className="font-gaming text-3xl sm:text-4xl tracking-widest text-[#ffffff] mt-auto">{dbUser.longest_streak}</p>
         </div>
 
-        {/* Coins */}
-        <div className="border border-[#262626] bg-[#000000] p-4 sm:p-6 flex flex-col justify-between h-full hover:bg-[#0a0a0a] transition-colors group col-span-2 sm:col-span-1">
-          <div className="flex items-start gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <Coins className="w-4 h-4 mt-0.5 shrink-0 text-[#fbbf24] group-hover:text-[#fde68a] transition-colors" />
-            <span className="text-[9px] sm:text-[10px] leading-tight font-black tracking-[0.2em] text-[#a3a3a3] uppercase group-hover:text-[#fde68a] transition-colors">Coins</span>
-          </div>
-          <p className="font-gaming text-3xl sm:text-4xl tracking-widest text-[#fbbf24] mt-auto">{(dbUser.coins ?? 0).toLocaleString()}</p>
-        </div>
       </div>
 
       {/* PREDICTION LEDGER */}
