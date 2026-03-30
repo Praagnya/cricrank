@@ -28,7 +28,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://100.70.7.33:3000",
-        os.getenv("FRONTEND_URL", ""),
+        "https://cricrank.com",
+        "https://www.cricrank.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
