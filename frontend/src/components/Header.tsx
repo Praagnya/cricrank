@@ -58,24 +58,21 @@ export default function Header() {
 
             {!loading && user ? (
               <div className="relative z-[60]">
-                <button onClick={() => setUserMenuOpen((v) => !v)} className={`${btn} flex-col gap-0.5 w-14 h-10`}>
+                <button onClick={() => setUserMenuOpen((v) => !v)} className={`${btn} w-10 h-10`}>
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={user.user_metadata.avatar_url}
                       alt={user.user_metadata?.full_name ?? "User"}
-                      width={20} height={20}
+                      width={28} height={28}
                       referrerPolicy="no-referrer"
-                      className="rounded-full grayscale hover:grayscale-0 transition-all shrink-0"
+                      className="rounded-full shrink-0"
                     />
                   ) : (
-                    <span className="text-sm font-bold leading-none">
+                    <span className="text-sm font-bold">
                       {user.user_metadata?.full_name?.[0]?.toUpperCase() ?? user.email?.[0]?.toUpperCase() ?? "U"}
                     </span>
                   )}
-                  <span className="text-[7px] font-black uppercase tracking-widest text-[#a3a3a3] leading-none">
-                    {user.user_metadata?.full_name?.split(" ")[0] ?? "Me"}
-                  </span>
                 </button>
                 {userMenuOpen && (
                   <>
