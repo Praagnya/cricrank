@@ -34,10 +34,12 @@ export default function Header() {
             <button className={`${btn} w-10 h-10 lg:hidden`} onClick={() => setMenuOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
-            <Link href="/" className={`${btn} w-10 h-10`}>
-              <Zap className="w-5 h-5" strokeWidth={1.5} />
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className={`${btn} w-10 h-10 shrink-0`}>
+                <Zap className="w-5 h-5" strokeWidth={1.5} />
+              </div>
+              <span className="hidden sm:inline font-bold text-base tracking-tighter text-white group-hover:text-gray-300 transition-colors">CricRank</span>
             </Link>
-            <span className="hidden sm:inline font-bold text-base tracking-tighter uppercase text-white ml-1">CricRank</span>
           </div>
 
           {/* CENTER — leaderboard */}
