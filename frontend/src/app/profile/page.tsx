@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useUser } from "@/hooks/useUser";
 import Header from "@/components/Header";
 import { AlertTriangle } from "lucide-react";
