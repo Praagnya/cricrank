@@ -482,14 +482,22 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                     <div className="flex items-center gap-2 sm:gap-3">
                       <span
                         className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate"
-                        style={{ color: pred.match.winner === pred.match.team1 ? teamHex(pred.match.team1) : pred.match.winner === null ? '#c8c8c8' : '#2a2a2a' }}
+                        style={{
+                          color: pred.match.winner === pred.match.team1 ? teamHex(pred.match.team1) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
+                          textDecoration: pred.match.winner && pred.match.winner !== pred.match.team1 ? 'line-through' : 'none',
+                          textDecorationColor: '#3a3a3a',
+                        }}
                       >
                         {pred.match.team1}
                       </span>
-                      <span className="text-[8px] sm:text-[10px] text-[#2a2a2a] font-black italic tracking-widest shrink-0">VS</span>
+                      <span className="text-[8px] sm:text-[10px] text-[#333] font-black italic tracking-widest shrink-0">VS</span>
                       <span
                         className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate"
-                        style={{ color: pred.match.winner === pred.match.team2 ? teamHex(pred.match.team2) : pred.match.winner === null ? '#c8c8c8' : '#2a2a2a' }}
+                        style={{
+                          color: pred.match.winner === pred.match.team2 ? teamHex(pred.match.team2) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
+                          textDecoration: pred.match.winner && pred.match.winner !== pred.match.team2 ? 'line-through' : 'none',
+                          textDecorationColor: '#3a3a3a',
+                        }}
                       >
                         {pred.match.team2}
                       </span>
