@@ -54,8 +54,9 @@ export function formatDate(isoString: string): string {
 
 export type PredictionState = "open" | "post_toss" | "locked";
 
-export function getPredictionState(tossTime: string, matchStatus?: string): PredictionState {
+export function getPredictionState(tossTime: string, matchStatus?: string, startTime?: string): PredictionState {
   if (matchStatus === "completed" || matchStatus === "live") return "locked";
+  if (startTime && new Date() >= new Date(startTime)) return "locked";
   const pastToss = new Date() >= new Date(tossTime);
   return pastToss ? "post_toss" : "open";
 }

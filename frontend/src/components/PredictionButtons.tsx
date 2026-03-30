@@ -11,6 +11,7 @@ interface Props {
   team1: string;
   team2: string;
   tossTime: string;
+  startTime?: string;
   matchStatus?: string;
   googleId: string | null;
   existingPrediction?: string | null;
@@ -18,12 +19,12 @@ interface Props {
 }
 
 export default function PredictionButtons({
-  matchId, team1, team2, tossTime, matchStatus, googleId, existingPrediction, onRequireAuth,
+  matchId, team1, team2, tossTime, startTime, matchStatus, googleId, existingPrediction, onRequireAuth,
 }: Props) {
   const [selected, setSelected] = useState<string | null>(existingPrediction ?? null);
   const [loading,  setLoading]  = useState<string | null>(null);
   const [error,    setError]    = useState<string | null>(null);
-  const predState = getPredictionState(tossTime, matchStatus);
+  const predState = getPredictionState(tossTime, matchStatus, startTime);
   const locked = predState === "locked";
   const isPostToss = predState === "post_toss";
 

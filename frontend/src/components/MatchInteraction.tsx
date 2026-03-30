@@ -11,10 +11,11 @@ interface Props {
   team1: string;
   team2: string;
   tossTime: string;
+  startTime?: string;
   matchStatus?: string;
 }
 
-export default function MatchInteraction({ matchId, team1, team2, tossTime, matchStatus }: Props) {
+export default function MatchInteraction({ matchId, team1, team2, tossTime, startTime, matchStatus }: Props) {
   const { user, loading, signInWithGoogle } = useUser();
   const [existingPrediction, setExistingPrediction] = useState<string | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -84,6 +85,7 @@ export default function MatchInteraction({ matchId, team1, team2, tossTime, matc
       team1={team1}
       team2={team2}
       tossTime={tossTime}
+      startTime={startTime}
       matchStatus={matchStatus}
       googleId={googleId}
       existingPrediction={existingPrediction}
