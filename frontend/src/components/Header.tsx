@@ -9,6 +9,7 @@ import { getApiBaseUrl } from "@/lib/api-base";
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number | null>(null);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function Header() {
               <div className="relative w-9 h-9 flex items-center justify-center shrink-0 border border-[#262626] bg-[#000]">
                 <Zap className="w-5 h-5 text-white" strokeWidth={1.5} />
               </div>
-              <span className="font-bold text-2xl tracking-tighter uppercase group-hover:text-gray-300 transition-colors" style={{ color: '#ffffff' }}>
+              <span className="hidden sm:inline font-bold text-lg tracking-tighter uppercase group-hover:text-gray-300 transition-colors" style={{ color: '#ffffff' }}>
                 CricRank
               </span>
             </Link>
@@ -69,10 +70,10 @@ export default function Header() {
             )}
 
             {!loading && user ? (
-              <div className="flex items-center h-full">
-                <Link
-                  href="/profile"
-                  className="flex items-center justify-center gap-3 h-full w-12 sm:w-auto sm:px-6 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626] group"
+              <div className="relative flex items-center h-full border-l border-[#262626]">
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center justify-center gap-3 h-full w-12 sm:w-auto sm:px-6 bg-[#111111] hover:bg-[#1a1a1a] transition-colors group"
                 >
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -92,14 +93,32 @@ export default function Header() {
                   <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest text-[#a3a3a3] group-hover:text-white transition-colors">
                     {user.user_metadata?.full_name?.split(" ")[0] ?? "Profile"}
                   </span>
-                </Link>
-                <button
-                  onClick={signOut}
-                  title="Sign out"
-                  className="flex items-center justify-center h-full w-12 sm:px-5 sm:w-auto border-l border-[#262626] text-[#a3a3a3] bg-[#111111] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
                 </button>
+
+                {/* Dropdown */}
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-50">
+                      <Link
+                        href="/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+                      >
+                        <Zap className="w-3.5 h-3.5 shrink-0" />
+                        My Profile
+                      </Link>
+                      <div className="border-t border-[#1a1a1a]" />
+                      <button
+                        onClick={() => { setUserMenuOpen(false); signOut(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5 shrink-0" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : !loading && !user ? (
               <button
