@@ -60,9 +60,9 @@ export default function Header() {
               <Link
                 href="/profile"
                 title={`${coins.toLocaleString()} coins`}
-                className="flex items-center justify-center gap-1.5 h-full px-3 sm:px-4 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626] group"
+                className="flex flex-col items-center justify-center h-full px-3 sm:px-4 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
               >
-                <Coins className="w-3.5 h-3.5 text-[#fbbf24] shrink-0" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-[#fbbf24]/60 leading-none mb-0.5">Coins</span>
                 <span className="font-gaming text-sm text-[#fbbf24] tracking-wider leading-none">
                   {coins.toLocaleString()}
                 </span>
