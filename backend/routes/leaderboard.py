@@ -94,6 +94,89 @@ def monthly_leaderboard(limit: int = Query(50, le=100), db: Session = Depends(ge
 
 
 
+@router.get("/rank/{google_id}", response_model=LeaderboardEntry | None)
+def my_rank(
+    google_id: str,
+    period: str = Query("alltime"),
+    db: Session = Depends(get_db),
+):
+    """Return a single user's rank entry regardless of their position."""
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        return None
+
+    if period == "alltime":
+        if user.total_predictions == 0:
+            return None
+        rank = db.query(func.count(User.id)).filter(
+            User.total_predictions > 0,
+            User.points > user.points,
+        ).scalar() + 1
+        return LeaderboardEntry(
+            google_id=user.google_id,
+            rank=rank,
+            name=user.name,
+            points=user.points,
+            accuracy=user.accuracy,
+            total_predictions=user.total_predictions,
+            settled_predictions=user.settled_predictions,
+            correct_predictions=user.correct_predictions,
+            current_streak=user.current_streak,
+            streak_tier=user.streak_tier,
+            jersey_number=user.jersey_number,
+            jersey_color=user.jersey_color,
+        )
+
+    days = 7 if period == "weekly" else 30
+    min_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    user_pts = (
+        db.query(func.sum(Prediction.points_awarded))
+        .filter(Prediction.user_id == user.id, Prediction.created_at >= min_date)
+        .scalar() or 0
+    )
+    has_preds = db.query(Prediction).filter(
+        Prediction.user_id == user.id, Prediction.created_at >= min_date
+    ).first()
+    if not has_preds:
+        return None
+
+    higher = (
+        db.query(Prediction.user_id)
+        .filter(Prediction.created_at >= min_date)
+        .group_by(Prediction.user_id)
+        .having(func.sum(Prediction.points_awarded) > user_pts)
+        .subquery()
+    )
+    rank = db.query(func.count()).select_from(higher).scalar() + 1
+
+    stats = (
+        db.query(
+            func.sum(Prediction.points_awarded).label("pts"),
+            func.count(Prediction.id).label("total"),
+            func.count(Prediction.is_correct).label("settled"),
+            func.sum(Prediction.is_correct).label("correct"),
+        )
+        .filter(Prediction.user_id == user.id, Prediction.created_at >= min_date)
+        .first()
+    )
+    pts, total, settled, correct = stats.pts or 0, stats.total or 0, stats.settled or 0, stats.correct or 0
+    return LeaderboardEntry(
+        google_id=user.google_id,
+        rank=rank,
+        name=user.name,
+        points=pts,
+        accuracy=round((correct / settled * 100), 1) if (settled and correct) else 0.0,
+        total_predictions=total,
+        settled_predictions=settled,
+        correct_predictions=correct,
+        current_streak=user.current_streak,
+        streak_tier=user.streak_tier,
+        jersey_number=user.jersey_number,
+        jersey_color=user.jersey_color,
+    )
+
+
 @router.get("/contest/{contest_id}", response_model=list[ContestLeaderboardEntry])
 def contest_leaderboard(
     contest_id: str,

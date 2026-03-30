@@ -46,7 +46,10 @@ export default async function LeaderboardPage({
 
   const top10 = allEntries.slice(0, 10);
   
-  const myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
+  let myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
+  if (!myEntry && providerId) {
+    myEntry = await api.leaderboard.myRank(providerId, period).catch(() => null);
+  }
   const myRank = myEntry?.rank ?? null;
 
   return (
