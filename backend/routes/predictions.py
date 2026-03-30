@@ -34,8 +34,8 @@ def submit_prediction(
     now = datetime.now(timezone.utc)
     is_post_toss = now >= match.toss_time
 
-    # Block predictions once match is live (started)
-    if match.status == MatchStatus.live:
+    # Block predictions once match is live or has started
+    if match.status == MatchStatus.live or now >= match.start_time:
         raise HTTPException(status_code=400, detail="Match is live — predictions closed")
 
     if payload.selected_team not in (match.team1, match.team2):
@@ -122,6 +122,7 @@ def settle_match(match_id: str, winner: str, db: Session = Depends(get_db)):
         if not user:
             continue
 
+        user.settled_predictions += 1
         if pred.selected_team == winner:
             pred.is_correct = 1
             user.current_streak += 1

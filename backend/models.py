@@ -63,6 +63,7 @@ class User(Base):
     points = Column(Integer, default=0, nullable=False)
     total_predictions = Column(Integer, default=0, nullable=False)
     correct_predictions = Column(Integer, default=0, nullable=False)
+    settled_predictions = Column(Integer, default=0, nullable=False)
     current_streak = Column(Integer, default=0, nullable=False)
     longest_streak = Column(Integer, default=0, nullable=False)
     jersey_number = Column(Integer, nullable=True)
@@ -74,9 +75,9 @@ class User(Base):
 
     @property
     def accuracy(self) -> float:
-        if self.total_predictions == 0:
+        if self.settled_predictions == 0:
             return 0.0
-        return round((self.correct_predictions / self.total_predictions) * 100, 1)
+        return round((self.correct_predictions / self.settled_predictions) * 100, 1)
 
     @property
     def streak_tier(self) -> str:
