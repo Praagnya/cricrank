@@ -417,3 +417,5 @@
   17 |     cache: "no-store",
   18 |   });
   19 |   if (!res.ok) return [];
+ GET / 200 in 921ms (next.js: 14ms, proxy.ts: 883ms, application-code: 24ms)
+ GET / 200 in 180ms (next.js: 4ms, proxy.ts: 133ms, application-code: 43ms)
