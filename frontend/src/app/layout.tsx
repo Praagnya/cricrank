@@ -43,6 +43,9 @@ export default function RootLayout({
     <html lang="en" className={`h-full ${heading.variable} ${sans.variable} ${gaming.variable}`}>
       <body className="min-h-full flex flex-col antialiased">
         {children}
+        <footer className="border-t border-[#262626] bg-[#000000] py-4 px-6 text-center">
+          <p className="text-[10px] text-[#525252] font-bold tracking-widest uppercase">© 2026 CricRank</p>
+        </footer>
       </body>
     </html>
   );
