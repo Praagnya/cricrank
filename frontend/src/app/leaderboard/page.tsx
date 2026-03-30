@@ -46,19 +46,8 @@ export default async function LeaderboardPage({
 
   const top10 = allEntries.slice(0, 10);
   
-  // Find current logged in user
-  // Forced Rank #45 Demo Visualization
-  const myEntry = {
-    name: "praagnya08",
-    google_id: "demo_user",
-    points: 125,
-    accuracy: 45.5,
-    total_predictions: 30,
-    correct_predictions: 14,
-    current_streak: 0,
-    streak_tier: "ROOKIE"
-  };
-  const myRank = 45;
+  const myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
+  const myRank = myEntry?.rank ?? null;
 
   return (
     <>
@@ -140,8 +129,8 @@ export default async function LeaderboardPage({
                 }
 
                 const heatColor = getStreakHeatColor(entry.current_streak);
-                const isMe = false; // Demo mode: user is rank 45
-                
+                const isMe = entry.google_id === providerId;
+
                 return (
                   <Link
                     href={`/profile/${entry.google_id}`}
@@ -165,9 +154,9 @@ export default async function LeaderboardPage({
                       className="w-12 h-12 sm:w-28 sm:h-28 flex items-center justify-center mb-2 sm:mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300"
                       style={{ filter: heatColor !== '#262626' ? `drop-shadow(0 0 16px ${heatColor}90)` : 'none' }}
                     >
-                      <CricketAvatar seed={entry.name ?? "A"} />
+                      <CricketAvatar seed={entry.name ?? "A"} jerseyNumber={entry.jersey_number} jerseyColor={entry.jersey_color} />
                     </div>
-                    
+
                     <p className="font-gaming text-xs sm:text-2xl font-bold tracking-wide text-white truncate w-full text-center">
                       {entry.name ?? "Anonymous"}
                     </p>
@@ -184,8 +173,8 @@ export default async function LeaderboardPage({
               {top10.slice(3).map((entry, idx) => {
                 const rank = idx + 4;
                 const heatColor = getStreakHeatColor(entry.current_streak);
-                const isMe = false; // Demo mode: user is rank 45
-                
+                const isMe = entry.google_id === providerId;
+
                 return (
                   <Link
                     href={`/profile/${entry.google_id}`}
@@ -202,7 +191,7 @@ export default async function LeaderboardPage({
                       className="hidden sm:flex w-12 h-12 items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300"
                       style={{ filter: heatColor !== '#262626' ? `drop-shadow(0 0 8px ${heatColor}80)` : 'none' }}
                     >
-                      <CricketAvatar seed={entry.name ?? "A"} />
+                      <CricketAvatar seed={entry.name ?? "A"} jerseyNumber={entry.jersey_number} jerseyColor={entry.jersey_color} />
                     </div>
 
                     {/* Name + Context */}
@@ -246,7 +235,7 @@ export default async function LeaderboardPage({
 
                     {/* Avatar */}
                     <div className="hidden sm:flex w-12 h-12 items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300">
-                      <CricketAvatar seed={myEntry.name ?? "A"} />
+                      <CricketAvatar seed={myEntry.name ?? "A"} jerseyNumber={myEntry.jersey_number} jerseyColor={myEntry.jersey_color} />
                     </div>
 
                     {/* Name + Context */}
