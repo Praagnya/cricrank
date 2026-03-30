@@ -40,9 +40,9 @@ export default function Header() {
           <div className="flex items-center h-full">
             <Link
               href="/leaderboard"
-              className="flex items-center gap-2 h-full px-6 text-xs font-bold uppercase tracking-widest text-[#ffffff] bg-[#111111] hover:text-gray-300 hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
+              className="flex items-center justify-center gap-2 h-full w-12 sm:w-auto sm:px-6 text-xs font-bold uppercase tracking-widest text-[#ffffff] bg-[#111111] hover:text-gray-300 hover:bg-[#1a1a1a] transition-colors border-l border-[#262626]"
             >
-              <Trophy className="w-4 h-4" />
+              <Trophy className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Leaderboard</span>
             </Link>
 
@@ -50,7 +50,7 @@ export default function Header() {
               <div className="flex items-center h-full">
                 <Link
                   href="/profile"
-                  className="flex items-center gap-3 h-full px-4 sm:px-6 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626] group"
+                  className="flex items-center justify-center gap-3 h-full w-12 sm:w-auto sm:px-6 bg-[#111111] hover:bg-[#1a1a1a] transition-colors border-l border-[#262626] group"
                 >
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -74,7 +74,7 @@ export default function Header() {
                 <button
                   onClick={signOut}
                   title="Sign out"
-                  className="flex items-center justify-center h-full px-4 sm:px-5 border-l border-[#262626] text-[#a3a3a3] bg-[#111111] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors"
+                  className="flex items-center justify-center h-full w-12 sm:px-5 sm:w-auto border-l border-[#262626] text-[#a3a3a3] bg-[#111111] hover:text-[#ef4444] hover:bg-[#1a1a1a] transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -82,7 +82,7 @@ export default function Header() {
             ) : !loading && !user ? (
               <button
                 onClick={signInWithGoogle}
-                className="flex items-center gap-2 h-full px-4 sm:px-6 border-l border-[#262626] text-xs font-bold uppercase tracking-widest text-white bg-[#111111] hover:bg-white hover:text-black transition-colors"
+                className="flex items-center justify-center gap-2 h-full w-12 sm:w-auto sm:px-6 border-l border-[#262626] text-xs font-bold uppercase tracking-widest text-white bg-[#111111] hover:bg-white hover:text-black transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 <span className="hidden sm:inline">Sign In</span>
