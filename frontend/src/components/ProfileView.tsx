@@ -360,15 +360,15 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                     style={{ boxShadow: `0 0 24px ${teamHex(pred.selected_team)}18` }}
                   >
                     {/* Header bar */}
-                    <div className="grid grid-cols-3 items-center px-5 py-3 border-b border-[#1a1a1a] bg-[#080808]">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#1a1a1a] bg-[#080808] gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                         <span className="text-[9px] font-black tracking-[0.3em] text-amber-400 uppercase">Pre-Toss</span>
                       </div>
-                      <span className="text-sm text-white font-black tracking-widest uppercase text-center">
-                        {new Date(pred.match.toss_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <span className="text-xs sm:text-sm text-white font-black tracking-widest uppercase">
+                        {new Date(pred.match.toss_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                       </span>
-                      <div className="flex justify-end">
+                      <div className="shrink-0">
                         <CountdownTimer tossTime={pred.match.toss_time} />
                       </div>
                     </div>
@@ -407,7 +407,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                             {isActive ? (
                               <div className="flex items-center gap-1.5 px-3 py-1 border" style={{ borderColor: `${hex}50`, backgroundColor: `${hex}20` }}>
                                 <Zap className="w-3 h-3" style={{ color: hex }} fill={hex} />
-                                <span className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: hex }}>Your Pick</span>
+                                <span className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: hex }}>{isEditable ? "Your Pick" : "Picked"}</span>
                               </div>
                             ) : isEditable ? (
                               <div className="flex items-center gap-1.5 px-3 py-1 border border-[#222] opacity-0 group-hover:opacity-100 transition-opacity">

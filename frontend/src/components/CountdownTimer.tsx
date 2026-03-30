@@ -46,17 +46,11 @@ export default function CountdownTimer({ tossTime, variant = "pill" }: { tossTim
   }
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-[var(--accent)]/25 bg-[var(--accent)]/5">
-      <span
-        className="text-[var(--text-muted)] tracking-[0.2em]"
-        style={{ fontFamily: "var(--font-heading)", fontSize: "13px" }}
-      >
-        TOSS IN
+    <div className="flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded border border-[#333] bg-[#111]">
+      <span className="text-[#737373] tracking-widest text-[8px] sm:text-[10px] font-black uppercase hidden sm:inline">
+        Toss In
       </span>
-      <span
-        className="text-[var(--accent)] tabular-nums"
-        style={{ fontFamily: "var(--font-heading)", fontSize: "20px", letterSpacing: "0.05em" }}
-      >
+      <span className="text-white tabular-nums font-gaming text-xs sm:text-base tracking-wide">
         {timeLeft.h > 0 && `${pad(timeLeft.h)}:`}{pad(timeLeft.m)}:{pad(timeLeft.s)}
       </span>
     </div>
