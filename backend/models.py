@@ -57,7 +57,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     google_id = Column(String, unique=True, nullable=False)
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     email = Column(String, unique=True, nullable=False)
     avatar_url = Column(String, nullable=True)
     points = Column(Integer, default=0, nullable=False)

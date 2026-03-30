@@ -29,6 +29,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
   const [editNumber, setEditNumber] = useState<number | "">("");
   const [editColor, setEditColor] = useState("#ffffff");
   const [isSaving, setIsSaving] = useState(false);
+  const [nameError, setNameError] = useState("");
   const [changingPredId, setChangingPredId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,10 +121,15 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
           display_name: editName.trim() || dbUser?.name,
         })
       });
+      if (res.status === 409) {
+        setNameError("Name already taken");
+        return;
+      }
       if (res.ok) {
         const updatedUser = await res.json();
-        setDbUser(updatedUser); // instant local update avoids refetching everything
+        setDbUser(updatedUser);
         setIsEditModalOpen(false);
+        setNameError("");
       }
     } catch (err) {
       console.error(err);
@@ -224,6 +230,7 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                       setEditName(dbUser?.name ?? "");
                       setEditNumber(dbUser?.jersey_number ?? "");
                       setEditColor(dbUser?.jersey_color ?? "#ffffff");
+                      setNameError("");
                       setIsEditModalOpen(true);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
@@ -592,11 +599,14 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                   type="text"
                   maxLength={30}
                   value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  onChange={(e) => { setEditName(e.target.value); setNameError(""); }}
                   placeholder={dbUser.name}
-                  className="w-full bg-[#111] border border-[#333] text-white font-gaming px-4 py-3 text-lg focus:outline-none focus:border-white transition-colors placeholder:text-[#444]"
+                  className={`w-full bg-[#111] border text-white font-gaming px-4 py-3 text-lg focus:outline-none transition-colors placeholder:text-[#444] ${nameError ? "border-[#ef4444]" : "border-[#333] focus:border-white"}`}
                 />
-                <p className="text-[9px] text-[#525252] mt-1 text-right">{editName.length}/30</p>
+                <div className="flex justify-between mt-1">
+                  {nameError ? <p className="text-[9px] text-[#ef4444] font-bold tracking-widest uppercase">{nameError}</p> : <span />}
+                  <p className="text-[9px] text-[#525252]">{editName.length}/30</p>
+                </div>
               </div>
 
               <div>
