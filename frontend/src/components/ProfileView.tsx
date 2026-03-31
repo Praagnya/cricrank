@@ -631,25 +631,13 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
 
                   {/* Teams + pick */}
                   <div className="flex-1 px-3 sm:px-5 py-2 sm:py-4 flex flex-col justify-center gap-1.5 sm:gap-3 overflow-hidden">
-                    {/* Teams row — winner lit up */}
+                    {/* Teams row */}
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <span
-                        className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate"
-                        style={{
-                          color: pred.match.winner === pred.match.team1 ? teamHex(pred.match.team1) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
-                          textDecoration: 'none',
-                        }}
-                      >
+                      <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
                         {pred.match.team1}
                       </span>
                       <span className="text-[8px] sm:text-[10px] text-[#333] font-black italic tracking-widest shrink-0">VS</span>
-                      <span
-                        className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate"
-                        style={{
-                          color: pred.match.winner === pred.match.team2 ? teamHex(pred.match.team2) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
-                          textDecoration: pred.match.winner && pred.match.winner !== pred.match.team2 ? 'line-through' : 'none',
-                        }}
-                      >
+                      <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
                         {pred.match.team2}
                       </span>
                     </div>
