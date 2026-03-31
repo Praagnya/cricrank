@@ -29,6 +29,7 @@ def global_leaderboard(
     return [
         LeaderboardEntry(
             google_id=u.google_id,
+            username=u.username,
             rank=i + 1,
             name=u.name,
             points=u.points,
@@ -69,6 +70,7 @@ def dynamic_leaderboard(db: Session, limit: int, days: int):
     return [
         LeaderboardEntry(
             google_id=user.google_id,
+            username=user.username,
             rank=i + 1,
             name=user.name,
             points=points or 0,
@@ -121,6 +123,7 @@ def following_leaderboard(google_id: str, db: Session = Depends(get_db)):
     return [
         LeaderboardEntry(
             google_id=u.google_id,
+            username=u.username,
             rank=i + 1,
             name=u.name,
             points=u.points,
@@ -157,6 +160,7 @@ def my_rank(
         ).scalar() + 1
         return LeaderboardEntry(
             google_id=user.google_id,
+            username=user.username,
             rank=rank,
             name=user.name,
             points=user.points,
@@ -206,6 +210,7 @@ def my_rank(
     pts, total, settled, correct = stats.pts or 0, stats.total or 0, stats.settled or 0, stats.correct or 0
     return LeaderboardEntry(
         google_id=user.google_id,
+        username=user.username,
         rank=rank,
         name=user.name,
         points=pts,
