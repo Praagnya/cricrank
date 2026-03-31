@@ -1,12 +1,27 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import random
 from database import get_db
 from models import User, Follow, JERSEY_COLORS
 from schemas import UserCreate, UserPublic, UserIdentityUpdate, FollowStats, FollowUserPublic
 
 router = APIRouter()
+
+
+def _generate_username(name: str, db: Session) -> str:
+    slug = re.sub(r'[^a-z0-9]', '_', name.lower())
+    slug = re.sub(r'_+', '_', slug).strip('_')[:20]
+    if len(slug) < 3:
+        slug = slug + '_user'
+    base = slug
+    candidate = base
+    suffix = 2
+    while db.query(User).filter(User.username == candidate).first():
+        candidate = f"{base[:17]}_{suffix}"
+        suffix += 1
+    return candidate
 
 
 @router.post("/", response_model=UserPublic)
@@ -26,8 +41,11 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
             name = f"{base_name} {suffix}"
             suffix += 1
 
+        username = _generate_username(name, db)
+
         user = User(
             google_id=payload.google_id,
+            username=username,
             name=name,
             email=payload.email,
             avatar_url=payload.avatar_url,
@@ -47,9 +65,32 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.get("/{google_id}", response_model=UserPublic)
-def get_user(google_id: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.google_id == google_id).first()
+# NOTE: /search must be registered BEFORE /{identifier} to avoid route conflict
+@router.get("/search", response_model=list[FollowUserPublic])
+def search_users(q: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    """Prefix-match on username and name, return up to 10 results."""
+    pattern = f"{q.lower()}%"
+    results = (
+        db.query(User)
+        .filter(
+            or_(
+                func.lower(User.username).like(pattern),
+                func.lower(User.name).like(pattern),
+            )
+        )
+        .order_by(User.points.desc())
+        .limit(10)
+        .all()
+    )
+    return results
+
+
+@router.get("/{identifier}", response_model=UserPublic)
+def get_user(identifier: str, db: Session = Depends(get_db)):
+    """Resolve by username first, then fall back to google_id for old links."""
+    user = db.query(User).filter(User.username == identifier).first()
+    if not user:
+        user = db.query(User).filter(User.google_id == identifier).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -64,7 +105,7 @@ def update_identity(
     user = db.query(User).filter(User.google_id == google_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     if payload.jersey_number < 1 or payload.jersey_number > 999:
         raise HTTPException(status_code=400, detail="Jersey number must be between 1 and 999")
 
@@ -76,6 +117,17 @@ def update_identity(
         if taken:
             raise HTTPException(status_code=409, detail="Name already taken")
         user.name = name
+
+    if payload.username is not None:
+        new_username = payload.username.strip().lower()
+        if not re.match(r'^[a-z0-9_]{3,20}$', new_username):
+            raise HTTPException(status_code=400, detail="Username must be 3–20 characters: letters, numbers, underscores only")
+        if new_username.startswith('_') or new_username.endswith('_'):
+            raise HTTPException(status_code=400, detail="Username cannot start or end with an underscore")
+        taken = db.query(User).filter(User.username == new_username, User.google_id != google_id).first()
+        if taken:
+            raise HTTPException(status_code=409, detail="Username already taken")
+        user.username = new_username
 
     user.jersey_number = payload.jersey_number
     user.jersey_color = payload.jersey_color

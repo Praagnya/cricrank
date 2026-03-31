@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, LogOut, LogIn, Zap, Menu, X, Home } from "lucide-react";
+import { Trophy, LogOut, LogIn, Zap, Menu, X, Home, Search } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
+import FindPlayers from "./FindPlayers";
 
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [coins, setCoins] = useState<number | null>(null);
 
   useEffect(() => {
@@ -42,12 +44,16 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* CENTER — leaderboard */}
-          <div className="flex justify-center">
+          {/* CENTER — leaderboard + search */}
+          <div className="flex justify-center items-center gap-2">
             <Link href="/leaderboard" className={`${btn} flex-col gap-0.5 w-14 h-10 sm:w-auto sm:flex-row sm:gap-2 sm:px-5 sm:h-10`}>
               <Trophy className="w-4 h-4 shrink-0" />
               <span className="text-[7px] sm:text-xs font-black uppercase tracking-widest text-[#a3a3a3]">Ranks</span>
             </Link>
+            <button onClick={() => setSearchOpen(true)} className={`${btn} flex-col gap-0.5 w-14 h-10 sm:w-auto sm:flex-row sm:gap-2 sm:px-5 sm:h-10`}>
+              <Search className="w-4 h-4 shrink-0" />
+              <span className="text-[7px] sm:text-xs font-black uppercase tracking-widest text-[#a3a3a3]">Find</span>
+            </button>
           </div>
 
           {/* RIGHT — coins + avatar/signin */}
@@ -104,6 +110,9 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* Find Players overlay */}
+      {searchOpen && <FindPlayers onClose={() => setSearchOpen(false)} />}
 
       {/* Mobile Navigation Drawer */}
       {menuOpen && (

@@ -27,6 +27,8 @@ export interface CrowdPrediction {
 
 export interface User {
   id: string;
+  google_id: string;
+  username: string;
   name: string;
   email: string;
   points: number;
@@ -69,6 +71,7 @@ export interface Squad {
 export interface LeaderboardEntry {
   rank: number;
   google_id: string;
+  username: string;
   name: string;
   points: number;
   accuracy: number;
@@ -80,4 +83,16 @@ export interface LeaderboardEntry {
   jersey_number?: number | null;
   jersey_color?: string | null;
   avatar_url?: string | null;
+}
+
+export interface FollowUser {
+  google_id: string;
+  username: string;
+  name: string;
+  avatar_url?: string | null;
+  jersey_number?: number | null;
+  jersey_color?: string | null;
+  streak_tier: string;
+  current_streak: number;
+  points: number;
 }

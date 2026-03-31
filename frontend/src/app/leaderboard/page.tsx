@@ -175,7 +175,7 @@ export default async function LeaderboardPage({
 
                 return (
                   <Link
-                    href={`/profile/${entry.google_id}`}
+                    href={`/profile/${entry.username ?? entry.google_id}`}
                     key={`podium-${entry.google_id ?? i}`}
                     className={`block h-full min-w-0 flex flex-col items-center justify-center border p-3 sm:p-8 relative overflow-hidden transition-all duration-300 hover:brightness-125 hover:-translate-y-1 ${isMe ? 'bg-[#1a1a1a] border-white' : 'bg-[#050505] border-[#262626] hover:border-[#525252]'}`}
                   >
@@ -219,7 +219,7 @@ export default async function LeaderboardPage({
 
                 return (
                   <Link
-                    href={`/profile/${entry.google_id}`}
+                    href={`/profile/${entry.username ?? entry.google_id}`}
                     key={`list-${entry.google_id ?? idx}`}
                     className={`group flex items-center gap-3 sm:gap-6 px-4 sm:px-6 py-4 sm:py-5 border-b border-[#262626] last:border-0 transition-colors ${isMe ? 'bg-[#1a1a1a]' : 'hover:bg-[#0a0a0a]'}`}
                   >

@@ -16,10 +16,13 @@ class UserIdentityUpdate(BaseModel):
     jersey_number: int
     jersey_color: str
     display_name: Optional[str] = None
+    username: Optional[str] = None
 
 
 class UserPublic(BaseModel):
     id: UUID4
+    google_id: str
+    username: str
     name: str
     email: EmailStr
     avatar_url: Optional[str] = None
@@ -39,6 +42,7 @@ class UserPublic(BaseModel):
 
 class LeaderboardEntry(BaseModel):
     google_id: str
+    username: str
     rank: int
     name: str
     avatar_url: Optional[str] = None
@@ -134,7 +138,9 @@ class FollowStats(BaseModel):
 
 class FollowUserPublic(BaseModel):
     google_id: str
+    username: str
     name: str
+    avatar_url: Optional[str] = None
     jersey_number: Optional[int] = None
     jersey_color: Optional[str] = None
     streak_tier: str

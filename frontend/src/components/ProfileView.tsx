@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check } from "lucide-react";
 import Link from "next/link";
-import { PredictionWithMatch, User, LeaderboardEntry, Squad } from "@/types";
+import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
 import { streakTierColor, teamHex } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CricketAvatar from "./CricketAvatar";
@@ -11,16 +11,6 @@ import CountdownTimer from "./CountdownTimer";
 
 
 const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
-
-interface FollowUser {
-  google_id: string;
-  name: string;
-  jersey_number?: number | null;
-  jersey_color?: string | null;
-  streak_tier: string;
-  current_streak: number;
-  points: number;
-}
 
 interface ProfileViewProps {
   userId: string;
@@ -43,6 +33,8 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [editColor, setEditColor] = useState("#ffffff");
   const [isSaving, setIsSaving] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
   const [changingPredId, setChangingPredId] = useState<string | null>(null);
 
   // Follow state
@@ -70,15 +62,17 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
 
         // Fetch User Stats
         const userRes = await fetch(`${BASE}/users/${userId}`);
+        let googleId = userId;
         if (userRes.ok) {
           const userData = await userRes.json();
           setDbUser(userData);
+          googleId = userData.google_id;
         } else if (userRes.status === 404) {
           setDbUser(null);
         }
 
         // Fetch Prediction History
-        const predRes = await fetch(`${BASE}/predictions/user/${userId}`);
+        const predRes = await fetch(`${BASE}/predictions/user/${googleId}`);
         if (predRes.ok) {
           const predData = await predRes.json();
           setPredictions(predData);
@@ -92,17 +86,17 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
         ]);
         if (globalRes.ok) {
           const data: LeaderboardEntry[] = await globalRes.json();
-          const entry = data.find((e) => e.google_id === userId);
+          const entry = data.find((e) => e.google_id === googleId);
           if (entry) setRank(entry.rank);
         }
         if (weeklyRes.ok) {
           const data: LeaderboardEntry[] = await weeklyRes.json();
-          const entry = data.find((e) => e.google_id === userId);
+          const entry = data.find((e) => e.google_id === googleId);
           if (entry) setWeeklyRank(entry.rank);
         }
         if (monthlyRes.ok) {
           const data: LeaderboardEntry[] = await monthlyRes.json();
-          const entry = data.find((e) => e.google_id === userId);
+          const entry = data.find((e) => e.google_id === googleId);
           if (entry) setMonthlyRank(entry.rank);
         }
       } catch (err) {
@@ -117,11 +111,12 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
     }
   }, [userId]);
 
-  // Separate effect for follow stats — re-runs when currentUserId loads
+  // Separate effect for follow stats — re-runs when currentUserId or dbUser loads
   useEffect(() => {
-    if (!userId) return;
+    const gid = dbUser?.google_id ?? userId;
+    if (!gid) return;
     const BASE = getApiBaseUrl();
-    fetch(`${BASE}/users/${userId}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`)
+    fetch(`${BASE}/users/${gid}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`)
       .then((res) => res.ok ? res.json() : null)
       .then((fs) => {
         if (!fs) return;
@@ -130,7 +125,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
         setIsFollowing(fs.is_following);
       })
       .catch(() => {});
-  }, [userId, currentUserId]);
+  }, [userId, currentUserId, dbUser]);
 
   const handleFollow = async () => {
     if (!currentUserId || followLoading) return;
@@ -138,7 +133,8 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
     try {
       const BASE = getApiBaseUrl();
       const method = isFollowing ? "DELETE" : "POST";
-      const res = await fetch(`${BASE}/users/${userId}/follow?follower_id=${currentUserId}`, { method });
+      const gid = dbUser?.google_id ?? userId;
+      const res = await fetch(`${BASE}/users/${gid}/follow?follower_id=${currentUserId}`, { method });
       if (res.ok) {
         setIsFollowing(!isFollowing);
         setFollowerCount((c) => c + (isFollowing ? -1 : 1));
@@ -152,7 +148,8 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
     setFollowList([]);
     setFollowListLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/users/${userId}/${type}`);
+      const gid = dbUser?.google_id ?? userId;
+      const res = await fetch(`${getApiBaseUrl()}/users/${gid}/${type}`);
       if (res.ok) setFollowList(await res.json());
     } catch {}
     finally { setFollowListLoading(false); }
@@ -227,10 +224,16 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           jersey_number: editNumber,
           jersey_color: editColor,
           display_name: editName.trim() || dbUser?.name,
+          ...(editUsername.trim() && { username: editUsername.trim() }),
         })
       });
       if (res.status === 409) {
-        setNameError("Name already taken");
+        const err = await res.json();
+        if (err.detail === "Username already taken") {
+          setUsernameError("Username already taken");
+        } else {
+          setNameError(err.detail || "Name already taken");
+        }
         return;
       }
       if (res.ok) {
@@ -317,9 +320,11 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           <button
             onClick={() => {
               setEditName(dbUser?.name ?? "");
+              setEditUsername(dbUser?.username ?? "");
               setEditNumber(dbUser?.jersey_number ?? "");
               setEditColor(dbUser?.jersey_color ?? "#1e3a8a");
               setNameError("");
+              setUsernameError("");
               setIsEditModalOpen(true);
             }}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
@@ -346,6 +351,9 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none text-white">
                 {dbUser.name}
               </h1>
+              {dbUser.username && (
+                <p className="text-[#525252] text-xs font-mono tracking-wider -mt-1">@{dbUser.username}</p>
+              )}
 
               {/* Badges row */}
               <div className="flex items-center gap-2">
@@ -735,7 +743,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                 followList.map((u) => (
                   <Link
                     key={u.google_id}
-                    href={`/profile/${u.google_id}`}
+                    href={`/profile/${u.username ?? u.google_id}`}
                     onClick={() => setFollowListModal(null)}
                     className="flex items-center gap-4 px-6 py-4 border-b border-[#111] hover:bg-[#111] transition-colors"
                   >
@@ -885,6 +893,25 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                 <div className="flex justify-between mt-1">
                   {nameError ? <p className="text-[9px] text-[#ef4444] font-bold tracking-widest uppercase">{nameError}</p> : <span />}
                   <p className="text-[9px] text-[#525252]">{editName.length}/30</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#737373] text-[10px] font-black tracking-[0.2em] mb-2 uppercase">Username</label>
+                <div className="flex items-center">
+                  <span className="bg-[#111] border-l border-t border-b border-[#333] text-[#525252] px-3 py-3 font-gaming text-lg select-none">@</span>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={editUsername}
+                    onChange={(e) => { setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')); setUsernameError(""); }}
+                    placeholder={dbUser.username}
+                    className={`flex-1 bg-[#111] border text-white font-gaming px-4 py-3 text-lg focus:outline-none transition-colors placeholder:text-[#444] ${usernameError ? "border-[#ef4444]" : "border-[#333] focus:border-white"}`}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  {usernameError ? <p className="text-[9px] text-[#ef4444] font-bold tracking-widest uppercase">{usernameError}</p> : <span className="text-[9px] text-[#525252]">3–20 chars · a-z 0-9 _</span>}
+                  <p className="text-[9px] text-[#525252]">{editUsername.length}/20</p>
                 </div>
               </div>
 

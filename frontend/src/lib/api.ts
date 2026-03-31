@@ -1,4 +1,4 @@
-import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad } from "@/types";
+import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad, FollowUser } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 const BASE = getApiBaseUrl();
@@ -30,7 +30,8 @@ export const api = {
   users: {
     upsert: (data: { google_id: string; name: string; email: string }) =>
       post<User>("/users/", data),
-    get: (googleId: string) => get<User>(`/users/${googleId}`),
+    get: (identifier: string) => get<User>(`/users/${identifier}`),
+    search: (q: string) => get<FollowUser[]>(`/users/search?q=${encodeURIComponent(q)}`),
     followStats: (targetId: string, viewerId?: string) =>
       get<{ follower_count: number; following_count: number; is_following: boolean }>(
         `/users/${targetId}/follow-stats${viewerId ? `?viewer_id=${viewerId}` : ""}`
