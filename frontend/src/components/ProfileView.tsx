@@ -329,7 +329,9 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           </button>
         )}
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 relative z-10">
+        <div className="flex flex-col gap-4 relative z-10">
+          <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
           <div className="flex items-center gap-5 sm:gap-8">
             {/* Jersey — bigger */}
             <div className="w-28 h-28 sm:w-40 sm:h-40 bg-[#111111] overflow-hidden shadow-2xl border border-[#262626] flex items-center justify-center shrink-0">
@@ -341,7 +343,6 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
             </div>
 
             <div className="flex flex-col gap-3">
-              <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none text-white">
                 {dbUser.name}
               </h1>
@@ -438,6 +439,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
       </div>

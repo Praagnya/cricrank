@@ -91,7 +91,7 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
       <div className="relative self-start sm:self-auto">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-3 border border-[#262626] bg-[#050505] hover:bg-[#111] transition-colors px-4 py-2.5 w-full sm:w-auto"
+          className="flex items-center gap-3 border border-[#262626] bg-[#050505] hover:bg-[#111] transition-colors px-4 py-2.5 w-full sm:w-auto sm:min-w-[110px]"
         >
           <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white">{activeLabel}</span>
           <ChevronDown className={`w-3.5 h-3.5 text-[#525252] transition-transform ${open ? "rotate-180" : ""}`} />

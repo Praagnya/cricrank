@@ -98,7 +98,7 @@ export default async function LeaderboardPage({
                 <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">
                   {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
                 </h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 whitespace-nowrap">
                   {periodLabel} · Top {top10.length}
                 </p>
               </div>
