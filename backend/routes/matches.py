@@ -94,6 +94,16 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
     return None
 
 
+def _status_text_fallback(match: Match) -> str | None:
+    if match.status == MatchStatus.completed and match.winner:
+        return f"{match.winner} won"
+    if match.status == MatchStatus.live:
+        return "Match live"
+    if match.status == MatchStatus.upcoming:
+        return "Match not started"
+    return None
+
+
 @router.get("/", response_model=list[MatchPublic])
 def list_matches(
     league: str = Query(None),
@@ -276,15 +286,22 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         if source
         else (MatchStatus.live if match.status == MatchStatus.live else match.status)
     )
+    match_started = bool(source.get("matchStarted")) if source else match.status in (MatchStatus.live, MatchStatus.completed)
+    match_ended = bool(source.get("matchEnded")) if source else match.status == MatchStatus.completed
+    status_text = source.get("status") or _status_text_fallback(match)
+    match_winner = (
+        canonicalize_winner(source.get("matchWinner"))
+        or canonicalize_winner(match.winner)
+    )
 
     return MatchLiveResponse(
         match_id=match.id,
         cricapi_id=match.cricapi_id,
         status=status,
-        match_started=bool(source.get("matchStarted")),
-        match_ended=bool(source.get("matchEnded")),
-        status_text=source.get("status"),
-        match_winner=canonicalize_winner(source.get("matchWinner")),
+        match_started=match_started,
+        match_ended=match_ended,
+        status_text=status_text,
+        match_winner=match_winner,
         score=source.get("score") or [],
         bbb=bbb_payload.get("bbb") or [],
     )
