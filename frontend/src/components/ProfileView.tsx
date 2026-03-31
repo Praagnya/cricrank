@@ -607,7 +607,6 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
               const isMiss = pred.is_correct === 0;
               const statusHex  = isHit ? "#22c55e" : isMiss ? "#ef4444" : "#525252";
               const statusText = isHit ? "HIT" : isMiss ? "MISS" : "PENDING";
-              const pickCorrect = isHit;
               const streakAtPred  = streakMap[pred.id] ?? 0;
               const brokenFrom    = brokenFromMap[pred.id] ?? 0;
 
@@ -655,19 +654,21 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                       </span>
                     </div>
 
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <span className="text-[9px] text-[#444] font-black tracking-[0.25em] uppercase hidden sm:inline">Result</span>
-                        {pred.match.result_summary ? (
-                          <span className="text-[11px] sm:text-sm text-[#a3a3a3] font-black tracking-[0.12em] uppercase truncate">
-                            {pred.match.result_summary}
-                          </span>
-                        ) : pred.match.winner ? (
-                          <span className="text-[11px] sm:text-sm text-[#a3a3a3] font-black tracking-[0.12em] uppercase truncate">
-                            {teamFullName(pred.match.winner)} won
-                          </span>
-                        ) : null}
-                      </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[8px] sm:text-[9px] text-[#444] font-black tracking-[0.28em] uppercase">Match Result</span>
+                      {pred.match.result_summary ? (
+                        <span className="text-[11px] sm:text-sm text-[#d4d4d4] font-black tracking-[0.12em] uppercase leading-snug">
+                          {pred.match.result_summary}
+                        </span>
+                      ) : pred.match.winner ? (
+                        <span className="text-[11px] sm:text-sm text-[#d4d4d4] font-black tracking-[0.12em] uppercase leading-snug">
+                          {teamFullName(pred.match.winner)} won
+                        </span>
+                      ) : (
+                        <span className="text-[11px] sm:text-sm text-[#666] font-black tracking-[0.12em] uppercase">
+                          Result pending
+                        </span>
+                      )}
                     </div>
                   </div>
 
