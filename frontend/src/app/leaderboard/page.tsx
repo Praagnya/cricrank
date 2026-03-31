@@ -81,7 +81,7 @@ export default async function LeaderboardPage({
   return (
     <>
       <Header />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 overflow-x-hidden">
 
         {/* Header Block */}
         <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4">
@@ -211,7 +211,7 @@ export default async function LeaderboardPage({
             </div>
 
             {/* Full List View (Top 4 to 10) */}
-            <div className="border border-[#262626] bg-[#000000] flex flex-col mt-4 sm:mt-6">
+            <div className="border border-[#262626] bg-[#000000] flex flex-col">
               {top10.slice(3).map((entry, idx) => {
                 const rank = idx + 4;
                 const heatColor = getStreakHeatColor(entry.current_streak);
