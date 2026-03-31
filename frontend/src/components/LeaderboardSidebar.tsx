@@ -68,8 +68,8 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
   ];
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-[380px] shrink-0 border-l border-[#262626] sticky top-14 h-[calc(100vh-56px)]">
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6">
+    <aside className="hidden lg:block w-[380px] shrink-0 border-l border-[#262626] sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
+      <div className="px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
           <div className="flex items-center gap-3 flex-1">
@@ -201,7 +201,7 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
       </div>
 
       {/* ── Scoring Rules — between leaderboard and tier legend ── */}
-      <div className="border-t border-[#262626] bg-[#000000] px-4 py-5 shrink-0">
+      <div className="border-t border-[#262626] bg-[#000000] px-4 py-5">
         <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercase flex items-center gap-2 mb-4">
           <Zap className="w-3.5 h-3.5 text-[#525252]" />
           Scoring Rules
@@ -224,8 +224,8 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
         </div>
       </div>
 
-      {/* ── Tier Legend — pinned footer, always visible ── */}
-      <div className="border-t border-[#262626] bg-[#000000] p-6 shrink-0 relative overflow-hidden group">
+      {/* ── Tier Legend ── */}
+      <div className="border-t border-[#262626] bg-[#000000] p-6 relative overflow-hidden group">
         <p className="text-[10px] font-black tracking-[0.3em] text-[#737373] uppercase flex items-center gap-2 mb-5">
           <Zap className="w-3.5 h-3.5 text-[#525252]" />
           Tier Legend
