@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
-import { streakTierColor, teamHex } from "@/lib/utils";
+import { streakTierColor, teamFullName, teamHex, teamShortCode } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CricketAvatar from "./CricketAvatar";
 import CountdownTimer from "./CountdownTimer";
@@ -569,7 +569,10 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                               className="font-gaming text-4xl sm:text-5xl tracking-widest leading-none transition-all duration-300"
                               style={{ color: isActive ? hex : '#3a3a3a' }}
                             >
-                              {isChanging ? "..." : team}
+                              {isChanging ? "..." : teamShortCode(team)}
+                            </span>
+                            <span className="text-[9px] font-black tracking-[0.18em] text-[#737373] uppercase text-center px-3">
+                              {teamFullName(team)}
                             </span>
 
                             {isActive ? (
@@ -644,11 +647,11 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                     {/* Teams row */}
                     <div className="flex items-center gap-2 sm:gap-3">
                       <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
-                        {pred.match.team1}
+                        {teamShortCode(pred.match.team1)}
                       </span>
                       <span className="text-[8px] sm:text-[10px] text-[#333] font-black italic tracking-widest shrink-0">VS</span>
                       <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
-                        {pred.match.team2}
+                        {teamShortCode(pred.match.team2)}
                       </span>
                     </div>
 
@@ -664,13 +667,16 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                           textShadow: `0 0 20px ${pickCorrect ? teamHex(pred.selected_team) : isMiss ? '#ef4444' : 'transparent'}60`,
                         }}
                       >
-                        {pred.selected_team}
+                        {teamShortCode(pred.selected_team)}
+                      </span>
+                      <span className="text-[8px] sm:text-[10px] text-[#666] font-black tracking-[0.18em] uppercase truncate">
+                        {teamFullName(pred.selected_team)}
                       </span>
                       {pred.match.winner && pred.match.winner !== pred.selected_team && (
                         <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-1.5 ml-1 sm:ml-0">
                           <span className="text-[7.5px] sm:text-[9px] text-[#444] font-black tracking-widest uppercase truncate max-w-[40px] sm:max-w-none">Won:</span>
                           <span className="font-gaming text-xs sm:text-xl tracking-widest leading-none mt-px sm:mt-0" style={{ color: teamHex(pred.match.winner) }}>
-                            {pred.match.winner}
+                            {teamShortCode(pred.match.winner)}
                           </span>
                         </div>
                       )}

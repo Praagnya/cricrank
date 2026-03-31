@@ -14,7 +14,7 @@ export default function Header() {
   const [coins, setCoins] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user) { setCoins(null); return; }
+    if (!user) return;
     fetch(`${getApiBaseUrl()}/users/${user.id}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setCoins(data.coins); })

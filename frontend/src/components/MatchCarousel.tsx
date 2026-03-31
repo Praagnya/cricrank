@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Match } from "@/types";
-import { teamFullName, formatRelativeDate } from "@/lib/utils";
+import { teamFullName, teamShortCode, formatRelativeDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import TeamCrest from "@/components/TeamCrest";
 import MatchInteraction from "@/components/MatchInteraction";
@@ -124,7 +124,7 @@ export default function MatchCarousel({ matches }: Props) {
               <TeamCrest team={match.team1} size="lg" />
               <div className="text-center">
                 <p className="leading-none tracking-widest text-shadow-sm" style={{ fontSize: "clamp(40px, 6vw, 80px)", fontFamily: "var(--font-heading)", color: '#ffffff', textShadow: '0 2px 20px rgba(255,255,255,0.05)' }}>
-                  {match.team1}
+                  {teamShortCode(match.team1)}
                 </p>
                 <p className="text-[10px] font-bold tracking-[0.25em] text-[#737373] uppercase mt-2">{teamFullName(match.team1)}</p>
               </div>
@@ -142,7 +142,7 @@ export default function MatchCarousel({ matches }: Props) {
               </div>
               {match.winner && (
                 <span className="mt-3 text-[10px] font-bold text-[#000000] bg-white px-3 py-1 uppercase tracking-widest">
-                  {match.winner} won
+                  {teamShortCode(match.winner)} won
                 </span>
               )}
             </div>
@@ -152,7 +152,7 @@ export default function MatchCarousel({ matches }: Props) {
               <TeamCrest team={match.team2} size="lg" />
               <div className="text-center">
                 <p className="leading-none tracking-widest text-shadow-sm" style={{ fontSize: "clamp(40px, 6vw, 80px)", fontFamily: "var(--font-heading)", color: '#ffffff', textShadow: '0 2px 20px rgba(255,255,255,0.05)' }}>
-                  {match.team2}
+                  {teamShortCode(match.team2)}
                 </p>
                 <p className="text-[10px] font-bold tracking-[0.25em] text-[#737373] uppercase mt-2">{teamFullName(match.team2)}</p>
               </div>

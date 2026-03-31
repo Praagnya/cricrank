@@ -26,7 +26,7 @@ For every match, you MUST search for:
 
 After researching, respond ONLY with a JSON object in this exact format:
 {
-  "predicted_winner": "<team short code e.g. MI>",
+  "predicted_winner": "<full team name e.g. Mumbai Indians>",
   "win_probability": <float between 50 and 85>,
   "opponent_probability": <float = 100 - win_probability>,
   "insights": [
@@ -40,7 +40,7 @@ Rules:
 - win_probability + opponent_probability must equal 100
 - Always provide exactly 3 insights
 - Insights must be specific with numbers/stats, not generic
-- predicted_winner must be the team short code (MI, CSK, RCB, etc.)
+- predicted_winner must be the full team name shown in the prompt
 """
 
 

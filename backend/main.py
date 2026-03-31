@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from database import engine, Base
+from schema_migrations import ensure_match_schema_upgrades
 
 load_dotenv()
 
@@ -11,6 +12,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_match_schema_upgrades(engine)
     yield
 
 

@@ -2,6 +2,9 @@ export type MatchStatus = "upcoming" | "live" | "completed";
 
 export interface Match {
   id: string;
+  cricapi_id: string | null;
+  series_id: string | null;
+  series_name: string | null;
   league: string;
   season: string;
   team1: string;
@@ -23,6 +26,25 @@ export interface AIPrediction {
 export interface CrowdPrediction {
   [team: string]: number;
   total_votes: number;
+}
+
+export interface MatchLive {
+  match_id: string;
+  cricapi_id: string;
+  status: MatchStatus;
+  match_started: boolean;
+  match_ended: boolean;
+  status_text: string | null;
+  match_winner: string | null;
+  score: Record<string, unknown>[];
+  bbb: Record<string, unknown>[];
+}
+
+export interface MatchScorecard {
+  match_id: string;
+  cricapi_id: string;
+  score: Record<string, unknown>[];
+  scorecard: Record<string, unknown>[];
 }
 
 export interface User {

@@ -1,5 +1,5 @@
 import { Match } from "@/types";
-import { formatRelativeDate, teamHex, teamFullName } from "@/lib/utils";
+import { formatRelativeDate, teamHex, teamFullName, teamShortCode } from "@/lib/utils";
 import TeamCrest from "@/components/TeamCrest";
 
 export default function MatchCard({ match, variant = "default" }: { match: Match, variant?: "default" | "sidebar" }) {
@@ -54,8 +54,8 @@ export default function MatchCard({ match, variant = "default" }: { match: Match
           {/* Team 1 Block */}
           <div className="flex flex-col items-center gap-2 flex-1">
             <TeamCrest team={match.team1} size="lg" />
-            <p className="font-gaming text-sm sm:text-base font-bold tracking-wide text-white text-center">{match.team1}</p>
-            <p className="text-[9px] font-bold tracking-[0.2em] text-[#a3a3a3] uppercase">{teamFullName(match.team1)}</p>
+            <p className="font-gaming text-sm sm:text-base font-bold tracking-wide text-white text-center">{teamShortCode(match.team1)}</p>
+            <p className="text-[9px] font-bold tracking-[0.2em] text-[#a3a3a3] uppercase text-center">{teamFullName(match.team1)}</p>
           </div>
 
           {/* VS Divider */}
@@ -74,8 +74,8 @@ export default function MatchCard({ match, variant = "default" }: { match: Match
           {/* Team 2 Block */}
           <div className="flex flex-col items-center gap-2 flex-1">
             <TeamCrest team={match.team2} size="lg" />
-            <p className="font-gaming text-sm sm:text-base font-bold tracking-wide text-white text-center">{match.team2}</p>
-            <p className="text-[9px] font-bold tracking-[0.2em] text-[#a3a3a3] uppercase">{teamFullName(match.team2)}</p>
+            <p className="font-gaming text-sm sm:text-base font-bold tracking-wide text-white text-center">{teamShortCode(match.team2)}</p>
+            <p className="text-[9px] font-bold tracking-[0.2em] text-[#a3a3a3] uppercase text-center">{teamFullName(match.team2)}</p>
           </div>
         </div>
 

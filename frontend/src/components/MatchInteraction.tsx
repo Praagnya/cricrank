@@ -4,7 +4,7 @@ import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import PredictionButtons from "./PredictionButtons";
-import { LogIn, TrendingUp, Zap } from "lucide-react";
+import { LogIn, Zap } from "lucide-react";
 
 interface Props {
   matchId: string;

@@ -1,4 +1,4 @@
-import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad, FollowUser } from "@/types";
+import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad, FollowUser, MatchLive, MatchScorecard } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 const BASE = getApiBaseUrl();
@@ -26,6 +26,8 @@ export const api = {
     get: (id: string) => get<Match>(`/matches/${id}`),
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
+    live: (id: string) => get<MatchLive>(`/matches/${id}/live`),
+    scorecard: (id: string) => get<MatchScorecard>(`/matches/${id}/scorecard`),
   },
   users: {
     upsert: (data: { google_id: string; name: string; email: string }) =>

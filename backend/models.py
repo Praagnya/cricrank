@@ -96,6 +96,9 @@ class Match(Base):
     __tablename__ = "matches"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cricapi_id = Column(String, nullable=True, unique=True)
+    series_id = Column(String, nullable=True)
+    series_name = Column(String, nullable=True)
     league = Column(String, nullable=False)         # IPL, ICC T20 WC, BBL, etc.
     season = Column(String, nullable=False)         # e.g. "2026"
     team1 = Column(String, nullable=False)

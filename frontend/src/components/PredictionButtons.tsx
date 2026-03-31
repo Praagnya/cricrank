@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { teamHex, teamFullName, getPredictionState } from "@/lib/utils";
+import { teamHex, teamFullName, teamShortCode, getPredictionState } from "@/lib/utils";
 import { Lock, Zap, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 import TeamCrest from "@/components/TeamCrest";
@@ -62,7 +62,8 @@ export default function PredictionButtons({
              <TeamCrest team={selected} size="sm" />
              <div className="flex flex-col items-start sm:items-end">
                <span className="text-[10px] text-[#525252] font-black uppercase tracking-[0.2em]">Your Pick</span>
-               <span className="text-xl sm:text-2xl uppercase tracking-widest mt-1" style={{ color: teamHex(selected), fontFamily: 'var(--font-heading)' }}>{selected}</span>
+               <span className="text-[10px] text-[#a3a3a3] font-black uppercase tracking-[0.15em] mt-1">{teamFullName(selected)}</span>
+               <span className="text-xl sm:text-2xl uppercase tracking-widest" style={{ color: teamHex(selected), fontFamily: 'var(--font-heading)' }}>{teamShortCode(selected)}</span>
              </div>
            </div>
         )}
@@ -164,7 +165,7 @@ export default function PredictionButtons({
                   {teamFullName(team)}
                 </span>
                 <span className={`text-4xl sm:text-5xl tracking-widest transition-colors duration-300 ${isSelected ? 'text-[#000000]' : 'text-white'}`} style={{ fontFamily: 'var(--font-heading)' }}>
-                  {isLoading ? "..." : team}
+                  {isLoading ? "..." : teamShortCode(team)}
                 </span>
               </div>
               
@@ -209,4 +210,3 @@ export default function PredictionButtons({
     </div>
   );
 }
-

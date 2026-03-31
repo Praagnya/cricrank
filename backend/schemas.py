@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, UUID4
+from pydantic import BaseModel, EmailStr, UUID4, Field
 from datetime import datetime
 from typing import Optional
 from models import MatchStatus, ContestType
@@ -62,6 +62,9 @@ class LeaderboardEntry(BaseModel):
 # ── Match ────────────────────────────────────────────────────────────────────
 
 class MatchCreate(BaseModel):
+    cricapi_id: Optional[str] = None
+    series_id: Optional[str] = None
+    series_name: Optional[str] = None
     league: str
     season: str
     team1: str
@@ -73,6 +76,9 @@ class MatchCreate(BaseModel):
 
 class MatchPublic(BaseModel):
     id: UUID4
+    cricapi_id: Optional[str] = None
+    series_id: Optional[str] = None
+    series_name: Optional[str] = None
     league: str
     season: str
     team1: str
@@ -84,6 +90,43 @@ class MatchPublic(BaseModel):
     winner: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class SeriesSyncRequest(BaseModel):
+    series_id: str
+    league: str
+    season: str
+    series_name: Optional[str] = None
+
+
+class SeriesSyncResponse(BaseModel):
+    series_id: str
+    series_name: str
+    created: int
+    updated: int
+    matched_existing: int
+    predictions_updated: int
+    winners_updated: int
+    total_matches: int
+
+
+class MatchLiveResponse(BaseModel):
+    match_id: UUID4
+    cricapi_id: str
+    status: MatchStatus
+    match_started: bool
+    match_ended: bool
+    status_text: Optional[str] = None
+    match_winner: Optional[str] = None
+    score: list[dict] = Field(default_factory=list)
+    bbb: list[dict] = Field(default_factory=list)
+
+
+class MatchScorecardResponse(BaseModel):
+    match_id: UUID4
+    cricapi_id: str
+    score: list[dict] = Field(default_factory=list)
+    scorecard: list[dict] = Field(default_factory=list)
 
 
 # ── Prediction ───────────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
-import { teamHex } from "@/lib/utils";
+import { teamHex, teamShortCode } from "@/lib/utils";
 
 export default function TeamCrest({ team, size = "md", inverted = false }: { team: string; size?: "sm" | "md" | "lg"; inverted?: boolean }) {
   const hex = teamHex(team);
+  const code = teamShortCode(team);
   // When inverted (on a team-colored background), use white for crisp visibility
   const stroke = inverted ? "rgba(255,255,255,0.85)" : hex;
   const textFill = inverted ? "#ffffff" : hex;
@@ -60,7 +61,7 @@ export default function TeamCrest({ team, size = "md", inverted = false }: { tea
           dominantBaseline="middle"
           letterSpacing="2"
         >
-          {team}
+          {code}
         </text>
 
         {/* Bottom accent line */}

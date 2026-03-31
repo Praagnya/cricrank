@@ -6,21 +6,22 @@ Designed to be extended with head-to-head, venue stats, and recent form later.
 """
 
 from schemas import AIPredictionResponse
+from team_metadata import TEAM_METADATA, canonicalize_team, normalize_text
 
 # ── Team Data ─────────────────────────────────────────────────────────────────
 # Strength ratings out of 100. Update these each season.
 
 TEAM_DATA: dict[str, dict] = {
-    "MI":   {"strength": 85, "home_ground": "Wankhede Stadium, Mumbai",          "full_name": "Mumbai Indians"},
-    "CSK":  {"strength": 87, "home_ground": "MA Chidambaram Stadium, Chennai",    "full_name": "Chennai Super Kings"},
-    "RCB":  {"strength": 88, "home_ground": "M. Chinnaswamy Stadium, Bengaluru",  "full_name": "Royal Challengers Bengaluru"},
-    "KKR":  {"strength": 84, "home_ground": "Eden Gardens, Kolkata",              "full_name": "Kolkata Knight Riders"},
-    "SRH":  {"strength": 82, "home_ground": "Rajiv Gandhi Intl. Stadium, Hyderabad", "full_name": "Sunrisers Hyderabad"},
-    "RR":   {"strength": 83, "home_ground": "Sawai Mansingh Stadium, Jaipur",     "full_name": "Rajasthan Royals"},
-    "GT":   {"strength": 84, "home_ground": "Narendra Modi Stadium, Ahmedabad",   "full_name": "Gujarat Titans"},
-    "PBKS": {"strength": 79, "home_ground": "PCA Stadium, Mohali",               "full_name": "Punjab Kings"},
-    "LSG":  {"strength": 81, "home_ground": "BRSABV Ekana Stadium, Lucknow",      "full_name": "Lucknow Super Giants"},
-    "DC":   {"strength": 80, "home_ground": "Arun Jaitley Stadium, Delhi",        "full_name": "Delhi Capitals"},
+    "Mumbai Indians": {"strength": 85, "home_ground": TEAM_METADATA["Mumbai Indians"]["home_ground"]},
+    "Chennai Super Kings": {"strength": 87, "home_ground": TEAM_METADATA["Chennai Super Kings"]["home_ground"]},
+    "Royal Challengers Bengaluru": {"strength": 88, "home_ground": TEAM_METADATA["Royal Challengers Bengaluru"]["home_ground"]},
+    "Kolkata Knight Riders": {"strength": 84, "home_ground": TEAM_METADATA["Kolkata Knight Riders"]["home_ground"]},
+    "Sunrisers Hyderabad": {"strength": 82, "home_ground": TEAM_METADATA["Sunrisers Hyderabad"]["home_ground"]},
+    "Rajasthan Royals": {"strength": 83, "home_ground": TEAM_METADATA["Rajasthan Royals"]["home_ground"]},
+    "Gujarat Titans": {"strength": 84, "home_ground": TEAM_METADATA["Gujarat Titans"]["home_ground"]},
+    "Punjab Kings": {"strength": 79, "home_ground": TEAM_METADATA["Punjab Kings"]["home_ground"]},
+    "Lucknow Super Giants": {"strength": 81, "home_ground": TEAM_METADATA["Lucknow Super Giants"]["home_ground"]},
+    "Delhi Capitals": {"strength": 80, "home_ground": TEAM_METADATA["Delhi Capitals"]["home_ground"]},
 }
 
 HOME_ADVANTAGE = 5  # bonus strength points for playing at home ground
@@ -31,11 +32,12 @@ HOME_ADVANTAGE = 5  # bonus strength points for playing at home ground
 def predict(team1: str, team2: str, venue: str) -> AIPredictionResponse:
     """
     Returns a prediction for a match between team1 and team2 at a given venue.
-    team1 and team2 should be short codes e.g. "MI", "KKR".
+    team1 and team2 should be canonical full team names.
     """
-
-    t1 = TEAM_DATA.get(team1.upper())
-    t2 = TEAM_DATA.get(team2.upper())
+    team1 = canonicalize_team(team1) or team1
+    team2 = canonicalize_team(team2) or team2
+    t1 = TEAM_DATA.get(team1)
+    t2 = TEAM_DATA.get(team2)
 
     if not t1 or not t2:
         unknown = team1 if not t1 else team2
@@ -45,8 +47,8 @@ def predict(team1: str, team2: str, venue: str) -> AIPredictionResponse:
     t2_strength = t2["strength"]
 
     # Home ground advantage
-    t1_home = venue == t1["home_ground"]
-    t2_home = venue == t2["home_ground"]
+    t1_home = normalize_text(venue) == normalize_text(t1["home_ground"])
+    t2_home = normalize_text(venue) == normalize_text(t2["home_ground"])
 
     if t1_home:
         t1_strength += HOME_ADVANTAGE
@@ -89,11 +91,11 @@ def _generate_insights(
     # Home ground insight
     if t1_home:
         insights.append(
-            f"{t1['full_name']} are playing at their home ground — {venue} — giving them a significant crowd and conditions advantage."
+            f"{team1} are playing at their home ground — {venue} — giving them a significant crowd and conditions advantage."
         )
     elif t2_home:
         insights.append(
-            f"{t2['full_name']} are playing at their home ground — {venue} — giving them a significant crowd and conditions advantage."
+            f"{team2} are playing at their home ground — {venue} — giving them a significant crowd and conditions advantage."
         )
     else:
         insights.append(f"This is a neutral venue ({venue}) — no home advantage for either side.")
@@ -105,19 +107,19 @@ def _generate_insights(
     diff = abs(t1["strength"] - t2["strength"])
 
     if diff == 0:
-        insights.append(f"{t1['full_name']} and {t2['full_name']} are evenly matched on paper — this one could go either way.")
+        insights.append(f"{team1} and {team2} are evenly matched on paper — this one could go either way.")
     elif diff <= 3:
         insights.append(
-            f"{stronger_data['full_name']} hold a slight edge in overall squad strength, but it's too close to call with confidence."
+            f"{stronger} hold a slight edge in overall squad strength, but it's too close to call with confidence."
         )
     else:
         insights.append(
-            f"{stronger_data['full_name']} are rated {diff} points stronger than {weaker_data['full_name']} this season."
+            f"{stronger} are rated {diff} points stronger than {team2 if stronger == team1 else team1} this season."
         )
 
     # Probability insight
     favourite = team1 if t1_prob >= t2_prob else team2
-    fav_full = t1["full_name"] if favourite == team1 else t2["full_name"]
+    fav_full = favourite
     fav_prob = max(t1_prob, t2_prob)
 
     if fav_prob >= 60:

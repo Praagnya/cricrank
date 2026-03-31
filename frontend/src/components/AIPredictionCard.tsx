@@ -1,6 +1,6 @@
 import { AIPrediction } from "@/types";
 import { Bot } from "lucide-react";
-import { teamHex } from "@/lib/utils";
+import { teamFullName, teamHex, teamShortCode } from "@/lib/utils";
 
 export default function AIPredictionCard({
   prediction, team1, team2,
@@ -29,7 +29,8 @@ export default function AIPredictionCard({
         {/* Big probability numbers */}
         <div className="flex items-center justify-between mb-6">
           <div className="text-left">
-            <p className="text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{team1}</p>
+            <p className="text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team1)}</p>
+            <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase">{teamFullName(team1)}</p>
             <span
               className="font-black tracking-tighter"
               style={{ fontSize: "48px", color: t1hex }}
@@ -45,7 +46,8 @@ export default function AIPredictionCard({
           </div>
 
           <div className="text-right">
-            <p className="text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{team2}</p>
+            <p className="text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team2)}</p>
+            <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase">{teamFullName(team2)}</p>
             <span
               className="font-black tracking-tighter"
               style={{ fontSize: "48px", color: t2hex }}
