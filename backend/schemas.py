@@ -88,6 +88,7 @@ class MatchPublic(BaseModel):
     toss_time: datetime
     status: MatchStatus
     winner: Optional[str] = None
+    result_summary: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -118,6 +119,7 @@ class MatchLiveResponse(BaseModel):
     match_ended: bool
     status_text: Optional[str] = None
     match_winner: Optional[str] = None
+    result_summary: Optional[str] = None
     score: list[dict] = Field(default_factory=list)
     bbb: list[dict] = Field(default_factory=list)
 

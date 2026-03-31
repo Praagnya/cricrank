@@ -80,6 +80,7 @@ def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequ
     match.toss_time = start_time - timedelta(minutes=30)
     match.status = _match_status_from_payload(fixture)
     match.winner = canonicalize_winner(fixture.get("matchWinner") or match.winner)
+    match.result_summary = fixture.get("status") or match.result_summary
 
 
 def _find_current_match_payload(cricapi_id: str) -> dict | None:
@@ -95,6 +96,8 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
 
 
 def _status_text_fallback(match: Match) -> str | None:
+    if match.result_summary:
+        return match.result_summary
     if match.status == MatchStatus.completed and match.winner:
         return f"{match.winner} won"
     if match.status == MatchStatus.live:
@@ -293,6 +296,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         canonicalize_winner(source.get("matchWinner"))
         or canonicalize_winner(match.winner)
     )
+    result_summary = source.get("status") or match.result_summary or status_text
 
     return MatchLiveResponse(
         match_id=match.id,
@@ -302,6 +306,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         match_ended=match_ended,
         status_text=status_text,
         match_winner=match_winner,
+        result_summary=result_summary,
         score=source.get("score") or [],
         bbb=bbb_payload.get("bbb") or [],
     )

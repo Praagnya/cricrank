@@ -108,6 +108,7 @@ class Match(Base):
     toss_time = Column(DateTime(timezone=True), nullable=False)  # predictions locked after this
     status = Column(Enum(MatchStatus), default=MatchStatus.upcoming, nullable=False)
     winner = Column(String, nullable=True)
+    result_summary = Column(String, nullable=True)
 
     predictions = relationship("Prediction", back_populates="match")
 

@@ -15,6 +15,8 @@ def ensure_match_schema_upgrades(engine) -> None:
         statements.append("ALTER TABLE matches ADD COLUMN series_id VARCHAR")
     if "series_name" not in existing_columns:
         statements.append("ALTER TABLE matches ADD COLUMN series_name VARCHAR")
+    if "result_summary" not in existing_columns:
+        statements.append("ALTER TABLE matches ADD COLUMN result_summary VARCHAR")
 
     with engine.begin() as connection:
         for statement in statements:

@@ -14,6 +14,7 @@ export interface Match {
   toss_time: string;
   status: MatchStatus;
   winner: string | null;
+  result_summary: string | null;
 }
 
 export interface AIPrediction {
@@ -36,6 +37,7 @@ export interface MatchLive {
   match_ended: boolean;
   status_text: string | null;
   match_winner: string | null;
+  result_summary: string | null;
   score: Record<string, unknown>[];
   bbb: Record<string, unknown>[];
 }

@@ -655,31 +655,19 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                       </span>
                     </div>
 
-                    {/* Pick */}
-                    <div className="flex items-center gap-1.5 sm:gap-3">
-                      <span className="text-[9px] text-[#444] font-black tracking-[0.25em] uppercase hidden sm:inline">Picked</span>
-                      <span
-                        className="font-gaming text-[13px] sm:text-xl tracking-widest px-1.5 py-px sm:px-3 sm:py-1 border"
-                        style={{
-                          color: pickCorrect ? teamHex(pred.selected_team) : isMiss ? '#ef4444' : '#a3a3a3',
-                          borderColor: pickCorrect ? `${teamHex(pred.selected_team)}80` : isMiss ? '#ef444480' : '#333',
-                          backgroundColor: pickCorrect ? `${teamHex(pred.selected_team)}35` : isMiss ? '#ef444425' : '#1e1e1e',
-                          textShadow: `0 0 20px ${pickCorrect ? teamHex(pred.selected_team) : isMiss ? '#ef4444' : 'transparent'}60`,
-                        }}
-                      >
-                        {teamShortCode(pred.selected_team)}
-                      </span>
-                      <span className="text-[8px] sm:text-[10px] text-[#666] font-black tracking-[0.18em] uppercase truncate">
-                        {teamFullName(pred.selected_team)}
-                      </span>
-                      {pred.match.winner && pred.match.winner !== pred.selected_team && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-1.5 ml-1 sm:ml-0">
-                          <span className="text-[7.5px] sm:text-[9px] text-[#444] font-black tracking-widest uppercase truncate max-w-[40px] sm:max-w-none">Won:</span>
-                          <span className="font-gaming text-xs sm:text-xl tracking-widest leading-none mt-px sm:mt-0" style={{ color: teamHex(pred.match.winner) }}>
-                            {teamShortCode(pred.match.winner)}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <span className="text-[9px] text-[#444] font-black tracking-[0.25em] uppercase hidden sm:inline">Result</span>
+                        {pred.match.result_summary ? (
+                          <span className="text-[11px] sm:text-sm text-[#a3a3a3] font-black tracking-[0.12em] uppercase truncate">
+                            {pred.match.result_summary}
                           </span>
-                        </div>
-                      )}
+                        ) : pred.match.winner ? (
+                          <span className="text-[11px] sm:text-sm text-[#a3a3a3] font-black tracking-[0.12em] uppercase truncate">
+                            {teamFullName(pred.match.winner)} won
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
