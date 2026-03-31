@@ -84,17 +84,6 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           setPredictions(predData);
         }
 
-        // Fetch follow stats
-        const followRes = await fetch(
-          `${BASE}/users/${userId}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`
-        );
-        if (followRes.ok) {
-          const fs = await followRes.json();
-          setFollowerCount(fs.follower_count);
-          setFollowingCount(fs.following_count);
-          setIsFollowing(fs.is_following);
-        }
-
         // Fetch all three ranks in parallel
         const [globalRes, weeklyRes, monthlyRes] = await Promise.all([
           fetch(`${BASE}/leaderboard/global?limit=100`),
@@ -127,6 +116,21 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
       fetchProfileData();
     }
   }, [userId]);
+
+  // Separate effect for follow stats — re-runs when currentUserId loads
+  useEffect(() => {
+    if (!userId) return;
+    const BASE = getApiBaseUrl();
+    fetch(`${BASE}/users/${userId}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((fs) => {
+        if (!fs) return;
+        setFollowerCount(fs.follower_count);
+        setFollowingCount(fs.following_count);
+        setIsFollowing(fs.is_following);
+      })
+      .catch(() => {});
+  }, [userId, currentUserId]);
 
   const handleFollow = async () => {
     if (!currentUserId || followLoading) return;
@@ -357,12 +361,13 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                     <button
                       onClick={handleFollow}
                       disabled={followLoading}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors disabled:opacity-50 ${
                         isFollowing
-                          ? "bg-[#1a1a1a] border-white text-white hover:opacity-70"
+                          ? "bg-[#052016] border-[#10b981] text-[#10b981] hover:bg-[#111] hover:border-[#525252] hover:text-[#525252]"
                           : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
-                      } disabled:opacity-50`}
+                      }`}
                     >
+                      {isFollowing && <Check className="w-3 h-3" />}
                       <span className="text-[10px] font-black uppercase tracking-widest">
                         {isFollowing ? "Following" : "Follow"}
                       </span>
