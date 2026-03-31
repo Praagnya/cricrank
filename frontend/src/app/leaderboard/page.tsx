@@ -81,24 +81,24 @@ export default async function LeaderboardPage({
   return (
     <>
       <Header />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 sm:gap-6 overflow-x-hidden">
 
         {/* Header Block */}
         <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4">
           {/* Title row */}
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-5">
+            <div className="flex items-center gap-4 sm:gap-5 min-w-0">
               <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
                 {activeSquad || period === "following"
                   ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
                   : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
                 }
               </div>
-              <div>
-                <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none truncate">
                   {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
                 </h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 whitespace-nowrap">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 truncate">
                   {periodLabel} · Top {top10.length}
                 </p>
               </div>
@@ -152,7 +152,7 @@ export default async function LeaderboardPage({
                   return (
                     <div
                       key={`empty-podium-${i}`}
-                      className="block h-full min-w-0 flex flex-col items-center justify-center border border-[#262626] bg-[#000000] p-3 sm:p-8 relative overflow-hidden opacity-50"
+                      className="block min-h-[180px] sm:min-h-[320px] min-w-0 flex flex-col items-center justify-center border border-[#262626] bg-[#000000] p-3 sm:p-8 relative overflow-hidden opacity-50"
                     >
                       <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5" style={{ backgroundColor: medalColor }} />
                       <span className="text-[9px] sm:text-xs font-black tracking-widest uppercase mb-2 sm:mb-6" style={{ color: medalColor }}>
@@ -177,7 +177,7 @@ export default async function LeaderboardPage({
                   <Link
                     href={`/profile/${entry.username ?? entry.google_id}`}
                     key={`podium-${entry.google_id ?? i}`}
-                    className={`block h-full min-w-0 flex flex-col items-center justify-center border p-3 sm:p-8 relative overflow-hidden transition-all duration-300 hover:brightness-125 hover:-translate-y-1 ${isMe ? 'bg-[#1a1a1a] border-white' : 'bg-[#050505] border-[#262626] hover:border-[#525252]'}`}
+                    className={`block min-h-[180px] sm:min-h-[320px] min-w-0 flex flex-col items-center justify-center border p-3 sm:p-8 relative overflow-hidden transition-all duration-300 hover:brightness-125 hover:-translate-y-1 ${isMe ? 'bg-[#1a1a1a] border-white' : 'bg-[#050505] border-[#262626] hover:border-[#525252]'}`}
                   >
                     {/* Top Accent Strip */}
                     <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5" style={{ backgroundColor: medalColor }} />
@@ -238,9 +238,9 @@ export default async function LeaderboardPage({
 
                     {/* Name + Context */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate">{entry.name ?? "Anonymous"}</p>
-                        {isMe && <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5 ml-2">YOU</span>}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate min-w-0">{entry.name ?? "Anonymous"}</p>
+                        {isMe && <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5">YOU</span>}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                         <span className={`text-[9px] sm:text-[10px] font-black tracking-[0.2em] uppercase ${streakTierColor(entry.streak_tier)}`}>
@@ -282,9 +282,9 @@ export default async function LeaderboardPage({
 
                     {/* Name + Context */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate">{myEntry.name ?? "Anonymous"}</p>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5 ml-2">YOU</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate min-w-0">{myEntry.name ?? "Anonymous"}</p>
+                        <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5">YOU</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
                         <span className={`text-[9px] sm:text-[10px] font-black tracking-[0.2em] uppercase ${streakTierColor(myEntry.streak_tier)}`}>
