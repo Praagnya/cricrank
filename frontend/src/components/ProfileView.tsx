@@ -347,7 +347,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
               </h1>
 
               {/* Badges row */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <div className={`px-3 py-1 bg-[#111111] border border-[#2a2a2a] inline-flex items-center gap-2 rounded-sm ${streakTierColor(dbUser.streak_tier)}`}>
                   <Zap className="w-3.5 h-3.5" />
                   <span className="text-[10px] font-black uppercase tracking-widest">{dbUser.streak_tier}</span>
@@ -356,32 +356,34 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                   <Coins className="w-3.5 h-3.5 text-[#fbbf24]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{(dbUser.coins ?? 0).toLocaleString()}</span>
                 </div>
-                {currentUserId && currentUserId !== userId && (
-                  <>
-                    <button
-                      onClick={handleFollow}
-                      disabled={followLoading}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors disabled:opacity-50 ${
-                        isFollowing
-                          ? "bg-[#052016] border-[#10b981] text-[#10b981] hover:bg-[#111] hover:border-[#525252] hover:text-[#525252]"
-                          : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
-                      }`}
-                    >
-                      {isFollowing && <Check className="w-3 h-3" />}
-                      <span className="text-[10px] font-black uppercase tracking-widest">
-                        {isFollowing ? "Following" : "Follow"}
-                      </span>
-                    </button>
-                    <button
-                      onClick={openInviteModal}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
-                    >
-                      <Users className="w-3 h-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Invite</span>
-                    </button>
-                  </>
-                )}
               </div>
+
+              {/* Action buttons — always on one line */}
+              {currentUserId && currentUserId !== userId && (
+                <div className="flex items-center gap-2 flex-nowrap">
+                  <button
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors disabled:opacity-50 shrink-0 ${
+                      isFollowing
+                        ? "bg-[#052016] border-[#10b981] text-[#10b981] hover:bg-[#111] hover:border-[#525252] hover:text-[#525252]"
+                        : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
+                    }`}
+                  >
+                    {isFollowing && <Check className="w-3 h-3" />}
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {isFollowing ? "Following" : "Follow"}
+                    </span>
+                  </button>
+                  <button
+                    onClick={openInviteModal}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors shrink-0"
+                  >
+                    <Users className="w-3 h-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Invite</span>
+                  </button>
+                </div>
+              )}
 
               {/* Followers / Following — inline stats */}
               <div className="flex items-center gap-5">
