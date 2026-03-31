@@ -1,10 +1,11 @@
 import { api } from "@/lib/api";
 import Header from "@/components/Header";
-import { Medal, Target, Zap } from "lucide-react";
+import { Medal, Zap, Users } from "lucide-react";
 import { streakTierColor } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
 import CricketAvatar from "@/components/CricketAvatar";
 import Link from "next/link";
+import LeaderboardDropdown from "@/components/LeaderboardDropdown";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -27,16 +28,27 @@ export default async function LeaderboardPage({
 
   const p = await searchParams;
   const period = p.period || "alltime";
-  
+  const squadId = p.squad || null;
+
   const getStreakHeatColor = (streak: number) => {
-    if (streak >= 6) return "#d71920"; // Red hot
-    if (streak >= 4) return "#ea580c"; // Orange
-    if (streak >= 2) return "#f59e0b"; // Warm Yellow
-    return "#262626"; // Default Grey
+    if (streak >= 6) return "#d71920";
+    if (streak >= 4) return "#ea580c";
+    if (streak >= 2) return "#f59e0b";
+    return "#262626";
   };
-  
+
+  // Fetch squads for dropdown if logged in
+  const mySquads = providerId
+    ? await api.squads.my(providerId).catch(() => [])
+    : [];
+
+  // Fetch leaderboard entries
   let allEntries = [];
-  if (period === "weekly") {
+  if (squadId) {
+    allEntries = await api.squads.leaderboard(squadId).catch(() => []);
+  } else if (period === "following" && providerId) {
+    allEntries = await api.leaderboard.following(providerId).catch(() => []);
+  } else if (period === "weekly") {
     allEntries = await api.leaderboard.weekly(100).catch(() => []);
   } else if (period === "monthly") {
     allEntries = await api.leaderboard.monthly(100).catch(() => []);
@@ -45,53 +57,52 @@ export default async function LeaderboardPage({
   }
 
   const top10 = allEntries.slice(0, 10);
-  
+
   let myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
-  if (!myEntry && providerId) {
+  if (!myEntry && providerId && !squadId) {
     myEntry = await api.leaderboard.myRank(providerId, period).catch(() => null);
   }
   const myRank = myEntry?.rank ?? null;
+
+  const activeSquad = mySquads.find((s) => s.id === squadId) ?? null;
+  const periodLabel = squadId
+    ? (activeSquad?.name ?? "Squad")
+    : period === "weekly" ? "Last 7 Days"
+    : period === "monthly" ? "Last 30 Days"
+    : period === "following" ? "People You Follow"
+    : "All Time";
 
   return (
     <>
       <Header />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
 
-        {/* Brutalist Header Block */}
+        {/* Header Block */}
         <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
           <div className="flex items-center gap-4 sm:gap-5">
             <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
-              <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
+              {activeSquad || period === "following"
+                ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
+                : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
+              }
             </div>
             <div>
-              <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">Ranking</h1>
+              <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">
+                {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
+              </h1>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2">
-                {period === "weekly" ? "Last 7 Days" : period === "monthly" ? "Last 30 Days" : "All Time"} · Top 10
+                {periodLabel} · Top {top10.length}
               </p>
             </div>
           </div>
-          
-          {/* Filtering Tabs */}
-          <div className="flex items-center self-start sm:self-auto border border-[#262626] bg-[#050505] p-1 w-full sm:w-auto">
-            <Link 
-              href="/leaderboard?period=weekly" 
-              className={`flex-1 sm:flex-none text-center px-2 sm:px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${period === "weekly" ? "bg-white text-black" : "text-[#525252] hover:text-white"}`}
-            >
-              Weekly
-            </Link>
-            <Link 
-              href="/leaderboard?period=monthly" 
-              className={`flex-1 sm:flex-none text-center px-2 sm:px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${period === "monthly" ? "bg-white text-black" : "text-[#525252] hover:text-white"}`}
-            >
-              Monthly
-            </Link>
-            <Link 
-              href="/leaderboard?period=alltime" 
-              className={`flex-1 sm:flex-none text-center px-2 sm:px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${period === "alltime" ? "bg-white text-black" : "text-[#525252] hover:text-white"}`}
-            >
-              All Time
-            </Link>
-          </div>
+
+          {/* Dropdown selector */}
+          <LeaderboardDropdown
+            period={period}
+            squadId={squadId}
+            squads={mySquads}
+            providerId={providerId ?? null}
+          />
         </div>
 
         {allEntries.length === 0 ? (

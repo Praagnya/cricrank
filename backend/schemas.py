@@ -124,6 +124,14 @@ class SquadCreate(BaseModel):
     google_id: str
 
 
+# ── Follow ───────────────────────────────────────────────────────────────────
+
+class FollowStats(BaseModel):
+    follower_count: int
+    following_count: int
+    is_following: bool
+
+
 # ── Contest ──────────────────────────────────────────────────────────────────
 
 class ContestCreate(BaseModel):

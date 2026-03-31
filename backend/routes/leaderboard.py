@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from database import get_db
-from models import User, ContestEntry, Contest
+from models import User, ContestEntry, Follow
 from schemas import LeaderboardEntry, ContestLeaderboardEntry
 
 router = APIRouter()
@@ -92,6 +92,49 @@ def weekly_leaderboard(limit: int = Query(50, le=100), db: Session = Depends(get
 def monthly_leaderboard(limit: int = Query(50, le=100), db: Session = Depends(get_db)):
     return dynamic_leaderboard(db, limit, 30)
 
+
+
+@router.get("/following/{google_id}", response_model=list[LeaderboardEntry])
+def following_leaderboard(google_id: str, db: Session = Depends(get_db)):
+    """Leaderboard of users you follow, including yourself."""
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        return []
+
+    following_ids = [
+        f.following_id for f in db.query(Follow).filter(Follow.follower_id == user.id).all()
+    ]
+    # Include the viewer themselves
+    ids = list(set(following_ids + [user.id]))
+
+    users = (
+        db.query(User)
+        .filter(User.id.in_(ids), User.total_predictions > 0)
+        .order_by(
+            desc(User.points),
+            desc(User.correct_predictions * 1.0 / func.nullif(User.settled_predictions, 0)),
+            desc(User.current_streak),
+        )
+        .all()
+    )
+
+    return [
+        LeaderboardEntry(
+            google_id=u.google_id,
+            rank=i + 1,
+            name=u.name,
+            points=u.points,
+            accuracy=u.accuracy,
+            total_predictions=u.total_predictions,
+            settled_predictions=u.settled_predictions,
+            correct_predictions=u.correct_predictions,
+            current_streak=u.current_streak,
+            streak_tier=u.streak_tier,
+            jersey_number=u.jersey_number,
+            jersey_color=u.jersey_color,
+        )
+        for i, u in enumerate(users)
+    ]
 
 
 @router.get("/rank/{google_id}", response_model=LeaderboardEntry | None)

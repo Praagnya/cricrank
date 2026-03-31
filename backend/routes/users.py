@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import random
 from database import get_db
-from models import User, JERSEY_COLORS
-from schemas import UserCreate, UserPublic, UserIdentityUpdate
+from models import User, Follow, JERSEY_COLORS
+from schemas import UserCreate, UserPublic, UserIdentityUpdate, FollowStats
 
 router = APIRouter()
 
@@ -78,8 +79,89 @@ def update_identity(
 
     user.jersey_number = payload.jersey_number
     user.jersey_color = payload.jersey_color
-    
+
     db.commit()
     db.refresh(user)
-    
+
     return user
+
+
+@router.post("/{target_google_id}/follow")
+def follow_user(
+    target_google_id: str,
+    follower_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    current = db.query(User).filter(User.google_id == follower_id).first()
+    if not current:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target = db.query(User).filter(User.google_id == target_google_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    if current.id == target.id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+
+    existing = db.query(Follow).filter(
+        Follow.follower_id == current.id, Follow.following_id == target.id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Already following")
+
+    db.add(Follow(follower_id=current.id, following_id=target.id))
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{target_google_id}/follow")
+def unfollow_user(
+    target_google_id: str,
+    follower_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    current = db.query(User).filter(User.google_id == follower_id).first()
+    if not current:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target = db.query(User).filter(User.google_id == target_google_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    follow = db.query(Follow).filter(
+        Follow.follower_id == current.id, Follow.following_id == target.id
+    ).first()
+    if not follow:
+        raise HTTPException(status_code=404, detail="Not following")
+
+    db.delete(follow)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/{target_google_id}/follow-stats", response_model=FollowStats)
+def follow_stats(
+    target_google_id: str,
+    viewer_id: str = Query(None),
+    db: Session = Depends(get_db),
+):
+    target = db.query(User).filter(User.google_id == target_google_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    follower_count = db.query(func.count(Follow.id)).filter(Follow.following_id == target.id).scalar()
+    following_count = db.query(func.count(Follow.id)).filter(Follow.follower_id == target.id).scalar()
+
+    is_following = False
+    if viewer_id:
+        viewer = db.query(User).filter(User.google_id == viewer_id).first()
+        if viewer:
+            is_following = db.query(Follow).filter(
+                Follow.follower_id == viewer.id, Follow.following_id == target.id
+            ).first() is not None
+
+    return FollowStats(
+        follower_count=follower_count,
+        following_count=following_count,
+        is_following=is_following,
+    )
