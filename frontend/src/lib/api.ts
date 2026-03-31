@@ -31,6 +31,14 @@ export const api = {
     upsert: (data: { google_id: string; name: string; email: string }) =>
       post<User>("/users/", data),
     get: (googleId: string) => get<User>(`/users/${googleId}`),
+    followStats: (targetId: string, viewerId?: string) =>
+      get<{ follower_count: number; following_count: number; is_following: boolean }>(
+        `/users/${targetId}/follow-stats${viewerId ? `?viewer_id=${viewerId}` : ""}`
+      ),
+    follow: (targetId: string, followerId: string) =>
+      fetch(`${BASE}/users/${targetId}/follow?follower_id=${followerId}`, { method: "POST" }),
+    unfollow: (targetId: string, followerId: string) =>
+      fetch(`${BASE}/users/${targetId}/follow?follower_id=${followerId}`, { method: "DELETE" }),
   },
   predictions: {
     submit: (googleId: string, matchId: string, selectedTeam: string) =>
@@ -57,5 +65,7 @@ export const api = {
     monthly: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/monthly?limit=${limit}`),
     myRank: (googleId: string, period = "alltime") =>
       get<LeaderboardEntry | null>(`/leaderboard/rank/${googleId}?period=${period}`),
+    following: (googleId: string, limit = 100) =>
+      get<LeaderboardEntry[]>(`/leaderboard/following/${googleId}?limit=${limit}`),
   },
 };

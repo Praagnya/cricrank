@@ -1,21 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins } from "lucide-react";
+import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check } from "lucide-react";
 import Link from "next/link";
-import { PredictionWithMatch, User, LeaderboardEntry } from "@/types";
+import { PredictionWithMatch, User, LeaderboardEntry, Squad } from "@/types";
 import { streakTierColor, teamHex } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CricketAvatar from "./CricketAvatar";
 import CountdownTimer from "./CountdownTimer";
 
 
+const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
+
 interface ProfileViewProps {
   userId: string;
   isEditable?: boolean;
+  currentUserId?: string | null;
 }
 
-export default function ProfileView({ userId, isEditable = false }: ProfileViewProps) {
+export default function ProfileView({ userId, isEditable = false, currentUserId = null }: ProfileViewProps) {
   const [dbUser, setDbUser] = useState<User | null>(null);
   const [predictions, setPredictions] = useState<PredictionWithMatch[]>([]);
   const [rank, setRank] = useState<number | null>(null);
@@ -31,6 +34,21 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
   const [isSaving, setIsSaving] = useState(false);
   const [nameError, setNameError] = useState("");
   const [changingPredId, setChangingPredId] = useState<string | null>(null);
+
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  // Squad invite state
+  const [inviteModal, setInviteModal] = useState(false);
+  const [mySquads, setMySquads] = useState<Squad[]>([]);
+  const [squadsLoading, setSquadsLoading] = useState(false);
+  const [squadCopied, setSquadCopied] = useState<string | null>(null);
+  const [createSquadName, setCreateSquadName] = useState("");
+  const [creatingSquad, setCreatingSquad] = useState(false);
+  const [createSquadError, setCreateSquadError] = useState("");
 
   useEffect(() => {
     async function fetchProfileData() {
@@ -51,6 +69,17 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
         if (predRes.ok) {
           const predData = await predRes.json();
           setPredictions(predData);
+        }
+
+        // Fetch follow stats
+        const followRes = await fetch(
+          `${BASE}/users/${userId}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`
+        );
+        if (followRes.ok) {
+          const fs = await followRes.json();
+          setFollowerCount(fs.follower_count);
+          setFollowingCount(fs.following_count);
+          setIsFollowing(fs.is_following);
         }
 
         // Fetch all three ranks in parallel
@@ -85,6 +114,57 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
       fetchProfileData();
     }
   }, [userId]);
+
+  const handleFollow = async () => {
+    if (!currentUserId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const BASE = getApiBaseUrl();
+      const method = isFollowing ? "DELETE" : "POST";
+      const res = await fetch(`${BASE}/users/${userId}/follow?follower_id=${currentUserId}`, { method });
+      if (res.ok) {
+        setIsFollowing(!isFollowing);
+        setFollowerCount((c) => c + (isFollowing ? -1 : 1));
+      }
+    } catch {}
+    finally { setFollowLoading(false); }
+  };
+
+  const openInviteModal = async () => {
+    setInviteModal(true);
+    setSquadsLoading(true);
+    setCreateSquadName("");
+    setCreateSquadError("");
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/squads/my/${currentUserId}`);
+      if (res.ok) setMySquads(await res.json());
+    } catch {}
+    finally { setSquadsLoading(false); }
+  };
+
+  const handleCreateAndInvite = async () => {
+    if (!currentUserId || !createSquadName.trim()) return;
+    setCreatingSquad(true);
+    setCreateSquadError("");
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/squads/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ google_id: currentUserId, name: createSquadName.trim() }),
+      });
+      if (res.status === 400) { setCreateSquadError((await res.json()).detail); return; }
+      const squad: Squad = await res.json();
+      setMySquads([squad]);
+      setCreateSquadName("");
+    } catch { setCreateSquadError("Something went wrong"); }
+    finally { setCreatingSquad(false); }
+  };
+
+  const copyInviteCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setSquadCopied(code);
+    setTimeout(() => setSquadCopied(null), 2000);
+  };
 
   const handleChangePick = async (pred: PredictionWithMatch, newTeam: string) => {
     setChangingPredId(pred.id);
@@ -215,7 +295,12 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
             </div>
             
             <div className="flex flex-col">
-              <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase mb-2">Player Profile</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
+                <span className="text-[9px] text-[#525252] font-bold tracking-widest">
+                  <span className="text-white font-black">{followerCount}</span> followers · <span className="text-white font-black">{followingCount}</span> following
+                </span>
+              </div>
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none mb-3 text-white">
                 {dbUser.name}
               </h1>
@@ -242,6 +327,30 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
                     <Edit2 className="w-3 h-3" />
                     <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
                   </button>
+                )}
+                {currentUserId && currentUserId !== userId && (
+                  <>
+                    <button
+                      onClick={handleFollow}
+                      disabled={followLoading}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors ${
+                        isFollowing
+                          ? "bg-[#1a1a1a] border-white text-white hover:bg-[#0a0a0a] hover:border-[#737373] hover:text-[#737373]"
+                          : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
+                      } disabled:opacity-50`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {isFollowing ? "Following" : "Follow"}
+                      </span>
+                    </button>
+                    <button
+                      onClick={openInviteModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
+                    >
+                      <Users className="w-3 h-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Invite to Squad</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -569,6 +678,84 @@ export default function ProfileView({ userId, isEditable = false }: ProfileViewP
           </div>
         )}
       </div>
+
+      {/* SQUAD INVITE MODAL */}
+      {inviteModal && currentUserId && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0a0a0a] border border-[#262626] w-full max-w-sm p-6 relative">
+            <button onClick={() => setInviteModal(false)} className="absolute top-4 right-4 text-[#737373] hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="font-gaming text-xl tracking-widest mb-1 uppercase">Invite to Squad</h2>
+            <p className="text-[10px] text-[#525252] font-bold tracking-[0.2em] uppercase mb-6">
+              Share invite code with {dbUser?.name ?? "this player"}
+            </p>
+
+            {squadsLoading ? (
+              <div className="text-center py-8 text-[#525252] text-[10px] font-black tracking-[0.3em] uppercase animate-pulse">Loading...</div>
+            ) : mySquads.length === 0 ? (
+              <>
+                <p className="text-[10px] text-[#737373] font-bold tracking-[0.2em] uppercase mb-3">Create a squad first:</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {SQUAD_SUGGESTIONS.map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setCreateSquadName(n); setCreateSquadError(""); }}
+                      className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase border transition-colors ${createSquadName === n ? "border-white text-white bg-[#1a1a1a]" : "border-[#333] text-[#525252] hover:border-[#555] hover:text-white"}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  maxLength={30}
+                  value={createSquadName}
+                  onChange={(e) => { setCreateSquadName(e.target.value); setCreateSquadError(""); }}
+                  placeholder="Or type a custom name..."
+                  className="w-full bg-[#111] border border-[#333] text-white font-gaming px-4 py-3 text-lg focus:outline-none focus:border-white transition-colors placeholder:text-[#444] mb-2"
+                />
+                {createSquadError && <p className="text-[9px] text-[#ef4444] font-bold tracking-widest uppercase mb-3">{createSquadError}</p>}
+                <button
+                  onClick={handleCreateAndInvite}
+                  disabled={creatingSquad || !createSquadName.trim()}
+                  className="w-full py-3 bg-white text-black font-gaming tracking-widest hover:bg-[#c8c8c8] disabled:opacity-50 transition-colors uppercase"
+                >
+                  {creatingSquad ? "Creating..." : "Create & Get Invite Code"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-[#525252] font-bold tracking-[0.2em] uppercase mb-4">Copy an invite code and share it:</p>
+                <div className="flex flex-col gap-2">
+                  {mySquads.map((squad) => (
+                    <div key={squad.id} className="flex items-center justify-between bg-[#111] border border-[#222] px-4 py-3">
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase text-white">{squad.name}</p>
+                        <p className="text-[8px] text-[#525252] font-bold tracking-widest mt-1">{squad.member_count} {squad.member_count === 1 ? "member" : "members"}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-gaming text-xl tracking-widest text-white">{squad.invite_code}</span>
+                        <button
+                          onClick={() => copyInviteCode(squad.invite_code)}
+                          className="text-[#525252] hover:text-[#fbbf24] transition-colors"
+                          title="Copy invite code"
+                        >
+                          {squadCopied === squad.invite_code ? <Check className="w-4 h-4 text-[#10b981]" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] text-[#525252] text-center mt-4 tracking-widest">
+                  Send the code to {dbUser?.name ?? "them"} — they can join via the leaderboard dropdown
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* IDENTITY MODAL */}
       {isEditModalOpen && (
