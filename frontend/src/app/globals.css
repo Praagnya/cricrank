@@ -25,9 +25,11 @@
 
 html {
   overflow-y: scroll; /* always reserve scrollbar gutter, prevents layout shift */
+  overflow-x: hidden; /* prevent horizontal scroll at page level */
 }
 
 body {
+  overflow-x: hidden;
   background: var(--background);
   color: var(--text);
   font-family: var(--font-sans);
