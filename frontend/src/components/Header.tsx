@@ -1,18 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Trophy, LogOut, LogIn, Zap, Menu, X, Home, Search } from "lucide-react";
+import { LogOut, LogIn, Zap, Menu, X } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
-import FindPlayers from "./FindPlayers";
 
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [coins, setCoins] = useState<number | null>(null);
 
   useEffect(() => {
@@ -23,50 +21,40 @@ export default function Header() {
       .catch(() => {});
   }, [user]);
 
-  // Shared button class for all header buttons
-  const btn = "flex items-center justify-center border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors rounded text-white";
+  const btn = "flex items-center justify-center border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors text-white";
 
   return (
     <>
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[64px] grid grid-cols-3 items-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
 
-          {/* LEFT — hamburger + home */}
-          <div className="flex items-center gap-2">
-            <button className={`${btn} w-10 h-10 lg:hidden`} onClick={() => setMenuOpen(true)}>
+          {/* LEFT — hamburger */}
+          <div className="flex items-center">
+            <button className={`${btn} w-10 h-10`} onClick={() => setMenuOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* CENTER — CricRank */}
+          <div className="flex justify-center">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className={`${btn} w-10 h-10 shrink-0`}>
-                <Zap className="w-5 h-5" strokeWidth={1.5} />
-              </div>
-              <span className="hidden sm:inline font-bold text-base tracking-tighter text-white group-hover:text-gray-300 transition-colors">CricRank</span>
+              <Zap className="w-4 h-4 text-white" strokeWidth={1.5} />
+              <span className="font-gaming text-lg tracking-widest text-white group-hover:text-[#a3a3a3] transition-colors">CricRank</span>
             </Link>
           </div>
 
-          {/* CENTER — leaderboard + search */}
-          <div className="flex justify-center items-center gap-2">
-            <Link href="/leaderboard" className={`${btn} flex-col gap-0.5 w-14 h-10 sm:w-auto sm:flex-row sm:gap-2 sm:px-5 sm:h-10`}>
-              <Trophy className="w-4 h-4 shrink-0" />
-              <span className="text-[7px] sm:text-xs font-black uppercase tracking-widest text-[#a3a3a3]">Ranks</span>
-            </Link>
-            <button onClick={() => setSearchOpen(true)} className={`${btn} flex-col gap-0.5 w-14 h-10 sm:w-auto sm:flex-row sm:gap-2 sm:px-5 sm:h-10`}>
-              <Search className="w-4 h-4 shrink-0" />
-              <span className="text-[7px] sm:text-xs font-black uppercase tracking-widest text-[#a3a3a3]">Find</span>
-            </button>
-          </div>
-
-          {/* RIGHT — coins + avatar/signin */}
+          {/* RIGHT — coins (mobile) + coins + avatar (desktop) */}
           <div className="flex items-center justify-end gap-2">
             {!loading && user && coins !== null && (
-              <Link href="/profile" className={`${btn} flex-col gap-0 w-14 h-10`}>
+              <Link href="/profile" className={`${btn} flex-col gap-0 px-3 h-10`}>
                 <span className="text-[7px] font-black uppercase tracking-widest text-[#fbbf24]/60 leading-none">Coins</span>
                 <span className="font-gaming text-sm text-[#fbbf24] leading-none">{coins.toLocaleString()}</span>
               </Link>
             )}
 
+            {/* Avatar dropdown — desktop only */}
             {!loading && user ? (
-              <div className="relative">
+              <div className="relative hidden lg:block">
                 <button onClick={() => setUserMenuOpen((v) => !v)} className={`${btn} w-10 h-10`}>
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
@@ -86,7 +74,7 @@ export default function Header() {
                 {userMenuOpen && createPortal(
                   <>
                     <div className="fixed inset-0 z-[9998]" onClick={() => setUserMenuOpen(false)} />
-                    <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[9999]" style={{ top: '64px' }}>
+                    <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[9999]" style={{ top: '56px' }}>
                       <Link href="/profile" onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors">
                         <Zap className="w-3.5 h-3.5 shrink-0" />My Profile
@@ -102,43 +90,36 @@ export default function Header() {
                 )}
               </div>
             ) : !loading && !user ? (
-              <button onClick={signInWithGoogle} className={`${btn} gap-2 h-10 px-3 text-xs font-bold uppercase tracking-widest`}>
+              <button onClick={signInWithGoogle} className={`${btn} hidden lg:flex gap-2 h-10 px-3 text-xs font-bold uppercase tracking-widest`}>
                 <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign In</span>
+                <span>Sign In</span>
               </button>
             ) : null}
           </div>
         </div>
       </header>
 
-      {/* Find Players overlay */}
-      {searchOpen && <FindPlayers onClose={() => setSearchOpen(false)} />}
-
-      {/* Mobile Navigation Drawer */}
+      {/* Navigation Drawer — all viewports */}
       {menuOpen && (
-        <div className="fixed inset-0 z-[100] flex lg:hidden">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" 
-            onClick={() => setMenuOpen(false)} 
+        <div className="fixed inset-0 z-[100] flex">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            onClick={() => setMenuOpen(false)}
           />
-          
-          {/* Drawer */}
           <div className="relative w-[280px] h-full bg-[#000000] border-r border-[#262626] flex flex-col shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="h-[64px] flex items-center justify-between px-6 border-b border-[#262626] bg-[#050505]">
-              <span className="font-gaming text-xl tracking-widest uppercase text-white mt-1">Menu</span>
-              <button 
-                onClick={() => setMenuOpen(false)} 
-                className="w-8 h-8 flex items-center justify-center bg-[#111] hover:bg-[#1a1a1a] border border-[#262626] text-[#a3a3a3] hover:text-white transition-colors rounded"
+            <div className="h-[56px] flex items-center justify-between px-6 border-b border-[#262626] bg-[#050505]">
+              <span className="font-gaming text-xl tracking-widest uppercase text-white">Menu</span>
+              <button
+                onClick={() => setMenuOpen(false)}
+                className="w-8 h-8 flex items-center justify-center bg-[#111] hover:bg-[#1a1a1a] border border-[#262626] text-[#a3a3a3] hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            
+
             <nav className="flex flex-col py-6 px-4 gap-3 flex-1 overflow-y-auto">
-              {/* Profile Card Summary if logged in */}
               {!loading && user && (
-                <div className="flex items-center gap-3 p-4 mb-2 border border-[#262626] bg-[#0a0a0a] rounded-sm">
+                <div className="flex items-center gap-3 p-4 mb-2 border border-[#262626] bg-[#0a0a0a]">
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={user.user_metadata.avatar_url} alt="Profile" className="w-10 h-10 object-cover rounded-full grayscale border border-[#333]" />
@@ -154,34 +135,31 @@ export default function Header() {
                 </div>
               )}
 
-              <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-4 px-4 py-4 border border-[#262626] bg-[#050505] text-[#a3a3a3] hover:bg-[#111111] hover:text-white transition-all group rounded-sm">
-                <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span className="font-gaming tracking-widest text-sm mt-0.5">Home</span>
-              </Link>
-              
-              <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="flex items-center gap-4 px-4 py-4 border border-[#262626] bg-[#050505] text-[#a3a3a3] hover:bg-[#111111] hover:text-white transition-all group rounded-sm">
-                <Trophy className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span className="font-gaming tracking-widest text-sm mt-0.5">Leaderboard</span>
-              </Link>
-              
-              {user && (
-                <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-4 px-4 py-4 border border-[#262626] bg-[#050505] text-[#a3a3a3] hover:bg-[#111111] hover:text-white transition-all group rounded-sm">
-                  <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-gaming tracking-widest text-sm mt-0.5">My Profile</span>
+              {[
+                { href: "/", label: "Home" },
+                { href: "/leaderboard", label: "Leaderboard" },
+                ...(user ? [{ href: "/profile", label: "My Profile" }] : []),
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-4 px-4 py-4 border border-[#262626] bg-[#050505] text-[#a3a3a3] hover:bg-[#111111] hover:text-white transition-all"
+                >
+                  <span className="font-gaming tracking-widest text-sm">{label}</span>
                 </Link>
-              )}
-              
-              {/* Bottom Actions */}
-              <div className="mt-auto flex flex-col pt-4">
+              ))}
+
+              <div className="mt-auto pt-4">
                 {!loading && !user ? (
-                  <button onClick={() => { setMenuOpen(false); signInWithGoogle(); }} className="flex justify-center items-center gap-3 px-4 py-4 border border-[#262626] bg-white text-black hover:bg-[#e6e6e6] transition-all rounded-sm">
+                  <button onClick={() => { setMenuOpen(false); signInWithGoogle(); }} className="w-full flex justify-center items-center gap-3 px-4 py-4 border border-[#262626] bg-white text-black hover:bg-[#e6e6e6] transition-all">
                     <LogIn className="w-4 h-4" />
-                    <span className="font-gaming tracking-widest text-xs mt-0.5">Sign In / Register</span>
+                    <span className="font-gaming tracking-widest text-xs">Sign In / Register</span>
                   </button>
                 ) : !loading && user ? (
-                  <button onClick={() => { setMenuOpen(false); signOut(); }} className="flex justify-center flex-row-reverse items-center gap-3 px-4 py-4 border border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444] hover:text-white transition-all rounded-sm">
-                    <span className="font-gaming tracking-widest text-xs mt-0.5">Sign Out</span>
+                  <button onClick={() => { setMenuOpen(false); signOut(); }} className="w-full flex justify-center items-center gap-3 px-4 py-4 border border-[#ef4444]/30 bg-[#ef4444]/10 text-[#ef4444] hover:bg-[#ef4444] hover:text-white transition-all">
                     <LogOut className="w-4 h-4" />
+                    <span className="font-gaming tracking-widest text-xs">Sign Out</span>
                   </button>
                 ) : null}
               </div>
