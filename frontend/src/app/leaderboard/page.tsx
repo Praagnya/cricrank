@@ -81,24 +81,24 @@ export default async function LeaderboardPage({
   return (
     <>
       <Header />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 overflow-x-hidden">
+      <main className="max-w-5xl mx-auto px-4 py-6 flex flex-col gap-4 overflow-x-hidden">
 
         {/* Header Block */}
-        <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4 overflow-hidden">
+        <div className="border border-[#262626] bg-[#000000] p-5 flex flex-col gap-4 overflow-hidden">
           {/* Title row */}
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 sm:gap-5 min-w-0">
-              <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="relative w-10 h-10 flex items-center justify-center shrink-0 border border-[#262626]">
                 {activeSquad || period === "following"
-                  ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
-                  : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
+                  ? <Users className="w-5 h-5 text-white" strokeWidth={1.5} />
+                  : <Medal className="w-5 h-5 relative z-10 text-white" strokeWidth={1.5} />
                 }
               </div>
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none truncate">
+                <h1 className="text-2xl font-black uppercase tracking-tighter text-white leading-none truncate">
                   {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
                 </h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 truncate">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 truncate">
                   {periodLabel} · Top {top10.length}
                 </p>
               </div>
@@ -121,7 +121,7 @@ export default async function LeaderboardPage({
               <Link
                 key={value}
                 href={`/leaderboard?period=${value}`}
-                className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
+                className={`px-3 py-2 text-[10px] font-black tracking-[0.15em] uppercase border transition-colors ${
                   !squadId && period !== "following" && period === value
                     ? "border-white text-white bg-[#1a1a1a]"
                     : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
@@ -142,30 +142,30 @@ export default async function LeaderboardPage({
         ) : (
           <>
             {/* Top 3 Podium (Always show 3 slots for consistency) */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="grid grid-cols-3 gap-2">
               {[top10[1], top10[0], top10[2]].map((entry, i) => {
                 const rank = i === 0 ? 2 : i === 1 ? 1 : 3;
                 const medalColor = rank === 1 ? "#d4af37" : rank === 2 ? "#a3a3a3" : "#b08d57";
-                
+
                 // Render empty slot if no user exists for this rank
                 if (!entry) {
                   return (
                     <div
                       key={`empty-podium-${i}`}
-                      className="block min-h-[180px] sm:min-h-[320px] min-w-0 flex flex-col items-center justify-center border border-[#262626] bg-[#000000] p-3 sm:p-8 relative overflow-hidden opacity-50"
+                      className="block min-h-[180px] min-w-0 flex flex-col items-center justify-center border border-[#262626] bg-[#000000] p-3 relative overflow-hidden opacity-50"
                     >
-                      <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5" style={{ backgroundColor: medalColor }} />
-                      <span className="text-[9px] sm:text-xs font-black tracking-widest uppercase mb-2 sm:mb-6" style={{ color: medalColor }}>
+                      <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: medalColor }} />
+                      <span className="text-[9px] font-black tracking-widest uppercase mb-2" style={{ color: medalColor }}>
                         {rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}
                       </span>
-                      <div className="w-12 h-12 sm:w-28 sm:h-28 flex items-center justify-center mb-2 sm:mb-6 text-[#262626]">
+                      <div className="w-12 h-12 flex items-center justify-center mb-2 text-[#262626]">
                         —
                       </div>
-                      <p className="font-gaming text-xs sm:text-2xl font-bold tracking-wide text-[#525252] truncate w-full text-center">
+                      <p className="font-gaming text-xs font-bold tracking-wide text-[#525252] truncate w-full text-center">
                         Empty Spot
                       </p>
-                      <p className="text-xl sm:text-5xl font-black tracking-tighter text-[#525252] mt-2 sm:mt-4 mb-0.5 sm:mb-1">0</p>
-                      <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-[#262626]">Points</p>
+                      <p className="text-xl font-black tracking-tighter text-[#525252] mt-2 mb-0.5">0</p>
+                      <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-[#262626]">Points</p>
                     </div>
                   );
                 }
@@ -177,34 +177,34 @@ export default async function LeaderboardPage({
                   <Link
                     href={`/profile/${entry.username ?? entry.google_id}`}
                     key={`podium-${entry.google_id ?? i}`}
-                    className={`block min-h-[180px] sm:min-h-[320px] min-w-0 flex flex-col items-center justify-center border p-3 sm:p-8 relative overflow-hidden transition-all duration-300 hover:brightness-125 hover:-translate-y-1 ${isMe ? 'bg-[#1a1a1a] border-white' : 'bg-[#050505] border-[#262626] hover:border-[#525252]'}`}
+                    className={`block min-h-[180px] min-w-0 flex flex-col items-center justify-center border p-3 relative overflow-hidden transition-all duration-300 hover:brightness-125 hover:-translate-y-1 ${isMe ? 'bg-[#1a1a1a] border-white' : 'bg-[#050505] border-[#262626] hover:border-[#525252]'}`}
                   >
                     {/* Top Accent Strip */}
-                    <div className="absolute top-0 left-0 w-full h-1 sm:h-1.5" style={{ backgroundColor: medalColor }} />
-                    
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ backgroundColor: medalColor }} />
+
                     {isMe && (
                       <div className="absolute top-3 right-3 text-[10px] font-black tracking-[0.2em] text-white bg-[#ffffff20] px-2 py-0.5 uppercase">
                         YOU
                       </div>
                     )}
-                    
-                    <span className="text-[9px] sm:text-xs font-black tracking-widest uppercase mb-2 sm:mb-6" style={{ color: medalColor }}>
+
+                    <span className="text-[9px] font-black tracking-widest uppercase mb-2" style={{ color: medalColor }}>
                       {rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"}
                     </span>
-                    
-                    <div 
-                      className="w-12 h-12 sm:w-28 sm:h-28 flex items-center justify-center mb-2 sm:mb-6 relative z-10 group-hover:scale-110 transition-transform duration-300"
+
+                    <div
+                      className="w-12 h-12 flex items-center justify-center mb-2 relative z-10 group-hover:scale-110 transition-transform duration-300"
                       style={{ filter: heatColor !== '#262626' ? `drop-shadow(0 0 16px ${heatColor}90)` : 'none' }}
                     >
                       <CricketAvatar seed={entry.name ?? "A"} jerseyNumber={entry.jersey_number} jerseyColor={entry.jersey_color} />
                     </div>
 
-                    <p className="font-gaming text-xs sm:text-2xl font-bold tracking-wide text-white truncate w-full text-center">
+                    <p className="font-gaming text-xs font-bold tracking-wide text-white truncate w-full text-center">
                       {entry.name ?? "Anonymous"}
                     </p>
-                    
-                    <p className="text-xl sm:text-5xl font-black tracking-tighter text-white mt-2 sm:mt-4 mb-0.5 sm:mb-1">{entry.points}</p>
-                    <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-[#525252]">Points</p>
+
+                    <p className="text-xl font-black tracking-tighter text-white mt-2 mb-0.5">{entry.points}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-[#525252]">Points</p>
                   </Link>
                 );
               })}
@@ -221,16 +221,16 @@ export default async function LeaderboardPage({
                   <Link
                     href={`/profile/${entry.username ?? entry.google_id}`}
                     key={`list-${entry.google_id ?? idx}`}
-                    className={`group flex items-center gap-3 sm:gap-6 px-4 sm:px-6 py-4 sm:py-5 border-b border-[#262626] last:border-0 transition-colors ${isMe ? 'bg-[#1a1a1a]' : 'hover:bg-[#0a0a0a]'}`}
+                    className={`group flex items-center gap-3 px-4 py-4 border-b border-[#262626] last:border-0 transition-colors ${isMe ? 'bg-[#1a1a1a]' : 'hover:bg-[#0a0a0a]'}`}
                   >
                     {/* Rank */}
-                    <span className="w-6 sm:w-12 text-left sm:text-center font-gaming text-lg sm:text-3xl font-black text-[#737373] shrink-0 group-hover:text-white transition-colors">
+                    <span className="w-8 text-left font-gaming text-xl font-black text-[#737373] shrink-0 group-hover:text-white transition-colors">
                       {rank}
                     </span>
 
                     {/* Avatar */}
-                    <div 
-                      className="hidden sm:flex w-12 h-12 items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300"
+                    <div
+                      className="w-10 h-10 flex items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300"
                       style={{ filter: heatColor !== '#262626' ? `drop-shadow(0 0 8px ${heatColor}80)` : 'none' }}
                     >
                       <CricketAvatar seed={entry.name ?? "A"} jerseyNumber={entry.jersey_number} jerseyColor={entry.jersey_color} />
@@ -239,14 +239,14 @@ export default async function LeaderboardPage({
                     {/* Name + Context */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate min-w-0">{entry.name ?? "Anonymous"}</p>
+                        <p className="font-gaming text-sm font-bold tracking-wide text-white truncate min-w-0">{entry.name ?? "Anonymous"}</p>
                         {isMe && <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5">YOU</span>}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
-                        <span className={`text-[9px] sm:text-[10px] font-black tracking-[0.2em] uppercase ${streakTierColor(entry.streak_tier)}`}>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${streakTierColor(entry.streak_tier)}`}>
                           {entry.streak_tier}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-[#525252] uppercase">
+                        <span className="text-[9px] font-bold tracking-[0.2em] text-[#525252] uppercase">
                           {entry.correct_predictions}/{entry.settled_predictions} HITS
                         </span>
                       </div>
@@ -254,9 +254,9 @@ export default async function LeaderboardPage({
 
                     {/* Points + Accuracy */}
                     <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                      <p className="text-lg sm:text-2xl font-black text-white tabular-nums tracking-tighter leading-none">{entry.points}</p>
-                      <div className="bg-[#111111] border border-[#262626] px-1.5 sm:px-2 py-0.5 mt-1 sm:mt-2 transition-colors group-hover:border-[#525252]">
-                        <p className={`font-gaming text-[10px] sm:text-xs font-bold tracking-widest uppercase ${getAccuracyColor(entry.accuracy)}`}>
+                      <p className="text-lg font-black text-white tabular-nums tracking-tighter leading-none">{entry.points}</p>
+                      <div className="bg-[#111111] border border-[#262626] px-1.5 py-0.5 mt-1 transition-colors group-hover:border-[#525252]">
+                        <p className={`font-gaming text-[10px] font-bold tracking-widest uppercase ${getAccuracyColor(entry.accuracy)}`}>
                           {entry.accuracy != null ? `${Math.round(entry.accuracy)}%` : "—"}
                         </p>
                       </div>
@@ -266,31 +266,31 @@ export default async function LeaderboardPage({
               })}
               {myEntry && myRank && myRank > 10 && (
                 <>
-                  <div className="flex items-center justify-center py-2 sm:py-4">
+                  <div className="flex items-center justify-center py-2">
                     <span className="text-[#525252] tracking-[1em] font-black text-2xl leading-none">...</span>
                   </div>
-                  <div className="flex items-center gap-3 sm:gap-6 px-4 sm:px-6 py-4 sm:py-5 border-2 border-white bg-[#1a1a1a]">
+                  <div className="flex items-center gap-3 px-4 py-4 border-2 border-white bg-[#1a1a1a]">
                     {/* Rank */}
-                    <span className="w-6 sm:w-12 text-left sm:text-center font-gaming text-lg sm:text-3xl font-black text-white shrink-0">
+                    <span className="w-8 text-left font-gaming text-xl font-black text-white shrink-0">
                       {myRank}
                     </span>
 
                     {/* Avatar */}
-                    <div className="hidden sm:flex w-12 h-12 items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300">
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0 group hover:scale-110 transition-transform duration-300">
                       <CricketAvatar seed={myEntry.name ?? "A"} jerseyNumber={myEntry.jersey_number} jerseyColor={myEntry.jersey_color} />
                     </div>
 
                     {/* Name + Context */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-gaming text-sm sm:text-lg font-bold tracking-wide text-white truncate min-w-0">{myEntry.name ?? "Anonymous"}</p>
+                        <p className="font-gaming text-sm font-bold tracking-wide text-white truncate min-w-0">{myEntry.name ?? "Anonymous"}</p>
                         <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black px-1.5 py-0.5">YOU</span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
-                        <span className={`text-[9px] sm:text-[10px] font-black tracking-[0.2em] uppercase ${streakTierColor(myEntry.streak_tier)}`}>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${streakTierColor(myEntry.streak_tier)}`}>
                           {myEntry.streak_tier}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-[#525252] uppercase">
+                        <span className="text-[9px] font-bold tracking-[0.2em] text-[#525252] uppercase">
                           {myEntry.correct_predictions}/{myEntry.settled_predictions} HITS
                         </span>
                       </div>
@@ -298,9 +298,9 @@ export default async function LeaderboardPage({
 
                     {/* Points + Accuracy */}
                     <div className="text-right shrink-0 flex flex-col items-end gap-1">
-                      <p className="text-lg sm:text-2xl font-black text-white tabular-nums tracking-tighter leading-none">{myEntry.points}</p>
-                      <div className="bg-[#000000] border border-[#262626] px-1.5 sm:px-2 py-0.5 mt-1 sm:mt-2">
-                        <p className={`font-gaming text-[10px] sm:text-xs font-bold tracking-widest uppercase ${getAccuracyColor(myEntry.accuracy)}`}>
+                      <p className="text-lg font-black text-white tabular-nums tracking-tighter leading-none">{myEntry.points}</p>
+                      <div className="bg-[#000000] border border-[#262626] px-1.5 py-0.5 mt-1">
+                        <p className={`font-gaming text-[10px] font-bold tracking-widest uppercase ${getAccuracyColor(myEntry.accuracy)}`}>
                           {myEntry.accuracy != null ? `${Math.round(myEntry.accuracy)}%` : "—"}
                         </p>
                       </div>
