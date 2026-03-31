@@ -33,20 +33,20 @@ export default function CrowdPredictionCard({
 
       <div className="px-4 sm:px-6 py-6">
         {/* Big percentage numbers */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-5 mb-6">
           <div className="text-left min-w-0">
             <p className="text-base sm:text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team1)}</p>
             <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase">{teamFullName(team1)}</p>
             <span
-              className="font-black tracking-tighter text-[32px] sm:text-[48px]"
+              className="block font-black tracking-tighter leading-none text-[44px] sm:text-[52px] lg:text-[64px] whitespace-nowrap"
               style={{ color: t1hex }}
             >
               {t1Pct.toFixed(1)}%
             </span>
           </div>
           
-          <div className="flex flex-col items-center justify-center pt-4 px-1 shrink-0">
-            <span className="text-[#525252] font-black italic tracking-tighter text-xl sm:text-3xl">
+          <div className="flex flex-col items-center justify-center px-1 shrink-0">
+            <span className="text-[#525252] font-black italic tracking-tighter text-2xl sm:text-3xl lg:text-4xl leading-none">
               VS
             </span>
           </div>
@@ -55,7 +55,7 @@ export default function CrowdPredictionCard({
             <p className="text-base sm:text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team2)}</p>
             <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase">{teamFullName(team2)}</p>
             <span
-              className="font-black tracking-tighter text-[32px] sm:text-[48px]"
+              className="block font-black tracking-tighter leading-none text-[44px] sm:text-[52px] lg:text-[64px] whitespace-nowrap"
               style={{ color: t2hex }}
             >
               {t2Pct.toFixed(1)}%
