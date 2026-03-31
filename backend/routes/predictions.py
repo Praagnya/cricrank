@@ -94,7 +94,7 @@ def user_predictions(google_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/settle/{match_id}")
-def settle_match(match_id: str, winner: str, db: Session = Depends(get_db)):
+def settle_match(match_id: str, winner: str, result_summary: str | None = None, db: Session = Depends(get_db)):
     """
     Admin endpoint — called when a match result is known.
     Sets the winner, marks match completed, awards points to correct predictors.
@@ -114,6 +114,8 @@ def settle_match(match_id: str, winner: str, db: Session = Depends(get_db)):
 
     match.winner = winner
     match.status = MatchStatus.completed
+    if result_summary:
+        match.result_summary = result_summary
 
     predictions = db.query(Prediction).filter(Prediction.match_id == match_id).all()
 

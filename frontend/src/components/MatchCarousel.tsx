@@ -142,7 +142,7 @@ export default function MatchCarousel({ matches }: Props) {
               </div>
               {match.winner && (
                 <span className="mt-3 text-[10px] font-bold text-[#000000] bg-white px-3 py-1 uppercase tracking-widest">
-                  {teamShortCode(match.winner)} won
+                  {match.result_summary ?? `${teamShortCode(match.winner)} won`}
                 </span>
               )}
             </div>
