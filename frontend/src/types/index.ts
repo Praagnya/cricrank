@@ -58,6 +58,14 @@ export interface PredictionWithMatch extends Prediction {
 
 export type MatchPublic = Match;
 
+export interface Squad {
+  id: string;
+  name: string;
+  invite_code: string;
+  member_count: number;
+  is_creator: boolean;
+}
+
 export interface LeaderboardEntry {
   rank: number;
   google_id: string;

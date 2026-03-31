@@ -50,8 +50,10 @@ from routes.users import router as users_router
 from routes.matches import router as matches_router
 from routes.predictions import router as predictions_router
 from routes.leaderboard import router as leaderboard_router
+from routes.squads import router as squads_router
 
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(matches_router, prefix="/matches", tags=["matches"])
 app.include_router(predictions_router, prefix="/predictions", tags=["predictions"])
 app.include_router(leaderboard_router, prefix="/leaderboard", tags=["leaderboard"])
+app.include_router(squads_router, prefix="/squads", tags=["squads"])

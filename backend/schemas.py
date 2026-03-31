@@ -107,6 +107,23 @@ class PredictionWithMatch(PredictionPublic):
     model_config = {"from_attributes": True}
 
 
+# ── Squad ────────────────────────────────────────────────────────────────────
+
+class SquadPublic(BaseModel):
+    id: UUID4
+    name: str
+    invite_code: str
+    member_count: int
+    is_creator: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class SquadCreate(BaseModel):
+    name: str
+    google_id: str
+
+
 # ── Contest ──────────────────────────────────────────────────────────────────
 
 class ContestCreate(BaseModel):

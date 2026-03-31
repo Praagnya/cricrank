@@ -143,6 +143,35 @@ class Contest(Base):
     entries = relationship("ContestEntry", back_populates="contest")
 
 
+class Squad(Base):
+    __tablename__ = "squads"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    invite_code = Column(String(8), unique=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    members = relationship("SquadMember", back_populates="squad", cascade="all, delete-orphan")
+    creator = relationship("User", foreign_keys=[creator_id])
+
+
+class SquadMember(Base):
+    __tablename__ = "squad_members"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    squad_id = Column(UUID(as_uuid=True), ForeignKey("squads.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    joined_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    squad = relationship("Squad", back_populates="members")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("squad_id", "user_id", name="uq_squad_member"),
+    )
+
+
 class ContestEntry(Base):
     __tablename__ = "contest_entries"
 

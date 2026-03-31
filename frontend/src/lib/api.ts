@@ -1,4 +1,4 @@
-import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction } from "@/types";
+import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 const BASE = getApiBaseUrl();
@@ -39,6 +39,17 @@ export const api = {
         selected_team: selectedTeam,
       }),
     byUser: (googleId: string) => get<Prediction[]>(`/predictions/user/${googleId}`),
+  },
+  squads: {
+    my: (googleId: string) => get<Squad[]>(`/squads/my/${googleId}`),
+    create: (googleId: string, name: string) =>
+      post<Squad>("/squads/", { google_id: googleId, name }),
+    join: (inviteCode: string, googleId: string) =>
+      post<Squad>(`/squads/join/${inviteCode}?google_id=${googleId}`, {}),
+    leave: (squadId: string, googleId: string) =>
+      fetch(`${BASE}/squads/${squadId}/leave?google_id=${googleId}`, { method: "DELETE" }),
+    leaderboard: (squadId: string) =>
+      get<LeaderboardEntry[]>(`/squads/${squadId}/leaderboard`),
   },
   leaderboard: {
     global: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/global?limit=${limit}`),
