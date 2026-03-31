@@ -308,22 +308,42 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           </div>
         )}
         
+        {/* Edit button — top right */}
+        {isEditable && (
+          <button
+            onClick={() => {
+              setEditName(dbUser?.name ?? "");
+              setEditNumber(dbUser?.jersey_number ?? "");
+              setEditColor(dbUser?.jersey_color ?? "#1e3a8a");
+              setNameError("");
+              setIsEditModalOpen(true);
+            }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
+          >
+            <Edit2 className="w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Edit</span>
+          </button>
+        )}
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 relative z-10">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-[#111111] overflow-hidden shadow-2xl transition-transform hover:scale-110 border border-[#262626] flex items-center justify-center">
+          <div className="flex items-center gap-5 sm:gap-8">
+            {/* Jersey — bigger */}
+            <div className="w-28 h-28 sm:w-40 sm:h-40 bg-[#111111] overflow-hidden shadow-2xl border border-[#262626] flex items-center justify-center shrink-0">
               <CricketAvatar
                 seed={dbUser.name ?? "U"}
                 jerseyNumber={dbUser.jersey_number}
                 jerseyColor={dbUser.jersey_color}
               />
             </div>
-            
-            <div className="flex flex-col">
-              <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase mb-2">Player Profile</span>
-              <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none mb-3 text-white">
+
+            <div className="flex flex-col gap-3">
+              <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
+              <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none text-white">
                 {dbUser.name}
               </h1>
-              <div className="flex items-center gap-3 flex-wrap">
+
+              {/* Badges row */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className={`px-3 py-1 bg-[#111111] border border-[#2a2a2a] inline-flex items-center gap-2 rounded-sm ${streakTierColor(dbUser.streak_tier)}`}>
                   <Zap className="w-3.5 h-3.5" />
                   <span className="text-[10px] font-black uppercase tracking-widest">{dbUser.streak_tier}</span>
@@ -332,21 +352,6 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                   <Coins className="w-3.5 h-3.5 text-[#fbbf24]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#fbbf24]">{(dbUser.coins ?? 0).toLocaleString()}</span>
                 </div>
-                {isEditable && (
-                  <button
-                    onClick={() => {
-                      setEditName(dbUser?.name ?? "");
-                      setEditNumber(dbUser?.jersey_number ?? "");
-                      setEditColor(dbUser?.jersey_color ?? "#1e3a8a"); // fallback only for legacy null users
-                      setNameError("");
-                      setIsEditModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
-                  </button>
-                )}
                 {currentUserId && currentUserId !== userId && (
                   <>
                     <button
@@ -354,7 +359,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                       disabled={followLoading}
                       className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors ${
                         isFollowing
-                          ? "bg-[#1a1a1a] border-white text-white hover:bg-[#0a0a0a] hover:border-[#737373] hover:text-[#737373]"
+                          ? "bg-[#1a1a1a] border-white text-white hover:opacity-70"
                           : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
                       } disabled:opacity-50`}
                     >
@@ -367,27 +372,22 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                       className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors"
                     >
                       <Users className="w-3 h-3" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Invite to Squad</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Invite</span>
                     </button>
                   </>
                 )}
               </div>
 
-              {/* Followers / Following stat boxes */}
-              <div className="flex items-center gap-2 mt-3">
-                <button
-                  onClick={() => openFollowList("followers")}
-                  className="bg-[#0a0a0a] border border-[#262626] px-4 py-2.5 hover:bg-[#111] hover:border-[#444] transition-colors text-center min-w-[80px]"
-                >
-                  <p className="font-gaming text-xl sm:text-2xl text-white leading-none">{followerCount}</p>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#525252] mt-1">Followers</p>
+              {/* Followers / Following — inline stats */}
+              <div className="flex items-center gap-5">
+                <button onClick={() => openFollowList("followers")} className="flex flex-col items-start hover:opacity-70 transition-opacity">
+                  <span className="font-gaming text-2xl text-white leading-none">{followerCount}</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-[#525252] mt-0.5">Followers</span>
                 </button>
-                <button
-                  onClick={() => openFollowList("following")}
-                  className="bg-[#0a0a0a] border border-[#262626] px-4 py-2.5 hover:bg-[#111] hover:border-[#444] transition-colors text-center min-w-[80px]"
-                >
-                  <p className="font-gaming text-xl sm:text-2xl text-white leading-none">{followingCount}</p>
-                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#525252] mt-1">Following</p>
+                <div className="w-px h-8 bg-[#262626]" />
+                <button onClick={() => openFollowList("following")} className="flex flex-col items-start hover:opacity-70 transition-opacity">
+                  <span className="font-gaming text-2xl text-white leading-none">{followingCount}</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.25em] text-[#525252] mt-0.5">Following</span>
                 </button>
               </div>
             </div>
@@ -630,8 +630,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                         className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate"
                         style={{
                           color: pred.match.winner === pred.match.team1 ? teamHex(pred.match.team1) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
-                          textDecoration: pred.match.winner && pred.match.winner !== pred.match.team1 ? 'line-through' : 'none',
-                          textDecorationColor: '#3a3a3a',
+                          textDecoration: 'none',
                         }}
                       >
                         {pred.match.team1}
@@ -642,7 +641,6 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                         style={{
                           color: pred.match.winner === pred.match.team2 ? teamHex(pred.match.team2) : pred.match.winner === null ? '#c8c8c8' : '#4a4a4a',
                           textDecoration: pred.match.winner && pred.match.winner !== pred.match.team2 ? 'line-through' : 'none',
-                          textDecorationColor: '#3a3a3a',
                         }}
                       >
                         {pred.match.team2}
