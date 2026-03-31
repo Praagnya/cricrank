@@ -319,15 +319,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
             </div>
             
             <div className="flex flex-col">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
-                <span className="text-[9px] text-[#525252] font-bold tracking-widest">
-                  <button onClick={() => openFollowList("followers")} className="text-white font-black hover:underline">{followerCount}</button>
-                  {" followers · "}
-                  <button onClick={() => openFollowList("following")} className="text-white font-black hover:underline">{followingCount}</button>
-                  {" following"}
-                </span>
-              </div>
+              <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase mb-2">Player Profile</span>
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none mb-3 text-white">
                 {dbUser.name}
               </h1>
@@ -379,6 +371,24 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                     </button>
                   </>
                 )}
+              </div>
+
+              {/* Followers / Following stat boxes */}
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  onClick={() => openFollowList("followers")}
+                  className="bg-[#0a0a0a] border border-[#262626] px-4 py-2.5 hover:bg-[#111] hover:border-[#444] transition-colors text-center min-w-[80px]"
+                >
+                  <p className="font-gaming text-xl sm:text-2xl text-white leading-none">{followerCount}</p>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#525252] mt-1">Followers</p>
+                </button>
+                <button
+                  onClick={() => openFollowList("following")}
+                  className="bg-[#0a0a0a] border border-[#262626] px-4 py-2.5 hover:bg-[#111] hover:border-[#444] transition-colors text-center min-w-[80px]"
+                >
+                  <p className="font-gaming text-xl sm:text-2xl text-white leading-none">{followingCount}</p>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#525252] mt-1">Following</p>
+                </button>
               </div>
             </div>
           </div>
