@@ -12,6 +12,16 @@ import CountdownTimer from "./CountdownTimer";
 
 const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
 
+interface FollowUser {
+  google_id: string;
+  name: string;
+  jersey_number?: number | null;
+  jersey_color?: string | null;
+  streak_tier: string;
+  current_streak: number;
+  points: number;
+}
+
 interface ProfileViewProps {
   userId: string;
   isEditable?: boolean;
@@ -40,6 +50,9 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followListModal, setFollowListModal] = useState<"followers" | "following" | null>(null);
+  const [followList, setFollowList] = useState<FollowUser[]>([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
 
   // Squad invite state
   const [inviteModal, setInviteModal] = useState(false);
@@ -128,6 +141,17 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
       }
     } catch {}
     finally { setFollowLoading(false); }
+  };
+
+  const openFollowList = async (type: "followers" | "following") => {
+    setFollowListModal(type);
+    setFollowList([]);
+    setFollowListLoading(true);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/users/${userId}/${type}`);
+      if (res.ok) setFollowList(await res.json());
+    } catch {}
+    finally { setFollowListLoading(false); }
   };
 
   const openInviteModal = async () => {
@@ -298,7 +322,10 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
                 <span className="text-[9px] text-[#525252] font-bold tracking-widest">
-                  <span className="text-white font-black">{followerCount}</span> followers · <span className="text-white font-black">{followingCount}</span> following
+                  <button onClick={() => openFollowList("followers")} className="text-white font-black hover:underline">{followerCount}</button>
+                  {" followers · "}
+                  <button onClick={() => openFollowList("following")} className="text-white font-black hover:underline">{followingCount}</button>
+                  {" following"}
                 </span>
               </div>
               <h1 className="text-4xl sm:text-6xl font-gaming tracking-tighter leading-none mb-3 text-white">
@@ -678,6 +705,53 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           </div>
         )}
       </div>
+
+      {/* FOLLOWERS / FOLLOWING MODAL */}
+      {followListModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0a0a0a] border border-[#262626] w-full max-w-sm relative flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h2 className="font-gaming text-lg tracking-widest uppercase">
+                {followListModal === "followers" ? "Followers" : "Following"}
+              </h2>
+              <button onClick={() => setFollowListModal(null)} className="text-[#737373] hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {followListLoading ? (
+                <div className="text-center py-12 text-[#525252] text-[10px] font-black tracking-[0.3em] uppercase animate-pulse">Loading...</div>
+              ) : followList.length === 0 ? (
+                <div className="text-center py-12 text-[#525252] text-[10px] font-black tracking-[0.2em] uppercase">
+                  {followListModal === "followers" ? "No followers yet" : "Not following anyone yet"}
+                </div>
+              ) : (
+                followList.map((u) => (
+                  <Link
+                    key={u.google_id}
+                    href={`/profile/${u.google_id}`}
+                    onClick={() => setFollowListModal(null)}
+                    className="flex items-center gap-4 px-6 py-4 border-b border-[#111] hover:bg-[#111] transition-colors"
+                  >
+                    <div className="w-10 h-10 shrink-0">
+                      <CricketAvatar seed={u.name} jerseyNumber={u.jersey_number} jerseyColor={u.jersey_color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-gaming text-sm tracking-wide text-white truncate">{u.name}</p>
+                      <p className={`text-[9px] font-black tracking-widest uppercase mt-0.5 ${streakTierColor(u.streak_tier)}`}>{u.streak_tier}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-black text-white">{u.points}</p>
+                      <p className="text-[8px] text-[#525252] font-bold uppercase tracking-widest">pts</p>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SQUAD INVITE MODAL */}
       {inviteModal && currentUserId && (

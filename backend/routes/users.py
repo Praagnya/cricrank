@@ -4,7 +4,7 @@ from sqlalchemy import func
 import random
 from database import get_db
 from models import User, Follow, JERSEY_COLORS
-from schemas import UserCreate, UserPublic, UserIdentityUpdate, FollowStats
+from schemas import UserCreate, UserPublic, UserIdentityUpdate, FollowStats, FollowUserPublic
 
 router = APIRouter()
 
@@ -165,3 +165,21 @@ def follow_stats(
         following_count=following_count,
         is_following=is_following,
     )
+
+
+@router.get("/{target_google_id}/followers", response_model=list[FollowUserPublic])
+def get_followers(target_google_id: str, db: Session = Depends(get_db)):
+    target = db.query(User).filter(User.google_id == target_google_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    follower_ids = [f.follower_id for f in db.query(Follow).filter(Follow.following_id == target.id).all()]
+    return db.query(User).filter(User.id.in_(follower_ids)).order_by(User.points.desc()).all()
+
+
+@router.get("/{target_google_id}/following", response_model=list[FollowUserPublic])
+def get_following(target_google_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.google_id == target_google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    following_ids = [f.following_id for f in db.query(Follow).filter(Follow.follower_id == user.id).all()]
+    return db.query(User).filter(User.id.in_(following_ids)).order_by(User.points.desc()).all()

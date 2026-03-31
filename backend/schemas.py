@@ -132,6 +132,18 @@ class FollowStats(BaseModel):
     is_following: bool
 
 
+class FollowUserPublic(BaseModel):
+    google_id: str
+    name: str
+    jersey_number: Optional[int] = None
+    jersey_color: Optional[str] = None
+    streak_tier: str
+    current_streak: int
+    points: int
+
+    model_config = {"from_attributes": True}
+
+
 # ── Contest ──────────────────────────────────────────────────────────────────
 
 class ContestCreate(BaseModel):
