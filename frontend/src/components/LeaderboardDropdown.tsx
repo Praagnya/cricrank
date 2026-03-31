@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Plus, LogIn, X, Copy, Check, Users } from "lucide-react";
+import { ChevronDown, Plus, LogIn, X, Copy, Check, Users, Share2 } from "lucide-react";
 import { Squad } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
@@ -76,6 +76,15 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const shareCode = async (squad: Squad) => {
+    const text = `Join my CricRank squad "${squad.name}"! Use invite code: ${squad.invite_code} → https://cricrank.com`;
+    if (navigator.share) {
+      await navigator.share({ text });
+    } else {
+      copyCode(squad.invite_code);
+    }
+  };
+
   return (
     <>
       {/* Dropdown trigger */}
@@ -117,13 +126,23 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
                       >
                         <Users className="w-3 h-3 shrink-0" />
                         <span className="truncate">{s.name}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); copyCode(s.invite_code); }}
-                          className="ml-auto shrink-0 text-[#333] hover:text-[#fbbf24] transition-colors"
-                          title="Copy invite code"
-                        >
-                          {copied === s.invite_code ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
-                        </button>
+                        <div className="ml-auto shrink-0 flex items-center gap-2">
+                          <span className="font-gaming text-[10px] tracking-widest text-[#525252]">{s.invite_code}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyCode(s.invite_code); }}
+                            className="text-[#525252] hover:text-[#fbbf24] transition-colors"
+                            title="Copy code"
+                          >
+                            {copied === s.invite_code ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); shareCode(s); }}
+                            className="text-[#525252] hover:text-white transition-colors"
+                            title="Share invite"
+                          >
+                            <Share2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </button>
                     ))}
                   </div>
