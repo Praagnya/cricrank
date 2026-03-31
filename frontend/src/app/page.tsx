@@ -32,7 +32,7 @@ export default async function HomePage() {
 
         {/* ── Left sidebar: Upcoming matches ──────────────── */}
         {matches.length > 1 && (
-          <aside className="hidden lg:block w-[380px] shrink-0 border-r border-[#262626] sticky top-16 h-[calc(100vh-64px)] overflow-y-auto">
+          <aside className="hidden lg:block w-[380px] shrink-0 border-r border-[#262626] sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
             <div className="px-4 py-6">
               <SectionLabel>UPCOMING THIS WEEK</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">

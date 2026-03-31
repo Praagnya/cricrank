@@ -209,7 +209,7 @@ export default function MatchCarousel({ matches }: Props) {
             <span className="text-[#a3a3a3] tracking-[0.25em] text-[13px] font-gaming uppercase">Analysis</span>
             <div className="h-px flex-1 bg-[#262626]" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {aiPrediction && <AIPredictionCard prediction={aiPrediction as Parameters<typeof AIPredictionCard>[0]["prediction"]} team1={match.team1} team2={match.team2} />}
             {crowd && <CrowdPredictionCard crowd={crowd as Parameters<typeof CrowdPredictionCard>[0]["crowd"]} team1={match.team1} team2={match.team2} />}
           </div>

@@ -32,7 +32,7 @@ export default function AIPredictionCard({
       </div>
 
       <div className="px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 sm:gap-5 mb-5 items-start">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 sm:gap-5 mb-2 items-start">
           <div className="text-left min-w-0">
             <p className="text-base sm:text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team1)}</p>
             <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase min-h-[2.8rem] sm:min-h-[3.6rem]">{teamFullName(team1)}</p>
@@ -50,30 +50,19 @@ export default function AIPredictionCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3 sm:gap-5 mb-6">
-          <div className="text-left min-w-0">
-            <span
-              className="block font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px] whitespace-nowrap"
-              style={{ color: t1hex }}
-            >
-              {t1Prob.toFixed(1)}%
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center justify-end px-1 shrink-0">
-            <span className="text-[#525252] font-black italic tracking-tighter text-2xl sm:text-3xl lg:text-4xl leading-none">
-              VS
-            </span>
-          </div>
-
-          <div className="text-right min-w-0">
-            <span
-              className="block font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px] whitespace-nowrap"
-              style={{ color: t2hex }}
-            >
-              {t2Prob.toFixed(1)}%
-            </span>
-          </div>
+        <div className="flex items-end justify-between mb-6">
+          <span
+            className="font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px]"
+            style={{ color: t1hex }}
+          >
+            {t1Prob.toFixed(1)}%
+          </span>
+          <span
+            className="font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px]"
+            style={{ color: t2hex }}
+          >
+            {t2Prob.toFixed(1)}%
+          </span>
         </div>
 
         {/* Dual-color block bar */}

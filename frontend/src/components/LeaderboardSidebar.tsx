@@ -68,7 +68,7 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
   ];
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-[380px] shrink-0 border-l border-[#262626] sticky top-16 h-[calc(100vh-64px)]">
+    <aside className="hidden lg:flex lg:flex-col w-[380px] shrink-0 border-l border-[#262626] sticky top-14 h-[calc(100vh-56px)]">
       <div className="flex-1 overflow-y-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
