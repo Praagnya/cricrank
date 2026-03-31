@@ -13,13 +13,6 @@ interface Props {
   providerId: string | null;
 }
 
-const PERIOD_LABELS: Record<string, string> = {
-  alltime:   "All Time",
-  weekly:    "Weekly",
-  monthly:   "Monthly",
-  following: "Following",
-};
-
 const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
 
 export default function LeaderboardDropdown({ period, squadId, squads, providerId }: Props) {
@@ -34,7 +27,8 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
 
   const activeLabel = squadId
     ? (squads.find((s) => s.id === squadId)?.name ?? "Squad")
-    : PERIOD_LABELS[period] ?? "All Time";
+    : period === "following" ? "Following"
+    : "Groups";
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -98,18 +92,15 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
           <>
             <div className="fixed inset-0 z-[190]" onClick={() => setOpen(false)} />
             <div className="absolute right-0 top-full mt-1 w-52 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[200]">
-              {/* Global options */}
-              {["alltime", "weekly", "monthly", ...(providerId ? ["following"] : [])].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => navigate(`/leaderboard?period=${p}`)}
-                  className={`w-full text-left px-4 py-2.5 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${
-                    !squadId && period === p ? "text-white bg-[#1a1a1a]" : "text-[#525252] hover:text-white hover:bg-[#111]"
-                  }`}
-                >
-                  {PERIOD_LABELS[p]}
-                </button>
-              ))}
+              {/* Following */}
+              <button
+                onClick={() => navigate(`/leaderboard?period=following`)}
+                className={`w-full text-left px-4 py-2.5 text-[10px] font-black tracking-[0.2em] uppercase transition-colors flex items-center gap-2 ${
+                  !squadId && period === "following" ? "text-white bg-[#1a1a1a]" : "text-[#525252] hover:text-white hover:bg-[#111]"
+                }`}
+              >
+                <Users className="w-3 h-3 shrink-0" /> Following
+              </button>
 
               {/* Squads section */}
               {squads.length > 0 && (

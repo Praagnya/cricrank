@@ -7,6 +7,12 @@ import CricketAvatar from "@/components/CricketAvatar";
 import Link from "next/link";
 import LeaderboardDropdown from "@/components/LeaderboardDropdown";
 
+const PERIOD_TABS = [
+  { value: "alltime", label: "All Time" },
+  { value: "weekly",  label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -78,31 +84,53 @@ export default async function LeaderboardPage({
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
 
         {/* Header Block */}
-        <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
-          <div className="flex items-center gap-4 sm:gap-5">
-            <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
-              {activeSquad || period === "following"
-                ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
-                : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
-              }
+        <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4">
+          {/* Title row */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
+                {activeSquad || period === "following"
+                  ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
+                  : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
+                }
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">
+                  {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
+                </h1>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2">
+                  {periodLabel} · Top {top10.length}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none">
-                {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
-              </h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2">
-                {periodLabel} · Top {top10.length}
-              </p>
-            </div>
+
+            {/* Groups dropdown — only for logged-in users */}
+            {providerId && (
+              <LeaderboardDropdown
+                period={period}
+                squadId={squadId}
+                squads={mySquads}
+                providerId={providerId}
+              />
+            )}
           </div>
 
-          {/* Dropdown selector */}
-          <LeaderboardDropdown
-            period={period}
-            squadId={squadId}
-            squads={mySquads}
-            providerId={providerId ?? null}
-          />
+          {/* Period tabs */}
+          <div className="flex items-center gap-2">
+            {PERIOD_TABS.map(({ value, label }) => (
+              <Link
+                key={value}
+                href={`/leaderboard?period=${value}`}
+                className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
+                  !squadId && period !== "following" && period === value
+                    ? "border-white text-white bg-[#1a1a1a]"
+                    : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {allEntries.length === 0 ? (
