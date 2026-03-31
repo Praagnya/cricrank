@@ -1,11 +1,10 @@
 import { api } from "@/lib/api";
 import Header from "@/components/Header";
-import { Medal, Zap, Users } from "lucide-react";
+import { Medal, Zap } from "lucide-react";
 import { streakTierColor } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
 import CricketAvatar from "@/components/CricketAvatar";
 import Link from "next/link";
-import LeaderboardDropdown from "@/components/LeaderboardDropdown";
 
 const PERIOD_TABS = [
   { value: "alltime", label: "All Time" },
@@ -34,7 +33,6 @@ export default async function LeaderboardPage({
 
   const p = await searchParams;
   const period = p.period || "alltime";
-  const squadId = p.squad || null;
 
   const getStreakHeatColor = (streak: number) => {
     if (streak >= 6) return "#d71920";
@@ -43,18 +41,9 @@ export default async function LeaderboardPage({
     return "#262626";
   };
 
-  // Fetch squads for dropdown if logged in
-  const mySquads = providerId
-    ? await api.squads.my(providerId).catch(() => [])
-    : [];
-
   // Fetch leaderboard entries
   let allEntries = [];
-  if (squadId) {
-    allEntries = await api.squads.leaderboard(squadId).catch(() => []);
-  } else if (period === "following" && providerId) {
-    allEntries = await api.leaderboard.following(providerId).catch(() => []);
-  } else if (period === "weekly") {
+  if (period === "weekly") {
     allEntries = await api.leaderboard.weekly(100).catch(() => []);
   } else if (period === "monthly") {
     allEntries = await api.leaderboard.monthly(100).catch(() => []);
@@ -65,17 +54,13 @@ export default async function LeaderboardPage({
   const top10 = allEntries.slice(0, 10);
 
   let myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
-  if (!myEntry && providerId && !squadId) {
+  if (!myEntry && providerId) {
     myEntry = await api.leaderboard.myRank(providerId, period).catch(() => null);
   }
   const myRank = myEntry?.rank ?? null;
 
-  const activeSquad = mySquads.find((s) => s.id === squadId) ?? null;
-  const periodLabel = squadId
-    ? (activeSquad?.name ?? "Squad")
-    : period === "weekly" ? "Last 7 Days"
+  const periodLabel = period === "weekly" ? "Last 7 Days"
     : period === "monthly" ? "Last 30 Days"
-    : period === "following" ? "People You Follow"
     : "All Time";
 
   return (
@@ -89,30 +74,17 @@ export default async function LeaderboardPage({
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-5 min-w-0">
               <div className="relative w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center shrink-0 border border-[#262626]">
-                {activeSquad || period === "following"
-                  ? <Users className="w-5 h-5 sm:w-7 sm:h-7 text-white" strokeWidth={1.5} />
-                  : <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
-                }
+                <Medal className="w-5 h-5 sm:w-7 sm:h-7 relative z-10 text-white" strokeWidth={1.5} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter text-white leading-none truncate">
-                  {activeSquad ? activeSquad.name : period === "following" ? "Following" : "Ranking"}
+                  Ranking
                 </h1>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 truncate">
                   {periodLabel} · Top {top10.length}
                 </p>
               </div>
             </div>
-
-            {/* Groups dropdown — only for logged-in users */}
-            {providerId && (
-              <LeaderboardDropdown
-                period={period}
-                squadId={squadId}
-                squads={mySquads}
-                providerId={providerId}
-              />
-            )}
           </div>
 
           {/* Period tabs */}
@@ -122,7 +94,7 @@ export default async function LeaderboardPage({
                 key={value}
                 href={`/leaderboard?period=${value}`}
                 className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
-                  !squadId && period !== "following" && period === value
+                  period === value
                     ? "border-white text-white bg-[#1a1a1a]"
                     : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
                 }`}
