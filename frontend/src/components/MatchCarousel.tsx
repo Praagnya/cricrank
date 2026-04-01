@@ -187,7 +187,7 @@ export default function MatchCarousel({ matches }: Props) {
         matchStatus={match.status}
       />
 
-      <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} />
+      <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} tossTime={match.toss_time} />
 
       {crowd && (
         <div>

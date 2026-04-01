@@ -19,11 +19,14 @@ export default function MatchToss({
   matchId,
   team1,
   team2,
+  tossTime,
 }: {
   matchId: string;
   team1: string;
   team2: string;
+  tossTime?: string;
 }) {
+  const isLocked = tossTime ? Date.now() >= new Date(tossTime).getTime() : false;
   const { user, loading: authLoading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
 
@@ -128,7 +131,7 @@ export default function MatchToss({
       <div className="px-5 py-5">
 
         {/* Not signed in */}
-        {!googleId && (
+        {!googleId && !isLocked && (
           <div className="flex items-center justify-between gap-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#525252]">
               Sign in to predict the toss
@@ -143,13 +146,27 @@ export default function MatchToss({
           </div>
         )}
 
+        {/* Not signed in + locked */}
+        {!googleId && isLocked && (
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">
+            Toss prediction closed
+          </p>
+        )}
+
         {/* Loading */}
         {googleId && phase === "loading" && (
           <div className="h-8 w-32 animate-pulse bg-[#111111]" />
         )}
 
+        {/* Locked — toss time passed, no pick was made */}
+        {googleId && phase === "pick" && isLocked && (
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">
+            Toss prediction closed
+          </p>
+        )}
+
         {/* Pick / Submitting */}
-        {googleId && (phase === "pick" || phase === "submitting") && (
+        {googleId && (phase === "pick" || phase === "submitting") && !isLocked && (
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
               {[team1, team2].map((t) => {
