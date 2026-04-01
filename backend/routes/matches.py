@@ -208,25 +208,34 @@ def today_matches(db: Session = Depends(get_db)):
     matches = db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time).all()
 
     # Sync live status from CricAPI so carousel shows correct status + score
+    changed = False
     try:
-        current = fetch_current_matches()
-        current_by_id = {m["id"]: m for m in current if "id" in m}
-        changed = False
-        for match in matches:
-            if not match.cricapi_id or match.cricapi_id not in current_by_id:
-                continue
-            payload = current_by_id[match.cricapi_id]
-            new_status = _match_status_from_payload(payload)
-            if new_status != match.status:
-                match.status = new_status
-                changed = True
-            if new_status == MatchStatus.completed and payload.get("status") and not match.result_summary:
-                match.result_summary = payload["status"]
-                changed = True
-        if changed:
-            db.commit()
+        current_by_id = {m["id"]: m for m in (fetch_current_matches() or []) if "id" in m}
     except CricAPIError:
-        pass
+        current_by_id = {}
+
+    for match in matches:
+        if not match.cricapi_id or match.status != MatchStatus.upcoming or match.start_time > now:
+            continue
+        # Try current matches first, fall back to BBB (current matches may not include all live games)
+        payload = current_by_id.get(match.cricapi_id)
+        if not payload:
+            try:
+                payload = fetch_match_bbb(match.cricapi_id) or {}
+            except CricAPIError:
+                continue
+        if not payload:
+            continue
+        new_status = _match_status_from_payload(payload)
+        if new_status != match.status:
+            match.status = new_status
+            changed = True
+        if new_status == MatchStatus.completed and payload.get("status") and not match.result_summary:
+            match.result_summary = payload["status"]
+            changed = True
+
+    if changed:
+        db.commit()
 
     return matches
 
