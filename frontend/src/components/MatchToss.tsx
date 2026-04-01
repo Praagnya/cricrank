@@ -168,6 +168,7 @@ export default function MatchToss({
         {/* Pick / Submitting */}
         {googleId && (phase === "pick" || phase === "submitting") && !isLocked && (
           <div className="flex flex-col gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">Pick your team</p>
             <div className="grid grid-cols-2 gap-2">
               {[team1, team2].map((t) => {
                 const sel = picked === t;

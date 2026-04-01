@@ -30,6 +30,29 @@ export interface CrowdPrediction {
   total_votes: number;
 }
 
+export interface FirstInningsStatusResponse {
+  played: boolean;
+  predicted_team?: string;
+  predicted_score?: number;
+  actual_team?: string | null;
+  actual_score?: number | null;
+  coins_won: number;
+  pending?: boolean;
+  settled?: boolean;
+}
+
+export interface FirstInningsPickResponse {
+  predicted_team: string;
+  predicted_score: number;
+  actual_team?: string | null;
+  actual_score?: number | null;
+  coins_won: number;
+  coins_balance: number;
+  already_played: boolean;
+  pending?: boolean;
+  settled?: boolean;
+}
+
 export interface TossStatusResponse {
   played: boolean;
   picked_team?: string;

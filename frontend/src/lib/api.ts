@@ -4,6 +4,8 @@ import {
   CrowdPrediction,
   TossPickResponse,
   TossStatusResponse,
+  FirstInningsPickResponse,
+  FirstInningsStatusResponse,
   User,
   LeaderboardEntry,
   Prediction,
@@ -74,6 +76,15 @@ export const api = {
       postNoStore<TossPickResponse>(
         `/matches/${matchId}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
         { picked_team: pickedTeam }
+      ),
+    firstInningsStatus: (matchId: string, googleId: string) =>
+      getNoStore<FirstInningsStatusResponse>(
+        `/matches/${matchId}/first-innings-status?google_id=${encodeURIComponent(googleId)}`
+      ),
+    firstInningsPick: (matchId: string, googleId: string, predictedTeam: string, predictedScore: number) =>
+      postNoStore<FirstInningsPickResponse>(
+        `/matches/${matchId}/first-innings-pick?google_id=${encodeURIComponent(googleId)}`,
+        { predicted_team: predictedTeam, predicted_score: predictedScore }
       ),
   },
   users: {

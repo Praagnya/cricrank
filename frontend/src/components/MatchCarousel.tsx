@@ -8,6 +8,7 @@ import TeamCrest from "@/components/TeamCrest";
 import MatchInteraction from "@/components/MatchInteraction";
 import CrowdPredictionCard from "@/components/CrowdPredictionCard";
 import MatchToss from "@/components/MatchToss";
+import FirstInningsScore from "@/components/FirstInningsScore";
 import CountdownTimer from "@/components/CountdownTimer";
 import { api } from "@/lib/api";
 
@@ -188,6 +189,7 @@ export default function MatchCarousel({ matches }: Props) {
       />
 
       <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} tossTime={match.toss_time} />
+      <FirstInningsScore matchId={match.id} team1={match.team1} team2={match.team2} startTime={match.start_time} />
 
       {crowd && (
         <div>
