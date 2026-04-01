@@ -112,10 +112,49 @@ interface Props {
 export default function Scorecard({ scorecard, score, isLive }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
 
-  if (!scorecard.length) {
+  if (!score.length && !scorecard.length) {
     return (
       <div className="border border-[#262626] bg-[#000000] px-6 py-10 text-center">
         <p className="text-sm text-[#525252]">Scorecard not available yet</p>
+      </div>
+    );
+  }
+
+  // Live / API gave innings totals but no detailed batting-bowling payload yet
+  if (score.length > 0 && !scorecard.length) {
+    return (
+      <div className="border border-[#262626] bg-[#000000]">
+        <div className="flex flex-wrap border-b border-[#262626]">
+          {score.map((s, i) => {
+            const teamName = parseInningTeam(s.inning);
+            const short = teamShortCode(teamName);
+            return (
+              <div
+                key={i}
+                className="flex-1 min-w-[140px] px-4 py-3 text-left border-r last:border-r-0 border-[#262626] bg-[#000000]"
+              >
+                <p className="text-[10px] font-black tracking-[0.2em] uppercase text-[#737373]">
+                  {short} — Inning {i + 1}
+                </p>
+                <p className="font-gaming font-black text-lg mt-0.5 tabular-nums text-white">
+                  {s.r}/{s.w}
+                  <span className="text-xs font-normal ml-2 text-[#525252]">({formatOvers(s.o)})</span>
+                </p>
+              </div>
+            );
+          })}
+          {isLive && (
+            <div className="flex items-center px-4 shrink-0 ml-auto">
+              <span className="flex items-center gap-1.5 text-[10px] font-black tracking-widest text-[#10b981] uppercase">
+                <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full animate-pulse" />
+                Live
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="px-4 sm:px-6 py-8 text-center">
+          <p className="text-sm text-[#525252]">Batting and bowling details aren&apos;t available yet.</p>
+        </div>
       </div>
     );
   }

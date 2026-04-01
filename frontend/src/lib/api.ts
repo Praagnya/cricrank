@@ -26,7 +26,12 @@ export const api = {
     get: (id: string) => get<Match>(`/matches/${id}`),
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
-    live: (id: string) => get<MatchLive>(`/matches/${id}/live`),
+    /** Always bypass cache — used for live innings totals and polling. */
+    live: async (id: string) => {
+      const res = await fetch(`${BASE}/matches/${id}/live`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`API error ${res.status}: /matches/${id}/live`);
+      return res.json() as Promise<MatchLive>;
+    },
     scorecard: (id: string) => get<MatchScorecard>(`/matches/${id}/scorecard`),
   },
   users: {
