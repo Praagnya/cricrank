@@ -56,15 +56,19 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [createSquadError, setCreateSquadError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchProfileData() {
       try {
         const BASE = getApiBaseUrl();
 
         // Fetch User Stats
         const userRes = await fetch(`${BASE}/users/${userId}`);
+        if (cancelled) return;
         let googleId = userId;
         if (userRes.ok) {
           const userData = await userRes.json();
+          if (cancelled) return;
           setDbUser(userData);
           googleId = userData.google_id;
         } else if (userRes.status === 404) {
@@ -73,8 +77,10 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
 
         // Fetch Prediction History
         const predRes = await fetch(`${BASE}/predictions/user/${googleId}`);
+        if (cancelled) return;
         if (predRes.ok) {
           const predData = await predRes.json();
+          if (cancelled) return;
           setPredictions(predData);
         }
 
@@ -84,47 +90,58 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           fetch(`${BASE}/leaderboard/weekly?limit=100`),
           fetch(`${BASE}/leaderboard/monthly?limit=100`),
         ]);
+        if (cancelled) return;
         if (globalRes.ok) {
           const data: LeaderboardEntry[] = await globalRes.json();
+          if (cancelled) return;
           const entry = data.find((e) => e.google_id === googleId);
           if (entry) setRank(entry.rank);
         }
         if (weeklyRes.ok) {
           const data: LeaderboardEntry[] = await weeklyRes.json();
+          if (cancelled) return;
           const entry = data.find((e) => e.google_id === googleId);
           if (entry) setWeeklyRank(entry.rank);
         }
         if (monthlyRes.ok) {
           const data: LeaderboardEntry[] = await monthlyRes.json();
+          if (cancelled) return;
           const entry = data.find((e) => e.google_id === googleId);
           if (entry) setMonthlyRank(entry.rank);
         }
       } catch (err) {
-        console.error("Failed to fetch profile data:", err);
+        if (!cancelled) console.error("Failed to fetch profile data:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     if (userId) {
       fetchProfileData();
     }
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   // Separate effect for follow stats — re-runs when currentUserId or dbUser loads
   useEffect(() => {
+    let cancelled = false;
     const gid = dbUser?.google_id ?? userId;
     if (!gid) return;
     const BASE = getApiBaseUrl();
     fetch(`${BASE}/users/${gid}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`)
       .then((res) => res.ok ? res.json() : null)
       .then((fs) => {
-        if (!fs) return;
+        if (cancelled || !fs) return;
         setFollowerCount(fs.follower_count);
         setFollowingCount(fs.following_count);
         setIsFollowing(fs.is_following);
       })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [userId, currentUserId, dbUser]);
 
   const handleFollow = async () => {
@@ -823,10 +840,14 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
         </div>
       )}
 
-      {/* IDENTITY MODAL */}
+      {/* IDENTITY MODAL — scrollable overlay so mobile keyboard + long form can reach CONFIRM */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#0a0a0a] border border-[#262626] w-full max-w-lg p-8 relative">
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/80 backdrop-blur-sm [touch-action:pan-y]"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div className="flex min-h-[100dvh] w-full justify-center px-4 pt-6 pb-32 sm:min-h-screen sm:items-center sm:py-10 sm:pb-10">
+            <div className="bg-[#0a0a0a] border border-[#262626] w-full max-w-lg p-5 sm:p-8 relative my-auto sm:my-0">
             <button onClick={() => setIsEditModalOpen(false)} className="absolute top-4 right-4 text-[#737373] hover:text-white transition-colors">
               <X className="w-6 h-6" />
             </button>
@@ -952,6 +973,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
               >
                 {isSaving ? "SAVING..." : "CONFIRM IDENTITY"}
               </button>
+            </div>
             </div>
           </div>
         </div>

@@ -66,7 +66,7 @@ export default async function LeaderboardPage({
   return (
     <>
       <Header />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 overflow-x-hidden">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 min-w-0">
 
         {/* Header Block */}
         <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4 overflow-hidden">

@@ -25,15 +25,17 @@
 
 html {
   overflow-y: scroll; /* always reserve scrollbar gutter, prevents layout shift */
-  overflow-x: hidden; /* prevent horizontal scroll at page level */
+  /* auto: on very narrow / zoomed viewports, wide content can be reached by panning sideways */
+  overflow-x: auto;
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: auto;
   background: var(--background);
   color: var(--text);
   font-family: var(--font-sans);
   min-height: 100vh;
+  min-width: 0; /* flex/grid children can shrink; avoids forcing overflow in some layouts */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 
 export function useUser() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
@@ -33,7 +35,13 @@ export function useUser() {
     });
   };
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      router.replace("/");
+    }
+  }, [supabase, router]);
 
   return { user, loading, signInWithGoogle, signOut };
 }
