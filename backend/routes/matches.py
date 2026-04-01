@@ -205,8 +205,30 @@ def sync_series(payload: SeriesSyncRequest, db: Session = Depends(get_db)):
 @router.get("/today", response_model=list[MatchPublic])
 def today_matches(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
-    q = db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time)
-    return q.all()
+    matches = db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time).all()
+
+    # Sync live status from CricAPI so carousel shows correct status + score
+    try:
+        current = fetch_current_matches()
+        current_by_id = {m["id"]: m for m in current if "id" in m}
+        changed = False
+        for match in matches:
+            if not match.cricapi_id or match.cricapi_id not in current_by_id:
+                continue
+            payload = current_by_id[match.cricapi_id]
+            new_status = _match_status_from_payload(payload)
+            if new_status != match.status:
+                match.status = new_status
+                changed = True
+            if new_status == MatchStatus.completed and payload.get("status") and not match.result_summary:
+                match.result_summary = payload["status"]
+                changed = True
+        if changed:
+            db.commit()
+    except CricAPIError:
+        pass
+
+    return matches
 
 
 @router.get("/upcoming", response_model=list[MatchPublic])
