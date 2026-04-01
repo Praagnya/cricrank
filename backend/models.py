@@ -194,6 +194,22 @@ class Follow(Base):
     )
 
 
+class TossPlay(Base):
+    """One virtual coin toss per user per match — pick a side, win 100 coins if it matches."""
+
+    __tablename__ = "toss_plays"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
+    picked_team = Column(String, nullable=False)
+    winning_team = Column(String, nullable=False)
+    coins_won = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "match_id", name="uq_toss_user_match"),)
+
+
 class CoinTransaction(Base):
     __tablename__ = "coin_transactions"
 

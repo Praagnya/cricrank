@@ -1,12 +1,15 @@
+import random
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, desc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from coin_ledger import apply_credit
 from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_scorecard, fetch_series_info
 from database import get_db
-from models import Match, MatchStatus, Prediction
+from models import Match, MatchStatus, Prediction, TossPlay, User
 from prediction_agent import get_prediction_safe
 from schemas import (
     AIPredictionResponse,
@@ -15,10 +18,16 @@ from schemas import (
     MatchScorecardResponse,
     SeriesSyncRequest,
     SeriesSyncResponse,
+    TossPickRequest,
+    TossPickResponse,
+    TossStatusResponse,
 )
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair
 
 router = APIRouter()
+
+# Virtual toss after crowd vote — win this many coins if your pick matches the random toss.
+TOSS_MATCH_COINS = 100
 
 
 def _parse_gmt_datetime(value: str) -> datetime:
@@ -309,6 +318,118 @@ def get_crowd_prediction(match_id: str, db: Session = Depends(get_db)):
         match.team2: round(100 - team1_pct, 1),
         "total_votes": total,
     }
+
+
+@router.get("/{match_id}/toss-status", response_model=TossStatusResponse)
+def get_toss_status(match_id: str, google_id: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    row = (
+        db.query(TossPlay)
+        .filter(TossPlay.user_id == user.id, TossPlay.match_id == match.id)
+        .first()
+    )
+    if not row:
+        return TossStatusResponse(played=False)
+    return TossStatusResponse(
+        played=True,
+        picked_team=row.picked_team,
+        winning_team=row.winning_team,
+        coins_won=row.coins_won,
+    )
+
+
+@router.post("/{match_id}/toss-pick", response_model=TossPickResponse)
+def play_toss(
+    match_id: str,
+    body: TossPickRequest,
+    google_id: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+):
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    picked = canonicalize_team(body.picked_team)
+    if picked not in (match.team1, match.team2):
+        raise HTTPException(status_code=400, detail="picked_team must be one of the two sides in this match")
+
+    existing = (
+        db.query(TossPlay)
+        .filter(TossPlay.user_id == user.id, TossPlay.match_id == match.id)
+        .first()
+    )
+    if existing:
+        db.refresh(user)
+        return TossPickResponse(
+            picked_team=existing.picked_team,
+            winning_team=existing.winning_team,
+            coins_won=existing.coins_won,
+            coins_balance=user.coins,
+            already_played=True,
+        )
+
+    winning = random.choice([match.team1, match.team2])
+    coins_won = TOSS_MATCH_COINS if picked == winning else 0
+
+    row = TossPlay(
+        user_id=user.id,
+        match_id=match.id,
+        picked_team=picked,
+        winning_team=winning,
+        coins_won=coins_won,
+    )
+    db.add(row)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = (
+            db.query(TossPlay)
+            .filter(TossPlay.user_id == user.id, TossPlay.match_id == match.id)
+            .first()
+        )
+        if not existing:
+            raise HTTPException(status_code=409, detail="Could not record toss") from None
+        user = db.query(User).filter(User.google_id == google_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return TossPickResponse(
+            picked_team=existing.picked_team,
+            winning_team=existing.winning_team,
+            coins_won=existing.coins_won,
+            coins_balance=user.coins,
+            already_played=True,
+        )
+
+    if coins_won > 0:
+        key = f"toss_match:{user.id}:{match.id}"
+        apply_credit(
+            db,
+            user.id,
+            coins_won,
+            "toss_match",
+            idempotency_key=key,
+            ref_type="match",
+            ref_id=str(match.id),
+        )
+
+    db.commit()
+    db.refresh(user)
+    return TossPickResponse(
+        picked_team=picked,
+        winning_team=winning,
+        coins_won=coins_won,
+        coins_balance=user.coins,
+        already_played=False,
+    )
 
 
 @router.get("/{match_id}/live", response_model=MatchLiveResponse)

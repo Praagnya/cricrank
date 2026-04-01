@@ -76,8 +76,21 @@ export default function Header() {
         syncCoins();
       }
     };
+    const onCoinsRefresh = () => {
+      fetch(`${base}/users/${user.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { coins?: number } | null) => {
+          if (data && typeof data.coins === "number") setCoins(data.coins);
+        })
+        .catch(() => {});
+    };
+
     document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
+    window.addEventListener("cricrank-coins-refresh", onCoinsRefresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("cricrank-coins-refresh", onCoinsRefresh);
+    };
   }, [user?.id]);
 
   const btn = "flex items-center justify-center border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors text-white";

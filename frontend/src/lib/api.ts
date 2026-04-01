@@ -2,6 +2,8 @@ import {
   Match,
   AIPrediction,
   CrowdPrediction,
+  TossPickResponse,
+  TossStatusResponse,
   User,
   LeaderboardEntry,
   Prediction,
@@ -28,6 +30,34 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function getNoStore<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+  return res.json();
+}
+
+async function postNoStore<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `API error ${res.status}`;
+    try {
+      const j = (await res.json()) as { detail?: string | unknown };
+      if (j.detail !== undefined) {
+        detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+      }
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
 export const api = {
   matches: {
     upcoming: (limit = 10, days?: number) => get<Match[]>(`/matches/upcoming?limit=${limit}${days ? `&days=${days}` : ''}`),
@@ -36,6 +66,15 @@ export const api = {
     get: (id: string) => get<Match>(`/matches/${id}`),
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
+    tossStatus: (matchId: string, googleId: string) =>
+      getNoStore<TossStatusResponse>(
+        `/matches/${matchId}/toss-status?google_id=${encodeURIComponent(googleId)}`
+      ),
+    tossPick: (matchId: string, googleId: string, pickedTeam: string) =>
+      postNoStore<TossPickResponse>(
+        `/matches/${matchId}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
+        { picked_team: pickedTeam }
+      ),
   },
   users: {
     upsert: (data: { google_id: string; name: string; email: string }) =>

@@ -46,6 +46,25 @@ class UserLoginResponse(UserPublic):
     daily_login_coins_awarded: int = 0
 
 
+class TossPickRequest(BaseModel):
+    picked_team: str
+
+
+class TossPickResponse(BaseModel):
+    picked_team: str
+    winning_team: str
+    coins_won: int
+    coins_balance: int
+    already_played: bool = False
+
+
+class TossStatusResponse(BaseModel):
+    played: bool
+    picked_team: Optional[str] = None
+    winning_team: Optional[str] = None
+    coins_won: int = 0
+
+
 class LeaderboardEntry(BaseModel):
     google_id: str
     username: str

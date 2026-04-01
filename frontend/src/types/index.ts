@@ -29,6 +29,21 @@ export interface CrowdPrediction {
   total_votes: number;
 }
 
+export interface TossStatusResponse {
+  played: boolean;
+  picked_team?: string;
+  winning_team?: string;
+  coins_won: number;
+}
+
+export interface TossPickResponse {
+  picked_team: string;
+  winning_team: string;
+  coins_won: number;
+  coins_balance: number;
+  already_played: boolean;
+}
+
 export interface User {
   id: string;
   google_id: string;

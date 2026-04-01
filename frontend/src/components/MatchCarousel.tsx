@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import TeamCrest from "@/components/TeamCrest";
 import MatchInteraction from "@/components/MatchInteraction";
 import CrowdPredictionCard from "@/components/CrowdPredictionCard";
+import MatchToss from "@/components/MatchToss";
 import CountdownTimer from "@/components/CountdownTimer";
 import { api } from "@/lib/api";
 
@@ -204,6 +205,13 @@ export default function MatchCarousel({ matches }: Props) {
           </div>
         </div>
       )}
+
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-[3px] h-5 bg-amber-500/80" />
+        <span className="text-[#d4a574] tracking-[0.25em] text-[13px] font-gaming uppercase">Golden toss</span>
+        <div className="h-px flex-1 bg-[#262626]" />
+      </div>
+      <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} />
     </div>
   );
 }
