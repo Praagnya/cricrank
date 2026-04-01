@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,7 @@ from schemas import (
     SeriesSyncRequest,
     SeriesSyncResponse,
 )
+from settlement import sync_match_status_from_payload, try_settle_from_cricapi_payload
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair
 
 router = APIRouter()
@@ -202,12 +204,80 @@ def sync_series(payload: SeriesSyncRequest, db: Session = Depends(get_db)):
     )
 
 
+def _cricapi_payload_for_match(cricapi_id: str, current_by_id: dict[str, dict]) -> dict:
+    payload = current_by_id.get(cricapi_id)
+    if not payload:
+        try:
+            payload = fetch_match_bbb(cricapi_id) or {}
+        except CricAPIError:
+            return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+@router.post("/reconcile-settlement")
+def reconcile_settlement(
+    db: Session = Depends(get_db),
+    secret: str | None = Query(None, description="Optional secret; must match CRON_SECRET if set"),
+):
+    """
+    Scan recent unfinished matches and settle from CricAPI when matchEnded + matchWinner.
+    Call from Railway cron (e.g. every 5 min). Set CRON_SECRET in env and pass ?secret=...
+    """
+    expected = os.getenv("CRON_SECRET")
+    if expected and secret != expected:
+        raise HTTPException(status_code=403, detail="Invalid or missing secret")
+
+    now = datetime.now(timezone.utc)
+    matches = (
+        db.query(Match)
+        .filter(
+            Match.cricapi_id.isnot(None),
+            Match.status.in_([MatchStatus.upcoming, MatchStatus.live]),
+            Match.start_time >= now - timedelta(days=2),
+        )
+        .all()
+    )
+
+    try:
+        current_by_id = {m["id"]: m for m in (fetch_current_matches() or []) if "id" in m}
+    except CricAPIError:
+        current_by_id = {}
+
+    settled = 0
+    touched = 0
+    for match in matches:
+        if match.start_time > now and match.status == MatchStatus.upcoming:
+            continue
+        payload = _cricapi_payload_for_match(match.cricapi_id, current_by_id)
+        if not payload:
+            continue
+        if try_settle_from_cricapi_payload(db, match, payload):
+            settled += 1
+            touched += 1
+            continue
+        if sync_match_status_from_payload(match, payload):
+            touched += 1
+        if payload.get("matchEnded") and match.status != MatchStatus.completed:
+            if payload.get("status") and not match.result_summary:
+                match.result_summary = payload["status"]
+                touched += 1
+
+    if touched:
+        db.commit()
+
+    return {
+        "ok": True,
+        "matches_checked": len(matches),
+        "settled": settled,
+        "changes_applied": touched,
+    }
+
+
 @router.get("/today", response_model=list[MatchPublic])
 def today_matches(db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     matches = db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time).all()
 
-    # Sync live status from CricAPI so carousel shows correct status + score
     changed = False
     try:
         current_by_id = {m["id"]: m for m in (fetch_current_matches() or []) if "id" in m}
@@ -215,24 +285,26 @@ def today_matches(db: Session = Depends(get_db)):
         current_by_id = {}
 
     for match in matches:
-        if not match.cricapi_id or match.status != MatchStatus.upcoming or match.start_time > now:
+        if not match.cricapi_id:
             continue
-        # Try current matches first, fall back to BBB (current matches may not include all live games)
-        payload = current_by_id.get(match.cricapi_id)
-        if not payload:
-            try:
-                payload = fetch_match_bbb(match.cricapi_id) or {}
-            except CricAPIError:
-                continue
+        if match.status == MatchStatus.completed:
+            continue
+        if match.start_time > now and match.status == MatchStatus.upcoming:
+            continue
+
+        payload = _cricapi_payload_for_match(match.cricapi_id, current_by_id)
         if not payload:
             continue
-        new_status = _match_status_from_payload(payload)
-        if new_status != match.status:
-            match.status = new_status
+
+        if try_settle_from_cricapi_payload(db, match, payload):
             changed = True
-        if new_status == MatchStatus.completed and payload.get("status") and not match.result_summary:
-            match.result_summary = payload["status"]
+            continue
+        if sync_match_status_from_payload(match, payload):
             changed = True
+        if payload.get("matchEnded") and match.status != MatchStatus.completed:
+            if payload.get("status") and not match.result_summary:
+                match.result_summary = payload["status"]
+                changed = True
 
     if changed:
         db.commit()

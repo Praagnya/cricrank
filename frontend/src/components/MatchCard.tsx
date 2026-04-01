@@ -27,7 +27,6 @@ export default function MatchCard({ match, variant = "default" }: { match: Match
               {match.team2}
             </span>
           </div>
-          <StatusChip status={match.status} />
         </div>
         
         <div className="px-5 pb-3.5 pt-0 flex items-center justify-between">
@@ -92,28 +91,8 @@ export default function MatchCard({ match, variant = "default" }: { match: Match
               <span className="font-gaming text-xs font-bold text-[#c8c8c8] tracking-wide mt-0.5">{formatRelativeDate(match.start_time)}</span>
             </div>
           </div>
-          <StatusChip status={match.status} />
         </div>
       </div>
     </div>
   );
-}
-
-function StatusChip({ status }: { status: string }) {
-  if (status === "live") {
-    return (
-      <span className="text-[10px] inline-flex items-center gap-2 px-3 py-1.5 font-black uppercase tracking-widest bg-[#000000] text-[#10b981] border border-[#10b981]">
-        <span className="w-1.5 h-1.5 bg-[#10b981] animate-pulse" />
-        Live
-      </span>
-    );
-  }
-  if (status === "completed") {
-    return (
-      <span className="text-[10px] inline-block px-3 py-1.5 font-black uppercase tracking-widest bg-[#111111] text-[#a3a3a3] border border-[#262626]">
-        Done
-      </span>
-    );
-  }
-  return null;
 }
