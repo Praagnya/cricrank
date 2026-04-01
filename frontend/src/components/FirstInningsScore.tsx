@@ -206,7 +206,9 @@ export default function FirstInningsScore({
                     onClick={() => { setPickedTeam(t); setPhase("score"); }}
                     className="border border-[#262626] bg-[#000000] hover:border-[#404040] px-4 py-4 text-left transition-colors"
                   >
-                    <p className="font-gaming text-2xl font-black text-white tracking-widest">{teamShortCode(t)}</p>
+                    <p className="font-gaming text-2xl font-black tracking-widest" style={{ color: hex }}>
+                      {teamShortCode(t)}
+                    </p>
                     <p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-[#525252]">Select</p>
                     <div className="mt-3 h-[2px] w-full" style={{ backgroundColor: hex, opacity: 0.2 }} />
                   </button>
@@ -303,10 +305,10 @@ export default function FirstInningsScore({
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-[8px] font-black uppercase tracking-wider text-[#525252] w-12">Guess {i + 1}</span>
-                  <p className="font-gaming text-xl font-black text-white tracking-widest">
+                  <p className="font-gaming text-xl font-black tracking-widest">
                     <span style={{ color: teamHex(p.predicted_team) }}>{teamShortCode(p.predicted_team)}</span>
                     <span className="text-[#525252] mx-1.5 text-base">·</span>
-                    {p.predicted_score}
+                    <span className="text-white tabular-nums">{p.predicted_score}</span>
                   </p>
                 </div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] flex items-center gap-1"><CoinDot />{p.stake} staked</p>

@@ -205,7 +205,10 @@ export default function MatchToss({
                         : "border-[#262626] bg-[#000000] hover:border-[#404040]"
                     }`}
                   >
-                    <p className="font-gaming text-2xl font-black text-white tracking-widest">
+                    <p
+                      className="font-gaming text-2xl font-black tracking-widest"
+                      style={{ color: hex, opacity: sel ? 1 : 0.92 }}
+                    >
                       {teamShortCode(t)}
                     </p>
                     <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${sel ? "text-[#a3a3a3]" : "text-[#525252]"}`}>
