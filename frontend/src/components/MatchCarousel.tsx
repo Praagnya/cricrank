@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Match } from "@/types";
+import { Match, ScoreEntry } from "@/types";
 import { teamFullName, teamShortCode, formatRelativeDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import TeamCrest from "@/components/TeamCrest";
@@ -10,10 +10,12 @@ import AIPredictionCard from "@/components/AIPredictionCard";
 import CrowdPredictionCard from "@/components/CrowdPredictionCard";
 import CountdownTimer from "@/components/CountdownTimer";
 import { api } from "@/lib/api";
+import Link from "next/link";
 
 interface MatchData {
   aiPrediction: unknown | null;
   crowd: unknown | null;
+  score: ScoreEntry[] | null;
 }
 
 interface Props {
@@ -48,16 +50,31 @@ export default function MatchCarousel({ matches }: Props) {
   const match = matches[idx];
   const total = matches.length;
 
-  // Fetch analysis data for the current match
+  // Fetch analysis + score data for the current match
   useEffect(() => {
-    if (!match || data[match.id]) return;
+    if (!match) return;
+    const needsScore = match.status === "live" || match.status === "completed";
+    if (data[match.id] && !(needsScore && data[match.id].score === null)) return;
+
     Promise.all([
       api.matches.aiPrediction(match.id).catch(() => null),
       api.matches.crowd(match.id).catch(() => null),
-    ]).then(([aiPrediction, crowd]) => {
-      setData(prev => ({ ...prev, [match.id]: { aiPrediction, crowd } }));
+      needsScore ? api.matches.live(match.id).then(l => l.score).catch(() => null) : Promise.resolve(null),
+    ]).then(([aiPrediction, crowd, score]) => {
+      setData(prev => ({ ...prev, [match.id]: { aiPrediction, crowd, score } }));
     });
   }, [match?.id]);
+
+  // Poll live score every 60s for live matches
+  useEffect(() => {
+    if (!match || match.status !== "live") return;
+    const interval = setInterval(() => {
+      api.matches.live(match.id).then(l => {
+        setData(prev => ({ ...prev, [match.id]: { ...prev[match.id], score: l.score } }));
+      }).catch(() => null);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [match?.id, match?.status]);
 
   function navigate(dir: "left" | "right") {
     if (animating || total <= 1) return;
@@ -72,6 +89,7 @@ export default function MatchCarousel({ matches }: Props) {
   const matchData = data[match.id];
   const aiPrediction = matchData?.aiPrediction ?? null;
   const crowd = matchData?.crowd ?? null;
+  const liveScore = matchData?.score ?? null;
 
   const slideClass = animating
     ? direction === "right"
@@ -140,10 +158,20 @@ export default function MatchCarousel({ matches }: Props) {
                 </svg>
                 <span className="relative z-10 font-gaming text-3xl sm:text-4xl font-black text-[#525252] tracking-[0.3em]">VS</span>
               </div>
-              {match.winner && (
-                <span className="mt-3 text-[10px] font-bold text-[#000000] bg-white px-3 py-1 uppercase tracking-widest">
-                  {match.result_summary ?? `${teamShortCode(match.winner)} won`}
+              {match.result_summary && match.status === "completed" && (
+                <span className="mt-3 text-[10px] font-bold text-[#000000] bg-white px-3 py-1 uppercase tracking-widest text-center leading-tight max-w-[140px]">
+                  {match.result_summary}
                 </span>
+              )}
+              {liveScore && liveScore.length > 0 && match.status !== "completed" && (
+                <div className="mt-3 flex flex-col items-center gap-1">
+                  {liveScore.map((s, i) => (
+                    <p key={i} className="font-gaming text-sm font-black text-white tabular-nums text-center">
+                      {teamShortCode(s.inning.replace(/ Inning \d+$/i, "").trim())} {s.r}/{s.w}
+                      <span className="text-[#525252] text-xs font-normal ml-1">({s.o} ov)</span>
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -183,9 +211,17 @@ export default function MatchCarousel({ matches }: Props) {
                 </div>
               </div>
             </div>
-            {/* Toss — mobile: left-aligned to match Venue/Schedule, desktop: original right-aligned */}
-            <div className="flex items-center gap-3 lg:block lg:flex lg:justify-end">
+            {/* Toss / Scorecard link */}
+            <div className="flex items-center gap-3 lg:flex lg:justify-end">
               {match.status === "upcoming" && <CountdownTimer tossTime={match.toss_time} variant="hero" />}
+              {(match.status === "live" || match.status === "completed") && (
+                <Link
+                  href={`/match/${match.id}`}
+                  className="text-[10px] font-black tracking-[0.2em] uppercase px-4 py-2 border border-[#262626] text-[#a3a3a3] hover:border-white hover:text-white transition-colors"
+                >
+                  {match.status === "live" ? "Live Scorecard" : "Scorecard"}
+                </Link>
+              )}
             </div>
           </div>
         </div>

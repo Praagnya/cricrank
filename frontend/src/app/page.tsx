@@ -8,8 +8,15 @@ import MatchCarousel from "@/components/MatchCarousel";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const matches = await api.matches.upcoming(10, 7).catch(() => []);
-  const leaders = await api.leaderboard.global(3).catch(() => []);
+  const [today, upcoming, leaders] = await Promise.all([
+    api.matches.today().catch(() => []),
+    api.matches.upcoming(10, 7).catch(() => []),
+    api.leaderboard.global(3).catch(() => []),
+  ]);
+
+  // Merge: today's matches first (live/completed/today-upcoming), then future upcoming
+  const todayIds = new Set(today.map((m) => m.id));
+  const matches = [...today, ...upcoming.filter((m) => !todayIds.has(m.id))];
 
   if (matches.length === 0) {
     return (

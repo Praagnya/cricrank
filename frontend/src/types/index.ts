@@ -38,15 +38,54 @@ export interface MatchLive {
   status_text: string | null;
   match_winner: string | null;
   result_summary: string | null;
-  score: Record<string, unknown>[];
+  score: ScoreEntry[];
   bbb: Record<string, unknown>[];
+}
+
+export interface ScorecardBatsman {
+  batsman: { id: string; name: string };
+  "dismissal-text": string;
+  dismissal?: string;
+  bowler?: { id: string; name: string };
+  catcher?: { id: string; name: string };
+  r: number;
+  b: number;
+  "4s": number;
+  "6s": number;
+  sr: number;
+}
+
+export interface ScorecardBowler {
+  bowler: { id: string; name: string };
+  o: number;
+  m: number;
+  r: number;
+  w: number;
+  nb: number;
+  wd: number;
+  eco: number;
+}
+
+export interface ScorecardInnings {
+  inning: string;
+  batting: ScorecardBatsman[];
+  bowling: ScorecardBowler[];
+  extras: Record<string, number>;
+  totals: Record<string, number>;
+}
+
+export interface ScoreEntry {
+  r: number;
+  w: number;
+  o: number;
+  inning: string;
 }
 
 export interface MatchScorecard {
   match_id: string;
   cricapi_id: string;
-  score: Record<string, unknown>[];
-  scorecard: Record<string, unknown>[];
+  score: ScoreEntry[];
+  scorecard: ScorecardInnings[];
 }
 
 export interface User {
