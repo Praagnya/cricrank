@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, LogIn } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { api } from "@/lib/api";
 import type { TossPickResponse } from "@/types";
@@ -11,7 +10,6 @@ type Phase = "loading" | "pick" | "submitting" | "pending" | "done";
 
 const TOSS_COINS = 100;
 
-/** Merged shape for display (from status or pick API). */
 type TossView = Pick<
   TossPickResponse,
   "picked_team" | "winning_team" | "coins_won" | "coins_balance" | "already_played" | "pending" | "settled"
@@ -66,9 +64,7 @@ export default function MatchToss({
       }
     }
     void load();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [googleId, matchId]);
 
   const submitPick = async () => {
@@ -98,132 +94,168 @@ export default function MatchToss({
 
   if (authLoading) {
     return (
-      <div className="rounded-sm border border-[#262626] bg-[#050505] px-3 py-2">
-        <div className="h-4 w-32 animate-pulse rounded bg-[#141414]" />
+      <div className="border border-[#262626] bg-[#000000] px-5 py-4">
+        <div className="h-4 w-32 animate-pulse bg-[#111111]" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-sm border border-[#333] bg-[#080808]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#262626] px-3 py-2">
-        <div className="min-w-0">
-          <p className="truncate font-gaming text-[10px] font-black uppercase tracking-[0.2em] text-[#a3a3a3]">
-            Toss winner
-          </p>
-          <p className="truncate text-[9px] font-bold uppercase tracking-wider text-[#525252]">
-            Predict · {TOSS_COINS} coins if correct (validated vs match feed)
-          </p>
+    <div className="border border-[#262626] bg-[#000000]">
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
+        <div className="flex items-center gap-3">
+          <div className="w-[3px] h-5 bg-[#f59e0b]" />
+          <div>
+            <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white">
+              Toss Prediction
+            </p>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5">
+              One entry per match
+            </p>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1 rounded border border-amber-500/20 bg-black/50 px-2 py-0.5">
-          <Coins className="h-3 w-3 text-amber-500/80" />
-          <span className="font-gaming text-[11px] font-black text-amber-200/90">{TOSS_COINS}</span>
+        <div className="flex items-center gap-1.5 border border-[#f59e0b]/30 bg-[#f59e0b]/5 px-2.5 py-1.5">
+          <span className="font-gaming text-sm font-black text-[#f59e0b]">+{TOSS_COINS}</span>
+          <span className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">coins</span>
         </div>
       </div>
 
-      <div className="px-3 py-3">
+      {/* Body */}
+      <div className="px-5 py-5">
+
+        {/* Not signed in */}
         {!googleId && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252]">
-              Sign in to predict the toss · one entry per match
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#525252]">
+              Sign in to predict the toss
             </p>
             <button
               type="button"
               onClick={signInWithGoogle}
-              className="inline-flex items-center gap-2 border border-[#404040] bg-white px-3 py-1.5 font-gaming text-[9px] font-black uppercase tracking-widest text-black hover:bg-[#e5e5e5]"
+              className="border border-white bg-white px-4 py-2 font-gaming text-[9px] font-black uppercase tracking-[0.2em] text-black hover:bg-[#e5e5e5] transition-colors shrink-0"
             >
-              <LogIn className="h-3 w-3" />
               Sign in
             </button>
           </div>
         )}
 
+        {/* Loading */}
         {googleId && phase === "loading" && (
-          <div className="h-4 w-24 animate-pulse rounded bg-[#141414]" />
+          <div className="h-8 w-32 animate-pulse bg-[#111111]" />
         )}
 
-        {googleId && phase === "pick" && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
+        {/* Pick / Submitting */}
+        {googleId && (phase === "pick" || phase === "submitting") && (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {[team1, team2].map((t) => {
                 const sel = picked === t;
+                const hex = teamHex(t);
                 return (
                   <button
                     key={t}
                     type="button"
+                    disabled={phase === "submitting"}
                     onClick={() => setPicked(t)}
-                    className={`min-w-0 flex-1 border px-2 py-2 text-left transition ${
-                      sel ? "border-white bg-white/[0.06]" : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
+                    className={`border px-4 py-4 text-left transition-colors disabled:cursor-not-allowed ${
+                      sel
+                        ? "border-white bg-[#111111]"
+                        : "border-[#262626] bg-[#000000] hover:border-[#404040]"
                     }`}
                   >
-                    <span className="font-gaming text-sm font-black tracking-widest text-white">
+                    <p className="font-gaming text-2xl font-black text-white tracking-widest">
                       {teamShortCode(t)}
-                    </span>
-                    <span className="ml-2 text-[8px] font-bold uppercase tracking-wider text-[#525252]">
+                    </p>
+                    <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${sel ? "text-[#a3a3a3]" : "text-[#525252]"}`}>
                       {sel ? "Selected" : "Pick"}
-                    </span>
+                    </p>
+                    <div
+                      className="mt-3 h-[2px] w-full transition-opacity"
+                      style={{ backgroundColor: hex, opacity: sel ? 1 : 0.15 }}
+                    />
                   </button>
                 );
               })}
             </div>
-            {error && <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>}
+
+            {error && (
+              <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>
+            )}
+
             <button
               type="button"
-              disabled={!picked}
+              disabled={!picked || phase === "submitting"}
               onClick={submitPick}
-              className="w-full border border-amber-500/40 bg-amber-500/15 py-2 font-gaming text-[9px] font-black uppercase tracking-[0.25em] text-amber-100 transition enabled:hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full border border-[#f59e0b] bg-[#f59e0b]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#f59e0b] transition-colors enabled:hover:bg-[#f59e0b]/20 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              Lock pick
+              {phase === "submitting" ? "Locking..." : "Lock Toss Pick"}
             </button>
           </div>
         )}
 
-        {googleId && phase === "submitting" && (
-          <p className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">Saving…</p>
-        )}
-
+        {/* Pending — pick locked, awaiting toss */}
         {googleId && phase === "pending" && result?.picked_team && (
-          <div className="space-y-1 text-[9px]">
-            <p className="font-bold uppercase tracking-wider text-[#737373]">
-              Your pick:{" "}
-              <span style={{ color: teamHex(result.picked_team) }} className="font-gaming">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your pick</p>
+              <p
+                className="font-gaming text-3xl font-black tracking-widest mt-1"
+                style={{ color: teamHex(result.picked_team) }}
+              >
                 {teamShortCode(result.picked_team)}
-              </span>
-            </p>
-            <p className="font-bold uppercase tracking-wider text-amber-600/90">
-              Awaiting official toss — +{TOSS_COINS} coins if your pick matches the feed
-            </p>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Awaiting toss result</p>
+              <p className="font-gaming text-sm font-black text-[#f59e0b] tracking-wider mt-1">
+                +{TOSS_COINS} if correct
+              </p>
+            </div>
           </div>
         )}
 
+        {/* Done — settled */}
         {googleId && phase === "done" && result?.settled && result.winning_team && result.picked_team && (
-          <div className="space-y-1 text-[9px]">
-            <p className="font-bold uppercase tracking-wider text-[#737373]">
-              Toss:{" "}
-              <span style={{ color: teamHex(result.winning_team) }} className="font-gaming">
-                {teamShortCode(result.winning_team)}
-              </span>
-              {" · "}
-              You:{" "}
-              <span style={{ color: teamHex(result.picked_team) }}>{teamShortCode(result.picked_team)}</span>
-            </p>
-            {result.coins_won > 0 ? (
-              <p className="flex items-center gap-1 font-gaming text-xs font-black text-amber-200">
-                <Coins className="h-3.5 w-3.5" />+{result.coins_won} coins
-                {result.coins_balance > 0 && (
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">
-                    · wallet {result.coins_balance.toLocaleString()}
-                  </span>
-                )}
-              </p>
-            ) : (
-              <p className="font-bold uppercase tracking-wider text-[#737373]">No coins — pick did not match toss</p>
-            )}
-            {result.already_played && (
-              <p className="text-[8px] uppercase tracking-wider text-[#404040]">Entry locked for this match</p>
-            )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Toss won by</p>
+                <p
+                  className="font-gaming text-3xl font-black tracking-widest mt-1"
+                  style={{ color: teamHex(result.winning_team) }}
+                >
+                  {teamShortCode(result.winning_team)}
+                </p>
+              </div>
+              <div className="w-px h-10 bg-[#262626]" />
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your pick</p>
+                <p
+                  className="font-gaming text-3xl font-black tracking-widest mt-1"
+                  style={{ color: teamHex(result.picked_team) }}
+                >
+                  {teamShortCode(result.picked_team)}
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              {result.coins_won > 0 ? (
+                <>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Earned</p>
+                  <p className="font-gaming text-2xl font-black text-[#f59e0b] mt-1">+{result.coins_won}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Result</p>
+                  <p className="font-gaming text-sm font-black text-[#525252] uppercase tracking-widest mt-1">No match</p>
+                </>
+              )}
+            </div>
           </div>
         )}
+
       </div>
     </div>
   );

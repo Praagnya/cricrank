@@ -187,6 +187,8 @@ export default function MatchCarousel({ matches }: Props) {
         matchStatus={match.status}
       />
 
+      <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} />
+
       {crowd && (
         <div>
           <div className="flex items-center gap-3 mb-4">
@@ -194,19 +196,13 @@ export default function MatchCarousel({ matches }: Props) {
             <span className="text-[#a3a3a3] tracking-[0.25em] text-[13px] font-gaming uppercase">Analysis</span>
             <div className="h-px flex-1 bg-[#262626]" />
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            {crowd && (
-              <CrowdPredictionCard
-                crowd={crowd as Parameters<typeof CrowdPredictionCard>[0]["crowd"]}
-                team1={match.team1}
-                team2={match.team2}
-              />
-            )}
-          </div>
+          <CrowdPredictionCard
+            crowd={crowd as Parameters<typeof CrowdPredictionCard>[0]["crowd"]}
+            team1={match.team1}
+            team2={match.team2}
+          />
         </div>
       )}
-
-      <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} />
     </div>
   );
 }
