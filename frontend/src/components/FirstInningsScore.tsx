@@ -108,6 +108,7 @@ export default function FirstInningsScore({
       const msg = e instanceof Error ? e.message : "";
       if (msg === "insufficient_coins") setError("Not enough coins to stake");
       else if (msg === "max_guesses_reached") setError("All 3 guesses used");
+      else if (msg === "duplicate_pick") setError("You already guessed that score");
       else setError("Could not save pick");
       setPhase("score");
     }
@@ -122,33 +123,29 @@ export default function FirstInningsScore({
   }
 
   const stakeLabel = nextStake ?? 0;
+  const isDuplicate = !!pickedTeam && picks.some(
+    (p) => p.predicted_team === pickedTeam && p.predicted_score === score
+  );
 
   return (
     <div className="border border-[#262626] bg-[#000000]">
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
-        <div className="flex items-center gap-3">
-          <div className="w-[3px] h-5 bg-[#6366f1]" />
-          <div>
-            <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white">
-              First Innings Score
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-[3px] h-5 bg-[#6366f1] shrink-0" />
+          <div className="min-w-0">
+            <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white whitespace-nowrap">
+              1st Innings Score
             </p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5">
-              Exact match · up to 3 guesses
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5 whitespace-nowrap">
+              Exact match · 10 / 50 / 100 coins
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#737373]">10 · 50 · 100</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stakes</span>
-          </div>
-          <div className="w-px h-7 bg-[#262626]" />
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#6366f1]">+{PRIZE.toLocaleString()}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
-          </div>
+        <div className="flex flex-col items-end gap-0.5 shrink-0 ml-4">
+          <span className="font-gaming text-sm font-black text-[#6366f1]">+{PRIZE.toLocaleString()}</span>
+          <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">if exact</span>
         </div>
       </div>
 
@@ -264,11 +261,16 @@ export default function FirstInningsScore({
               </p>
             </div>
 
-            {error && <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>}
+            {isDuplicate && (
+              <p className="text-[9px] font-bold uppercase tracking-wider text-[#f59e0b]">
+                You already picked {teamShortCode(pickedTeam)} {score} — try a different score
+              </p>
+            )}
+            {!isDuplicate && error && <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>}
 
             <button
               type="button"
-              disabled={phase === "submitting"}
+              disabled={phase === "submitting" || isDuplicate}
               onClick={submit}
               className="w-full border border-[#6366f1] bg-[#6366f1]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#6366f1] transition-colors hover:bg-[#6366f1]/20 disabled:cursor-not-allowed disabled:opacity-30"
             >

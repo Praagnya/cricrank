@@ -812,6 +812,13 @@ def play_first_innings(
     if pick_count >= MAX_FIRST_INNINGS_PICKS:
         raise HTTPException(status_code=400, detail="max_guesses_reached")
 
+    duplicate = any(
+        r.predicted_team == picked_team and r.predicted_score == body.predicted_score
+        for r in existing_rows
+    )
+    if duplicate:
+        raise HTTPException(status_code=400, detail="duplicate_pick")
+
     stake = FIRST_INNINGS_STAKES[pick_count]
 
     if user.coins < stake:

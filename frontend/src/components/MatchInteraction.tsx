@@ -57,7 +57,7 @@ export default function MatchInteraction({ matchId, team1, team2, tossTime, star
           </div>
           <div className="flex flex-col">
             <span className="font-gaming text-lg sm:text-xl font-black text-white uppercase tracking-wide">
-              Make Your Pick
+              Pick Your Team
             </span>
             <span className="text-[10px] text-[#525252] font-black uppercase tracking-[0.2em] mt-0.5">
               Sign in to lock your choice and climb ranks
