@@ -211,6 +211,24 @@ class TossPlay(Base):
     __table_args__ = (UniqueConstraint("user_id", "match_id", name="uq_toss_user_match"),)
 
 
+class FirstInningsPick(Base):
+    """Predict first innings runs total; exact match wins 10,000 coins (stake 10)."""
+
+    __tablename__ = "first_innings_picks"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
+    predicted_team = Column(String, nullable=False)
+    predicted_score = Column(Integer, nullable=False)
+    actual_team = Column(String, nullable=True)     # team that actually batted first
+    actual_score = Column(Integer, nullable=True)   # set when first innings ends
+    coins_won = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "match_id", name="uq_first_innings_user_match"),)
+
+
 class CoinTransaction(Base):
     __tablename__ = "coin_transactions"
 

@@ -27,6 +27,30 @@ def ensure_toss_winner_schema(engine) -> None:
                 break
 
 
+def ensure_first_innings_schema(engine) -> None:
+    """Create first_innings_picks table if it doesn't exist."""
+    inspector = inspect(engine)
+    if "first_innings_picks" in inspector.get_table_names():
+        return
+    with engine.begin() as connection:
+        connection.execute(text("""
+            CREATE TABLE first_innings_picks (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID NOT NULL REFERENCES users(id),
+                match_id UUID NOT NULL REFERENCES matches(id),
+                predicted_team VARCHAR NOT NULL,
+                predicted_score INTEGER NOT NULL,
+                actual_team VARCHAR,
+                actual_score INTEGER,
+                coins_won INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT uq_first_innings_user_match UNIQUE (user_id, match_id)
+            )
+        """))
+        connection.execute(text("CREATE INDEX ix_fip_user ON first_innings_picks (user_id)"))
+        connection.execute(text("CREATE INDEX ix_fip_match ON first_innings_picks (match_id)"))
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():

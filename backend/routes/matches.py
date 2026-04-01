@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from coin_ledger import apply_credit, apply_debit
 from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_scorecard, fetch_series_info
 from database import get_db
-from models import Match, MatchStatus, Prediction, TossPlay, User
+from models import Match, MatchStatus, Prediction, TossPlay, FirstInningsPick, User
 from prediction_agent import get_prediction_safe
 from schemas import (
     AIPredictionResponse,
@@ -20,6 +20,9 @@ from schemas import (
     TossPickRequest,
     TossPickResponse,
     TossStatusResponse,
+    FirstInningsPickRequest,
+    FirstInningsPickResponse,
+    FirstInningsStatusResponse,
 )
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
@@ -634,3 +637,188 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
         score=payload.get("score") or [],
         scorecard=payload.get("scorecard") or [],
     )
+
+
+# ── First Innings Score ────────────────────────────────────────────────────────
+
+FIRST_INNINGS_STAKE = 10
+FIRST_INNINGS_PRIZE = 10_000   # net gain on exact match
+
+
+def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
+    """
+    Returns (batting_team, runs) when first innings is complete, else (None, None).
+    Tries BBB first (most up-to-date), then currentMatches.
+    """
+    for fetch_fn in (lambda: fetch_match_bbb(cricapi_id), lambda: _find_current_match_payload(cricapi_id) or {}):
+        try:
+            data = fetch_fn() or {}
+        except CricAPIError:
+            continue
+        score: list[dict] = data.get("score") or []
+        if not score:
+            continue
+        first = next((s for s in score if "Inning 1" in s.get("inning", "")), None)
+        if not first:
+            continue
+        complete = len(score) >= 2 or first.get("w", 0) >= 10 or float(first.get("o", 0)) >= 20.0
+        if complete:
+            team = first["inning"].replace(" Inning 1", "").strip()
+            return canonicalize_team(team) or team, int(first.get("r", 0))
+    return None, None
+
+
+def _settle_first_innings_picks(db: Session, match: Match) -> None:
+    actual_team, actual_score = _get_first_innings_result(match.cricapi_id)
+    if actual_score is None:
+        return
+    rows = (
+        db.query(FirstInningsPick)
+        .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score == None)  # noqa: E711
+        .all()
+    )
+    for row in rows:
+        row.actual_team = actual_team
+        row.actual_score = actual_score
+        correct = row.predicted_team == actual_team and row.predicted_score == actual_score
+        if correct:
+            row.coins_won = FIRST_INNINGS_PRIZE
+            apply_credit(
+                db, row.user_id, FIRST_INNINGS_STAKE + FIRST_INNINGS_PRIZE,
+                "first_innings_win",
+                idempotency_key=f"fi_win:{row.user_id}:{row.match_id}",
+                ref_type="match", ref_id=str(row.match_id),
+            )
+        else:
+            row.coins_won = -FIRST_INNINGS_STAKE
+
+
+def _fi_status_response(row: FirstInningsPick) -> FirstInningsStatusResponse:
+    settled = row.actual_score is not None
+    return FirstInningsStatusResponse(
+        played=True,
+        predicted_team=row.predicted_team,
+        predicted_score=row.predicted_score,
+        actual_team=row.actual_team,
+        actual_score=row.actual_score,
+        coins_won=row.coins_won,
+        pending=not settled,
+        settled=settled,
+    )
+
+
+def _fi_pick_response(row: FirstInningsPick, user: User, already_played: bool) -> FirstInningsPickResponse:
+    settled = row.actual_score is not None
+    return FirstInningsPickResponse(
+        predicted_team=row.predicted_team,
+        predicted_score=row.predicted_score,
+        actual_team=row.actual_team,
+        actual_score=row.actual_score,
+        coins_won=row.coins_won,
+        coins_balance=user.coins,
+        already_played=already_played,
+        pending=not settled,
+        settled=settled,
+    )
+
+
+@router.get("/{match_id}/first-innings-status", response_model=FirstInningsStatusResponse)
+def get_first_innings_status(match_id: str, google_id: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    row = db.query(FirstInningsPick).filter(
+        FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
+    ).first()
+
+    if row and row.actual_score is None and match.cricapi_id:
+        _settle_first_innings_picks(db, match)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+        db.refresh(row)
+
+    if not row:
+        return FirstInningsStatusResponse(played=False)
+    return _fi_status_response(row)
+
+
+@router.post("/{match_id}/first-innings-pick", response_model=FirstInningsPickResponse)
+def play_first_innings(
+    match_id: str,
+    body: FirstInningsPickRequest,
+    google_id: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+):
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    picked_team = canonicalize_team(body.predicted_team)
+    if picked_team not in (match.team1, match.team2):
+        raise HTTPException(status_code=400, detail="predicted_team must be one of the two sides")
+    if not (50 <= body.predicted_score <= 350):
+        raise HTTPException(status_code=400, detail="predicted_score must be between 50 and 350")
+
+    existing = db.query(FirstInningsPick).filter(
+        FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
+    ).first()
+    if existing:
+        if existing.actual_score is None and match.cricapi_id:
+            _settle_first_innings_picks(db, match)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+            db.refresh(existing)
+            db.refresh(user)
+        return _fi_pick_response(existing, user, True)
+
+    now = datetime.now(timezone.utc)
+    lock_time = match.start_time if match.start_time.tzinfo else match.start_time.replace(tzinfo=timezone.utc)
+    if now >= lock_time:
+        raise HTTPException(status_code=400, detail="First innings prediction is locked")
+
+    if user.coins < FIRST_INNINGS_STAKE:
+        raise HTTPException(status_code=400, detail="insufficient_coins")
+
+    row = FirstInningsPick(
+        user_id=user.id,
+        match_id=match.id,
+        predicted_team=picked_team,
+        predicted_score=body.predicted_score,
+    )
+    db.add(row)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = db.query(FirstInningsPick).filter(
+            FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
+        ).first()
+        if not existing:
+            raise HTTPException(status_code=409, detail="Could not record pick") from None
+        db.refresh(user)
+        return _fi_pick_response(existing, user, True)
+
+    try:
+        apply_debit(
+            db, user.id, FIRST_INNINGS_STAKE, "first_innings_stake",
+            idempotency_key=f"fi_stake:{user.id}:{match.id}",
+            ref_type="match", ref_id=str(match.id),
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="insufficient_coins")
+
+    db.commit()
+    db.refresh(user)
+    db.refresh(row)
+    return _fi_pick_response(row, user, False)

@@ -46,6 +46,34 @@ class UserLoginResponse(UserPublic):
     daily_login_coins_awarded: int = 0
 
 
+class FirstInningsPickRequest(BaseModel):
+    predicted_team: str
+    predicted_score: int
+
+
+class FirstInningsPickResponse(BaseModel):
+    predicted_team: str
+    predicted_score: int
+    actual_team: Optional[str] = None
+    actual_score: Optional[int] = None
+    coins_won: int = 0
+    coins_balance: int
+    already_played: bool = False
+    pending: bool = False
+    settled: bool = False
+
+
+class FirstInningsStatusResponse(BaseModel):
+    played: bool
+    predicted_team: Optional[str] = None
+    predicted_score: Optional[int] = None
+    actual_team: Optional[str] = None
+    actual_score: Optional[int] = None
+    coins_won: int = 0
+    pending: bool = False
+    settled: bool = False
+
+
 class TossPickRequest(BaseModel):
     picked_team: str
 
