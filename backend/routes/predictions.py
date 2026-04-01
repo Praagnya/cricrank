@@ -2,9 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timezone
 from database import get_db
-from models import Match, Prediction, User, MatchStatus
+from models import Match, Prediction, User, MatchStatus, calculate_points, POST_TOSS_MULTIPLIER
 from schemas import PredictionCreate, PredictionPublic, PredictionWithMatch
-from settlement import apply_match_settlement
 
 router = APIRouter()
 
@@ -103,10 +102,43 @@ def settle_match(match_id: str, winner: str, result_summary: str | None = None, 
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
 
-    try:
-        n = apply_match_settlement(db, match, winner, result_summary)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    if match.status == MatchStatus.completed:
+        raise HTTPException(status_code=400, detail="Match already settled")
+
+    if winner not in (match.team1, match.team2):
+        raise HTTPException(
+            status_code=400,
+            detail=f"winner must be '{match.team1}' or '{match.team2}'",
+        )
+
+    match.winner = winner
+    match.status = MatchStatus.completed
+    if result_summary:
+        match.result_summary = result_summary
+
+    predictions = db.query(Prediction).filter(Prediction.match_id == match_id).all()
+
+    for pred in predictions:
+        user = db.query(User).filter(User.id == pred.user_id).first()
+        if not user:
+            continue
+
+        user.settled_predictions += 1
+        if pred.selected_team == winner:
+            pred.is_correct = 1
+            user.current_streak += 1
+            user.correct_predictions += 1
+            if user.current_streak > user.longest_streak:
+                user.longest_streak = user.current_streak
+            pts = calculate_points(user.current_streak)
+            if pred.is_post_toss:
+                pts = int(pts * POST_TOSS_MULTIPLIER)
+            pred.points_awarded = pts
+            user.points += pts
+        else:
+            pred.is_correct = 0
+            user.current_streak = 0
+            pred.points_awarded = 0
 
     db.commit()
-    return {"settled": True, "winner": winner, "predictions_updated": n}
+    return {"settled": True, "winner": winner, "predictions_updated": len(predictions)}
