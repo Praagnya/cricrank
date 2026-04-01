@@ -351,10 +351,21 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
+    payload: dict = {}
     try:
-        payload = fetch_match_scorecard(match.cricapi_id)
-    except CricAPIError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        payload = fetch_match_scorecard(match.cricapi_id) or {}
+    except CricAPIError:
+        pass
+
+    # Scorecard API may not have data for live matches — fall back to BBB
+    if not payload.get("scorecard") and match.status in (MatchStatus.live, MatchStatus.completed):
+        try:
+            payload = fetch_match_bbb(match.cricapi_id) or payload
+        except CricAPIError:
+            pass
+
+    if not payload:
+        raise HTTPException(status_code=502, detail="Scorecard not available")
 
     return MatchScorecardResponse(
         match_id=match.id,
