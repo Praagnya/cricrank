@@ -10,6 +10,10 @@ type Phase = "loading" | "team" | "score" | "submitting" | "pending" | "done";
 
 const PRIZE = 10_000;
 const DEFAULT_SCORE = 175;
+
+const CoinDot = () => (
+  <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#fbbf24] border border-[#92400e] align-middle mb-[1px] shrink-0" />
+);
 const MIN_SCORE = 50;
 const MAX_SCORE = 350;
 
@@ -26,7 +30,15 @@ export default function FirstInningsScore({
 }) {
   const { user, loading: authLoading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
-  const isLocked = startTime ? Date.now() >= new Date(startTime).getTime() : false;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = () => setNowMs(Date.now());
+    const id = setInterval(tick, 10_000);
+    tick();
+    return () => clearInterval(id);
+  }, [startTime]);
+
+  const isLocked = startTime ? nowMs >= new Date(startTime).getTime() : false;
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [picks, setPicks] = useState<FirstInningsPickItem[]>([]);
@@ -60,7 +72,7 @@ export default function FirstInningsScore({
     }
     void load();
     return () => { cancelled = true; };
-  }, [googleId, matchId]);
+  }, [googleId, matchId, isLocked]);
 
   function clamp(v: number) { return Math.max(MIN_SCORE, Math.min(MAX_SCORE, v)); }
 
@@ -138,13 +150,13 @@ export default function FirstInningsScore({
             <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white whitespace-nowrap">
               1st Innings Score
             </p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5 whitespace-nowrap">
-              Exact match · 10 / 50 / 100 coins
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5 flex items-center gap-1 flex-wrap">
+              Exact match · <CoinDot />10 / <CoinDot />50 / <CoinDot />100
             </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-0.5 shrink-0 ml-4">
-          <span className="font-gaming text-sm font-black text-[#6366f1]">+{PRIZE.toLocaleString()}</span>
+          <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{PRIZE.toLocaleString()}</span>
           <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">if exact</span>
         </div>
       </div>
@@ -274,9 +286,11 @@ export default function FirstInningsScore({
               onClick={submit}
               className="w-full border border-[#6366f1] bg-[#6366f1]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#6366f1] transition-colors hover:bg-[#6366f1]/20 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {phase === "submitting"
-                ? "Locking..."
-                : `Lock — ${teamShortCode(pickedTeam)} ${score} · ${stakeLabel} coins`}
+              {phase === "submitting" ? "Locking..." : (
+                <span className="flex items-center justify-center gap-1.5">
+                  Lock — {teamShortCode(pickedTeam)} {score} · <CoinDot />{stakeLabel}
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -295,11 +309,11 @@ export default function FirstInningsScore({
                     {p.predicted_score}
                   </p>
                 </div>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252]">{p.stake} staked</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] flex items-center gap-1"><CoinDot />{p.stake} staked</p>
               </div>
             ))}
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#6366f1] mt-1">
-              +{PRIZE.toLocaleString()} if exact
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#fbbf24] mt-1 flex items-center gap-1">
+              +<CoinDot />{PRIZE.toLocaleString()} if exact
             </p>
           </div>
         )}
@@ -325,8 +339,8 @@ export default function FirstInningsScore({
                     {teamShortCode(p.predicted_team)} <span className="text-white">{p.predicted_score}</span>
                   </p>
                 </div>
-                <p className={`font-gaming text-lg font-black ${p.coins_won > 0 ? "text-[#6366f1]" : "text-red-500"}`}>
-                  {p.coins_won > 0 ? `+${p.coins_won.toLocaleString()}` : `-${p.stake}`}
+                <p className={`font-gaming text-lg font-black flex items-center gap-1 ${p.coins_won > 0 ? "text-[#fbbf24]" : "text-red-500"}`}>
+                  {p.coins_won > 0 ? <><span>+</span><CoinDot />{p.coins_won.toLocaleString()}</> : <><span>-</span><CoinDot />{p.stake}</>}
                 </p>
               </div>
             ))}
@@ -336,8 +350,8 @@ export default function FirstInningsScore({
                 {(() => {
                   const net = picks.reduce((sum, p) => sum + (p.coins_won > 0 ? p.coins_won : -p.stake), 0);
                   return (
-                    <p className={`font-gaming text-lg font-black ${net >= 0 ? "text-[#6366f1]" : "text-red-500"}`}>
-                      {net >= 0 ? `+${net.toLocaleString()}` : net.toLocaleString()}
+                    <p className={`font-gaming text-lg font-black flex items-center gap-1 ${net >= 0 ? "text-[#fbbf24]" : "text-red-500"}`}>
+                      {net >= 0 ? <><span>+</span><CoinDot />{net.toLocaleString()}</> : <><span>-</span><CoinDot />{Math.abs(net).toLocaleString()}</>}
                     </p>
                   );
                 })()}
@@ -359,7 +373,7 @@ export default function FirstInningsScore({
                 {teamShortCode(p.predicted_team)}
               </span>
               <span className="font-gaming text-sm font-black text-white">{p.predicted_score}</span>
-              <span className="text-[8px] text-[#525252]">· {p.stake}</span>
+              <span className="text-[8px] text-[#525252]">· ₡{p.stake}</span>
             </div>
           ))}
         </div>

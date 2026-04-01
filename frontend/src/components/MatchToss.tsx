@@ -10,6 +10,10 @@ type Phase = "loading" | "pick" | "submitting" | "pending" | "done";
 
 const TOSS_COINS = 100;
 
+const CoinDot = () => (
+  <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#fbbf24] border border-[#92400e] align-middle mb-[1px] shrink-0" />
+);
+
 type TossView = Pick<
   TossPickResponse,
   "picked_team" | "winning_team" | "coins_won" | "coins_balance" | "already_played" | "pending" | "settled"
@@ -26,7 +30,16 @@ export default function MatchToss({
   team2: string;
   tossTime?: string;
 }) {
-  const isLocked = tossTime ? Date.now() >= new Date(tossTime).getTime() : false;
+  /** Wall clock for lock (updated on interval so we never call Date.now() during render). */
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = () => setNowMs(Date.now());
+    const id = setInterval(tick, 10_000);
+    tick();
+    return () => clearInterval(id);
+  }, [tossTime]);
+
+  const isLocked = tossTime ? nowMs >= new Date(tossTime).getTime() : false;
   const { user, loading: authLoading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
 
@@ -68,7 +81,7 @@ export default function MatchToss({
     }
     void load();
     return () => { cancelled = true; };
-  }, [googleId, matchId]);
+  }, [googleId, matchId, isLocked]);
 
   const submitPick = async () => {
     if (!googleId || !picked) return;
@@ -123,12 +136,12 @@ export default function MatchToss({
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#737373]">{TOSS_COINS}</span>
+            <span className="font-gaming text-sm font-black text-[#737373] flex items-center gap-1"><CoinDot />{TOSS_COINS}</span>
             <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stake</span>
           </div>
           <div className="w-px h-7 bg-[#262626]" />
           <div className="flex flex-col items-start gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#f59e0b]">+{TOSS_COINS}</span>
+            <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{TOSS_COINS}</span>
             <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
           </div>
         </div>
@@ -236,8 +249,8 @@ export default function MatchToss({
             </div>
             <div className="text-right">
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Awaiting toss result</p>
-              <p className="font-gaming text-sm font-black text-[#f59e0b] tracking-wider mt-1">
-                +{TOSS_COINS} if correct
+              <p className="font-gaming text-sm font-black text-[#fbbf24] tracking-wider mt-1 flex items-center gap-1 justify-end">
+                +<CoinDot />{TOSS_COINS} if correct
               </p>
             </div>
           </div>
@@ -271,12 +284,12 @@ export default function MatchToss({
               {result.coins_won > 0 ? (
                 <>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Earned</p>
-                  <p className="font-gaming text-2xl font-black text-[#f59e0b] mt-1">+{result.coins_won}</p>
+                  <p className="font-gaming text-2xl font-black text-[#fbbf24] mt-1 flex items-center gap-1">+<CoinDot />{result.coins_won}</p>
                 </>
               ) : (
                 <>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Lost</p>
-                  <p className="font-gaming text-2xl font-black text-red-500 mt-1">-{TOSS_COINS}</p>
+                  <p className="font-gaming text-2xl font-black text-red-500 mt-1 flex items-center gap-1">-<CoinDot />{TOSS_COINS}</p>
                 </>
               )}
             </div>
