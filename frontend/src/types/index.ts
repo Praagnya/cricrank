@@ -15,6 +15,7 @@ export interface Match {
   status: MatchStatus;
   winner: string | null;
   result_summary: string | null;
+  toss_winner?: string | null;
 }
 
 export interface AIPrediction {
@@ -34,14 +35,18 @@ export interface TossStatusResponse {
   picked_team?: string;
   winning_team?: string;
   coins_won: number;
+  pending?: boolean;
+  settled?: boolean;
 }
 
 export interface TossPickResponse {
   picked_team: string;
-  winning_team: string;
+  winning_team?: string | null;
   coins_won: number;
   coins_balance: number;
   already_played: boolean;
+  pending?: boolean;
+  settled?: boolean;
 }
 
 export interface User {

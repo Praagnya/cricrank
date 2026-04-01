@@ -110,6 +110,7 @@ class Match(Base):
     status = Column(Enum(MatchStatus), default=MatchStatus.upcoming, nullable=False)
     winner = Column(String, nullable=True)
     result_summary = Column(String, nullable=True)
+    toss_winner = Column(String, nullable=True)  # canonical team name from feed when known
 
     predictions = relationship("Prediction", back_populates="match")
 
@@ -195,7 +196,7 @@ class Follow(Base):
 
 
 class TossPlay(Base):
-    """One virtual coin toss per user per match — pick a side, win 100 coins if it matches."""
+    """Predict match toss winner; coins awarded when feed reports toss and pick matches."""
 
     __tablename__ = "toss_plays"
 
@@ -203,7 +204,7 @@ class TossPlay(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
     picked_team = Column(String, nullable=False)
-    winning_team = Column(String, nullable=False)
+    winning_team = Column(String, nullable=True)  # set when match toss is known from feed
     coins_won = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 

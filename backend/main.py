@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from database import engine, Base
-from schema_migrations import ensure_match_schema_upgrades
+from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema
 
 load_dotenv()
 
@@ -16,6 +16,7 @@ import models  # noqa: F401 — register CoinTransaction etc. before create_all
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_match_schema_upgrades(engine)
+    ensure_toss_winner_schema(engine)
     yield
 
 

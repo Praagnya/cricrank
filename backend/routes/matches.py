@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,12 +21,109 @@ from schemas import (
     TossPickResponse,
     TossStatusResponse,
 )
-from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair
+from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
 router = APIRouter()
 
-# Virtual toss after crowd vote — win this many coins if your pick matches the random toss.
+# Toss prediction — win this many coins when feed reports toss and your pick matches.
 TOSS_MATCH_COINS = 100
+
+
+def _merge_toss_sources(match: Match) -> dict:
+    if not match.cricapi_id:
+        return {}
+    source = _find_current_match_payload(match.cricapi_id) or {}
+    bbb: dict = {}
+    try:
+        bbb = fetch_match_bbb(match.cricapi_id) or {}
+    except CricAPIError:
+        bbb = {}
+    if not isinstance(bbb, dict):
+        bbb = {}
+    return {**source, **bbb}
+
+
+def _extract_toss_winner_name(payload: dict, team1: str, team2: str) -> str | None:
+    raw = (
+        payload.get("toss_winner_team")
+        or payload.get("tossWinner")
+        or payload.get("tossWinnerTeam")
+    )
+    if raw and isinstance(raw, str):
+        low = raw.strip().lower()
+        if "uncontested" in low or low == "no toss":
+            raw = None
+    if not raw or not isinstance(raw, str):
+        status = payload.get("status") or ""
+        if isinstance(status, str) and "won the toss" in status.lower():
+            t1, t2 = canonicalize_team(team1), canonicalize_team(team2)
+            for t in (t1, t2):
+                if t and t.lower() in status.lower():
+                    return t
+        return None
+    tw = canonicalize_team(raw.strip())
+    if not tw:
+        return None
+    t1, t2 = canonicalize_team(team1), canonicalize_team(team2)
+    if tw == t1:
+        return t1
+    if tw == t2:
+        return t2
+    nt = normalize_text(tw)
+    for t in (t1, t2):
+        if t and normalize_text(t) == nt:
+            return t
+    return None
+
+
+def _refresh_match_toss_winner(db: Session, match: Match) -> None:
+    if match.toss_winner:
+        return
+    merged = _merge_toss_sources(match)
+    tw = _extract_toss_winner_name(merged, match.team1, match.team2)
+    if tw:
+        match.toss_winner = tw
+
+
+def _settle_toss_row(db: Session, row: TossPlay, match: Match) -> None:
+    if row.winning_team is not None:
+        return
+    if not match.toss_winner:
+        return
+    row.winning_team = match.toss_winner
+    if row.picked_team == match.toss_winner:
+        row.coins_won = TOSS_MATCH_COINS
+        apply_credit(
+            db,
+            row.user_id,
+            TOSS_MATCH_COINS,
+            "toss_match",
+            idempotency_key=f"toss_match:{row.user_id}:{row.match_id}",
+            ref_type="match",
+            ref_id=str(row.match_id),
+        )
+    else:
+        row.coins_won = 0
+
+
+def _settle_all_toss_plays_for_match(db: Session, match: Match) -> None:
+    for row in db.query(TossPlay).filter(TossPlay.match_id == match.id).all():
+        if row.winning_team is None:
+            _settle_toss_row(db, row, match)
+
+
+def _toss_pick_response(row: TossPlay, user: User, already_played: bool) -> TossPickResponse:
+    settled = row.winning_team is not None
+    pending = row.picked_team is not None and not settled
+    return TossPickResponse(
+        picked_team=row.picked_team,
+        winning_team=row.winning_team,
+        coins_won=row.coins_won,
+        coins_balance=user.coins,
+        already_played=already_played,
+        pending=pending,
+        settled=settled,
+    )
 
 
 def _parse_gmt_datetime(value: str) -> datetime:
@@ -328,18 +424,26 @@ def get_toss_status(match_id: str, google_id: str = Query(..., min_length=1), db
     user = db.query(User).filter(User.google_id == google_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    _refresh_match_toss_winner(db, match)
+    _settle_all_toss_plays_for_match(db, match)
+    db.commit()
+
     row = (
         db.query(TossPlay)
         .filter(TossPlay.user_id == user.id, TossPlay.match_id == match.id)
         .first()
     )
     if not row:
-        return TossStatusResponse(played=False)
+        return TossStatusResponse(played=False, pending=False, settled=False)
+    settled = row.winning_team is not None
     return TossStatusResponse(
         played=True,
         picked_team=row.picked_team,
         winning_team=row.winning_team,
         coins_won=row.coins_won,
+        pending=not settled,
+        settled=settled,
     )
 
 
@@ -367,24 +471,35 @@ def play_toss(
         .first()
     )
     if existing:
+        _refresh_match_toss_winner(db, match)
+        _settle_toss_row(db, existing, match)
+        db.commit()
         db.refresh(user)
-        return TossPickResponse(
-            picked_team=existing.picked_team,
-            winning_team=existing.winning_team,
-            coins_won=existing.coins_won,
-            coins_balance=user.coins,
-            already_played=True,
+        db.refresh(existing)
+        return _toss_pick_response(existing, user, True)
+
+    now = datetime.now(timezone.utc)
+    lock_time = match.toss_time if match.toss_time.tzinfo else match.toss_time.replace(tzinfo=timezone.utc)
+    if now >= lock_time:
+        raise HTTPException(
+            status_code=400,
+            detail="Toss prediction is locked for this match.",
         )
 
-    winning = random.choice([match.team1, match.team2])
-    coins_won = TOSS_MATCH_COINS if picked == winning else 0
+    _refresh_match_toss_winner(db, match)
+    db.flush()
+    if match.toss_winner:
+        raise HTTPException(
+            status_code=400,
+            detail="Toss outcome is already known. You cannot submit a new prediction.",
+        )
 
     row = TossPlay(
         user_id=user.id,
         match_id=match.id,
         picked_team=picked,
-        winning_team=winning,
-        coins_won=coins_won,
+        winning_team=None,
+        coins_won=0,
     )
     db.add(row)
     try:
@@ -401,35 +516,22 @@ def play_toss(
         user = db.query(User).filter(User.google_id == google_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        return TossPickResponse(
-            picked_team=existing.picked_team,
-            winning_team=existing.winning_team,
-            coins_won=existing.coins_won,
-            coins_balance=user.coins,
-            already_played=True,
-        )
+        match = db.query(Match).filter(Match.id == match_id).first()
+        if not match:
+            raise HTTPException(status_code=404, detail="Match not found")
+        _refresh_match_toss_winner(db, match)
+        _settle_toss_row(db, existing, match)
+        db.commit()
+        db.refresh(user)
+        db.refresh(existing)
+        return _toss_pick_response(existing, user, True)
 
-    if coins_won > 0:
-        key = f"toss_match:{user.id}:{match.id}"
-        apply_credit(
-            db,
-            user.id,
-            coins_won,
-            "toss_match",
-            idempotency_key=key,
-            ref_type="match",
-            ref_id=str(match.id),
-        )
-
+    _refresh_match_toss_winner(db, match)
+    _settle_toss_row(db, row, match)
     db.commit()
     db.refresh(user)
-    return TossPickResponse(
-        picked_team=picked,
-        winning_team=winning,
-        coins_won=coins_won,
-        coins_balance=user.coins,
-        already_played=False,
-    )
+    db.refresh(row)
+    return _toss_pick_response(row, user, False)
 
 
 @router.get("/{match_id}/live", response_model=MatchLiveResponse)
@@ -462,6 +564,13 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         or canonicalize_winner(match.winner)
     )
     result_summary = source.get("status") or match.result_summary or status_text
+
+    _refresh_match_toss_winner(db, match)
+    _settle_all_toss_plays_for_match(db, match)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
 
     return MatchLiveResponse(
         match_id=match.id,

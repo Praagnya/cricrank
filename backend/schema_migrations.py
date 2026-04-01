@@ -1,6 +1,32 @@
 from sqlalchemy import inspect, text
 
 
+def ensure_toss_winner_schema(engine) -> None:
+    """matches.toss_winner column; toss_plays.winning_team nullable for pending predictions."""
+    inspector = inspect(engine)
+    dialect = engine.dialect.name
+
+    with engine.begin() as connection:
+        if "matches" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("matches")}
+            if "toss_winner" not in cols:
+                connection.execute(text("ALTER TABLE matches ADD COLUMN toss_winner VARCHAR"))
+
+        if "toss_plays" not in inspector.get_table_names():
+            return
+
+        for col in inspector.get_columns("toss_plays"):
+            if col["name"] == "winning_team" and col.get("nullable") is False:
+                if dialect == "postgresql":
+                    connection.execute(text("ALTER TABLE toss_plays ALTER COLUMN winning_team DROP NOT NULL"))
+                elif dialect == "sqlite":
+                    try:
+                        connection.execute(text("ALTER TABLE toss_plays ALTER COLUMN winning_team DROP NOT NULL"))
+                    except Exception:
+                        pass
+                break
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():

@@ -52,10 +52,12 @@ class TossPickRequest(BaseModel):
 
 class TossPickResponse(BaseModel):
     picked_team: str
-    winning_team: str
-    coins_won: int
+    winning_team: Optional[str] = None
+    coins_won: int = 0
     coins_balance: int
     already_played: bool = False
+    pending: bool = False
+    settled: bool = False
 
 
 class TossStatusResponse(BaseModel):
@@ -63,6 +65,8 @@ class TossStatusResponse(BaseModel):
     picked_team: Optional[str] = None
     winning_team: Optional[str] = None
     coins_won: int = 0
+    pending: bool = False
+    settled: bool = False
 
 
 class LeaderboardEntry(BaseModel):
@@ -114,6 +118,7 @@ class MatchPublic(BaseModel):
     status: MatchStatus
     winner: Optional[str] = None
     result_summary: Optional[str] = None
+    toss_winner: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
