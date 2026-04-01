@@ -32,6 +32,7 @@ export const api = {
   matches: {
     upcoming: (limit = 10, days?: number) => get<Match[]>(`/matches/upcoming?limit=${limit}${days ? `&days=${days}` : ''}`),
     today: () => get<Match[]>("/matches/today"),
+    recentCompleted: (limit = 5) => get<Match[]>(`/matches/recent-completed?limit=${limit}`),
     get: (id: string) => get<Match>(`/matches/${id}`),
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),

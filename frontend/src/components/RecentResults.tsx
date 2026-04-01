@@ -1,14 +1,14 @@
 import { Match } from "@/types";
 import { teamShortCode } from "@/lib/utils";
 
-export default function TodaysResults({ matches }: { matches: Match[] }) {
+export default function RecentResults({ matches }: { matches: Match[] }) {
   if (!matches.length) return null;
 
   return (
     <div className="border border-[#262626] bg-[#000000] px-4 py-5 sm:px-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-[3px] h-5 bg-[#262626]" />
-        <span className="text-[#a3a3a3] tracking-[0.25em] text-[13px] font-gaming uppercase">Today&apos;s results</span>
+        <span className="text-[#a3a3a3] tracking-[0.25em] text-[13px] font-gaming uppercase">Recent results</span>
         <div className="h-px flex-1 bg-[#262626]" />
       </div>
       <ul className="flex flex-col gap-4">

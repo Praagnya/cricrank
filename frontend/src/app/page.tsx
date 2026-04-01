@@ -4,24 +4,23 @@ import MatchCard from "@/components/MatchCard";
 import { CalendarDays } from "lucide-react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import MatchCarousel from "@/components/MatchCarousel";
-import TodaysResults from "@/components/TodaysResults";
+import RecentResults from "@/components/RecentResults";
 
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const [today, upcoming, leaders] = await Promise.all([
+  const [today, upcoming, leaders, recentResults] = await Promise.all([
     api.matches.today().catch(() => []),
     api.matches.upcoming(10, 7).catch(() => []),
     api.leaderboard.global(3).catch(() => []),
+    api.matches.recentCompleted(5).catch(() => []),
   ]);
-
-  const settledToday = today.filter((m) => m.status === "completed");
   const todayOpen = today.filter((m) => m.status !== "completed");
   const todayIds = new Set(today.map((m) => m.id));
   // Hero carousel: only matches you can still engage with (not settled today)
   const carouselMatches = [...todayOpen, ...upcoming.filter((m) => !todayIds.has(m.id))];
 
-  if (carouselMatches.length === 0 && settledToday.length === 0) {
+  if (carouselMatches.length === 0 && recentResults.length === 0) {
     return (
       <>
         <Header />
@@ -54,7 +53,7 @@ export default async function HomePage() {
           </aside>
         )}
 
-        {/* ── Middle: Match Carousel + settled today below ── */}
+        {/* ── Middle: Match Carousel + recent completed below ── */}
         <div className="flex-1 min-w-0 px-6 py-6 pb-14">
           {carouselMatches.length === 0 ? (
             <div className="border border-[#262626] bg-[#000000] px-6 py-12 text-center mb-6">
@@ -64,9 +63,9 @@ export default async function HomePage() {
           ) : (
             <MatchCarousel matches={carouselMatches} />
           )}
-          {settledToday.length > 0 && (
+          {recentResults.length > 0 && (
             <div className={carouselMatches.length > 0 ? "mt-8" : ""}>
-              <TodaysResults matches={settledToday} />
+              <RecentResults matches={recentResults} />
             </div>
           )}
           

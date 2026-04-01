@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 
 from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_scorecard, fetch_series_info
@@ -249,6 +249,21 @@ def upcoming_matches(
     if days is not None:
         q = q.filter(Match.start_time <= now + timedelta(days=days))
     return q.order_by(Match.start_time).limit(limit).all()
+
+
+@router.get("/recent-completed", response_model=list[MatchPublic])
+def recent_completed_matches(
+    limit: int = Query(5, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """Most recently finished matches by start time (proxy for recency)."""
+    return (
+        db.query(Match)
+        .filter(Match.status == MatchStatus.completed)
+        .order_by(desc(Match.start_time))
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{match_id}", response_model=MatchPublic)
