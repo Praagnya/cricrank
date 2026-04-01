@@ -121,9 +121,23 @@ export default function Header() {
           {/* RIGHT — coins (mobile) + coins + avatar (desktop) */}
           <div className="flex items-center justify-end gap-2">
             {!loading && user && coins !== null && (
-              <Link href="/profile" className={`${btn} flex-col gap-0 px-3 h-10`}>
-                <span className="text-[7px] font-black uppercase tracking-widest text-[#fbbf24]/60 leading-none">Coins</span>
-                <span className="font-gaming text-sm text-[#fbbf24] leading-none">{coins.toLocaleString()}</span>
+              <Link href="/profile" className="flex items-center gap-2 px-1 group">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="shrink-0 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)] group-hover:drop-shadow-[0_0_10px_rgba(251,191,36,0.7)] transition-all">
+                  <defs>
+                    <radialGradient id="cg" cx="38%" cy="32%" r="68%">
+                      <stop offset="0%" stopColor="#fef3c7" />
+                      <stop offset="45%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#b45309" />
+                    </radialGradient>
+                  </defs>
+                  <circle cx="14" cy="14" r="13.5" fill="#78350f" />
+                  <circle cx="14" cy="14" r="12" fill="url(#cg)" />
+                  <circle cx="14" cy="14" r="9" fill="none" stroke="#92400e" strokeWidth="1.2" />
+                  <text x="14" y="18.5" textAnchor="middle" fontSize="10" fontWeight="900" fill="#78350f" fontFamily="serif">₡</text>
+                </svg>
+                <span className="font-gaming text-base font-black text-[#fbbf24] tabular-nums group-hover:text-[#fde68a] transition-colors">
+                  {coins.toLocaleString()}
+                </span>
               </Link>
             )}
 

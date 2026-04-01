@@ -50,15 +50,16 @@ def ensure_first_innings_schema(engine) -> None:
             connection.execute(text("CREATE INDEX ix_fip_match ON first_innings_picks (match_id)"))
         return
 
-    # Table already exists — apply migrations
+    # Table already exists — check columns before opening transaction to avoid lock contention
+    cols = {c["name"] for c in inspector.get_columns("first_innings_picks")}
+    needs_stake = "stake" not in cols
+
     with engine.begin() as connection:
         # Drop unique constraint if still present (old single-entry schema)
         connection.execute(text(
             "ALTER TABLE first_innings_picks DROP CONSTRAINT IF EXISTS uq_first_innings_user_match"
         ))
-        # Add stake column if missing
-        cols = {c["name"] for c in inspector.get_columns("first_innings_picks")}
-        if "stake" not in cols:
+        if needs_stake:
             connection.execute(text(
                 "ALTER TABLE first_innings_picks ADD COLUMN stake INTEGER NOT NULL DEFAULT 10"
             ))
