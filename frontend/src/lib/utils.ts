@@ -52,6 +52,16 @@ export function formatDate(isoString: string): string {
   });
 }
 
+/** localStorage key: last IST date we POST-synced coins for this user */
+export function coinSyncStorageKey(googleUserId: string): string {
+  return `cricrank_coin_sync_ist_${googleUserId}`;
+}
+
+/** YYYY-MM-DD in Asia/Kolkata — for daily coin sync / client-side day checks. */
+export function istCalendarDateKey(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 /** Compact IST date for lists (e.g. recent results). */
 export function formatShortDate(isoString: string): string {
   const date = new Date(isoString);

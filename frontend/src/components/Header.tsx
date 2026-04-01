@@ -3,28 +3,90 @@
 import Link from "next/link";
 import { LogOut, LogIn, Zap, Menu, X } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
+import CoinRewardToast from "@/components/CoinRewardToast";
+import { coinSyncStorageKey, istCalendarDateKey } from "@/lib/utils";
 
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number | null>(null);
+  const [coinReward, setCoinReward] = useState<number | null>(null);
+  const dismissReward = useCallback(() => setCoinReward(null), []);
+  const syncBusy = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
-    fetch(`${getApiBaseUrl()}/users/${user.id}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setCoins(data.coins); })
-      .catch(() => {});
-  }, [user]);
+    if (!user) {
+      setCoins(null);
+      return;
+    }
+
+    const base = getApiBaseUrl();
+    const body = JSON.stringify({
+      google_id: user.id,
+      name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Anonymous",
+      email: user.email ?? "",
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    });
+
+    const syncCoins = async () => {
+      if (syncBusy.current) return;
+      syncBusy.current = true;
+      try {
+        const today = istCalendarDateKey();
+        const syncKey = coinSyncStorageKey(user.id);
+        const last = typeof window !== "undefined" ? localStorage.getItem(syncKey) : null;
+
+        if (last !== today) {
+          const res = await fetch(`${base}/users/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          localStorage.setItem(syncKey, today);
+          if (typeof data.coins === "number") setCoins(data.coins);
+          if (data.daily_login_coins_awarded > 0) {
+            setCoinReward(data.daily_login_coins_awarded);
+          }
+        } else {
+          const res = await fetch(`${base}/users/${user.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (typeof data.coins === "number") setCoins(data.coins);
+          }
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        syncBusy.current = false;
+      }
+    };
+
+    syncCoins();
+
+    const onVis = () => {
+      if (document.visibilityState !== "visible" || !user) return;
+      const today = istCalendarDateKey();
+      if (localStorage.getItem(coinSyncStorageKey(user.id)) !== today) {
+        syncCoins();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [user?.id]);
 
   const btn = "flex items-center justify-center border border-[#262626] bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors text-white";
 
   return (
     <>
+      {coinReward !== null && coinReward > 0 && (
+        <CoinRewardToast amount={coinReward} onDismiss={dismissReward} />
+      )}
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
 
