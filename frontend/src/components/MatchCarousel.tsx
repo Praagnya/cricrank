@@ -202,7 +202,7 @@ export default function MatchCarousel({ matches }: Props) {
       />
 
       {/* Analysis */}
-      {(aiPrediction || crowd) && (
+      {crowd && (
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-[3px] h-5 bg-white" />
@@ -210,7 +210,8 @@ export default function MatchCarousel({ matches }: Props) {
             <div className="h-px flex-1 bg-[#262626]" />
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {aiPrediction && <AIPredictionCard prediction={aiPrediction as Parameters<typeof AIPredictionCard>[0]["prediction"]} team1={match.team1} team2={match.team2} />}
+            {/* AI prediction temporarily hidden */}
+            {/* {aiPrediction && <AIPredictionCard prediction={aiPrediction as Parameters<typeof AIPredictionCard>[0]["prediction"]} team1={match.team1} team2={match.team2} />} */}
             {crowd && <CrowdPredictionCard crowd={crowd as Parameters<typeof CrowdPredictionCard>[0]["crowd"]} team1={match.team1} team2={match.team2} />}
           </div>
         </div>
