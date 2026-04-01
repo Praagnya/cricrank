@@ -9,6 +9,8 @@ from schema_migrations import ensure_match_schema_upgrades
 
 load_dotenv()
 
+import models  # noqa: F401 — register CoinTransaction etc. before create_all
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

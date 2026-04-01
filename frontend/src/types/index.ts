@@ -46,6 +46,8 @@ export interface User {
   avatar_url?: string | null;
   jersey_color?: string;
   coins: number;
+  /** Present on POST /users/ (login upsert) when daily bonus was evaluated */
+  daily_login_coins_awarded?: number;
 }
 
 export interface Prediction {

@@ -40,6 +40,12 @@ class UserPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserLoginResponse(UserPublic):
+    """POST /users/ — includes optional daily coin bonus for this login."""
+
+    daily_login_coins_awarded: int = 0
+
+
 class LeaderboardEntry(BaseModel):
     google_id: str
     username: str

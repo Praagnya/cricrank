@@ -79,6 +79,7 @@ class User(Base):
 
     predictions = relationship("Prediction", back_populates="user")
     contest_entries = relationship("ContestEntry", back_populates="user")
+    coin_transactions = relationship("CoinTransaction", back_populates="user")
 
     @property
     def accuracy(self) -> float:
@@ -191,6 +192,22 @@ class Follow(Base):
     __table_args__ = (
         UniqueConstraint("follower_id", "following_id", name="uq_follow"),
     )
+
+
+class CoinTransaction(Base):
+    __tablename__ = "coin_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    delta = Column(Integer, nullable=False)
+    balance_after = Column(Integer, nullable=False)
+    kind = Column(String(32), nullable=False)
+    idempotency_key = Column(String(128), unique=True, nullable=False)
+    ref_type = Column(String(32), nullable=True)
+    ref_id = Column(String(64), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", back_populates="coin_transactions")
 
 
 class ContestEntry(Base):

@@ -5,7 +5,8 @@ from sqlalchemy import func, or_
 import random
 from database import get_db
 from models import User, Follow, JERSEY_COLORS
-from schemas import UserCreate, UserPublic, UserIdentityUpdate, FollowStats, FollowUserPublic
+from schemas import UserCreate, UserPublic, UserLoginResponse, UserIdentityUpdate, FollowStats, FollowUserPublic
+from coin_ledger import claim_daily_login
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def _generate_username(name: str, db: Session) -> str:
     return candidate
 
 
-@router.post("/", response_model=UserPublic)
+@router.post("/", response_model=UserLoginResponse)
 def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
     """
     Called after Google OAuth login.
@@ -59,10 +60,13 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
         if payload.avatar_url:
             user.avatar_url = payload.avatar_url
 
+    db.flush()
+    daily_awarded = claim_daily_login(db, user)
     db.commit()
     db.refresh(user)
 
-    return user
+    base = UserPublic.model_validate(user)
+    return UserLoginResponse(**base.model_dump(), daily_login_coins_awarded=daily_awarded)
 
 
 # NOTE: /search must be registered BEFORE /{identifier} to avoid route conflict
