@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Match } from "@/types";
-import { teamFullName, teamShortCode, formatRelativeDate } from "@/lib/utils";
+import { Match, MatchLive } from "@/types";
+import { teamFullName, teamShortCode, formatRelativeDate, teamHex } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, MapPin, Clock } from "lucide-react";
 import TeamCrest from "@/components/TeamCrest";
 import MatchInteraction from "@/components/MatchInteraction";
-import AIPredictionCard from "@/components/AIPredictionCard";
 import CrowdPredictionCard from "@/components/CrowdPredictionCard";
 import CountdownTimer from "@/components/CountdownTimer";
 import { api } from "@/lib/api";
@@ -14,6 +13,84 @@ import { api } from "@/lib/api";
 interface MatchData {
   aiPrediction: unknown | null;
   crowd: unknown | null;
+}
+
+// Mock live data for development — remove when real live matches are available
+const MOCK_LIVE: MatchLive = {
+  match_id: "",
+  cricapi_id: "",
+  status: "live" as const,
+  match_started: true,
+  match_ended: false,
+  status_text: "Lucknow Super Giants - 142/6 (16.2 ov)",
+  match_winner: null,
+  result_summary: null,
+  score: [
+    { r: 142, w: 6, o: 16.2, inning: "Lucknow Super Giants Inning 1" },
+  ] as Record<string, unknown>[],
+  bbb: [
+    { n: 97, inning: 0, over: 16, ball: 2, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 1, penalty: null, extras: 0 },
+  ] as Record<string, unknown>[],
+};
+
+type ScoreEntry = { r: number; w: number; o: number; inning: string };
+type BbbEntry = { batsman: { name: string }; bowler: { name: string }; runs: number };
+
+function LiveScoreRow({ live, team1, team2 }: { live: MatchLive; team1: string; team2: string }) {
+  const scores = live.score as ScoreEntry[];
+  const bbb = live.bbb as BbbEntry[];
+
+  const t1Score = scores.find(s => s.inning.includes(team1));
+  const t2Score = scores.find(s => s.inning.includes(team2));
+  const current = bbb.length > 0 ? bbb[bbb.length - 1] : null;
+
+  return (
+    <div className="pt-6 border-t border-[#262626] flex flex-col gap-4">
+      {/* Scores */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team1) }}>{teamShortCode(team1)}</span>
+          {t1Score ? (
+            <span className="font-gaming text-2xl font-black text-white tracking-tight">
+              {t1Score.r}/{t1Score.w} <span className="text-sm text-[#737373]">({t1Score.o} ov)</span>
+            </span>
+          ) : (
+            <span className="text-sm font-black text-[#525252] uppercase tracking-widest">Yet to bat</span>
+          )}
+        </div>
+
+        <div className="flex flex-col items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#10b981]">Live</span>
+        </div>
+
+        <div className="flex flex-col gap-0.5 items-end">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team2) }}>{teamShortCode(team2)}</span>
+          {t2Score ? (
+            <span className="font-gaming text-2xl font-black text-white tracking-tight">
+              {t2Score.r}/{t2Score.w} <span className="text-sm text-[#737373]">({t2Score.o} ov)</span>
+            </span>
+          ) : (
+            <span className="text-sm font-black text-[#525252] uppercase tracking-widest">Yet to bat</span>
+          )}
+        </div>
+      </div>
+
+      {/* Current batsman / bowler */}
+      {current && (
+        <div className="flex items-center justify-between border-t border-[#1a1a1a] pt-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Batsman</span>
+            <span className="text-xs font-black text-white uppercase tracking-wide">{current.batsman.name}</span>
+          </div>
+          <div className="flex flex-col gap-0.5 items-end">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Bowler</span>
+            <span className="text-xs font-black text-white uppercase tracking-wide">{current.bowler.name}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface Props {
@@ -42,20 +119,32 @@ function MatchStatusBadge({ status }: { status: string }) {
 export default function MatchCarousel({ matches }: Props) {
   const [idx, setIdx] = useState(0);
   const [data, setData] = useState<Record<string, MatchData>>({});
+  const [liveData, setLiveData] = useState<Record<string, MatchLive>>({});
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
   const [animating, setAnimating] = useState(false);
 
   const match = matches[idx];
   const total = matches.length;
 
+  // Poll live score every 10s when match is live
+  useEffect(() => {
+    if (!match || match.status !== "live") return;
+    const poll = async () => {
+      const live = await api.matches.live(match.id).catch(() => null);
+      if (live) setLiveData(prev => ({ ...prev, [match.id]: live }));
+    };
+    poll();
+    const interval = setInterval(poll, 10_000);
+    return () => clearInterval(interval);
+  }, [match?.id, match?.status]);
+
   // Fetch analysis data for the current match
   useEffect(() => {
     if (!match || data[match.id]) return;
     Promise.all([
-      api.matches.aiPrediction(match.id).catch(() => null),
       api.matches.crowd(match.id).catch(() => null),
-    ]).then(([aiPrediction, crowd]) => {
-      setData(prev => ({ ...prev, [match.id]: { aiPrediction, crowd } }));
+    ]).then(([crowd]) => {
+      setData(prev => ({ ...prev, [match.id]: { aiPrediction: null, crowd } }));
     });
   }, [match?.id]);
 
@@ -70,7 +159,6 @@ export default function MatchCarousel({ matches }: Props) {
   }
 
   const matchData = data[match.id];
-  const aiPrediction = matchData?.aiPrediction ?? null;
   const crowd = matchData?.crowd ?? null;
 
   const slideClass = animating
@@ -159,35 +247,42 @@ export default function MatchCarousel({ matches }: Props) {
             </div>
           </div>
 
-          {/* Bottom metadata */}
-          <div className={`flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:items-center pt-6 border-t border-[#262626] transition-all duration-200 ${slideClass}`}>
-            {/* Venue — mobile: icon-inline row, desktop: original label-above */}
-            <div className="flex items-center gap-3 lg:block">
-              <MapPin className="w-4 h-4 text-[#c8c8c8] shrink-0 lg:hidden" />
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] uppercase tracking-[0.2em] text-[#737373] font-bold">Venue</span>
-                <div className="flex items-center gap-2 text-white">
-                  <MapPin className="w-4 h-4 text-[#c8c8c8] hidden lg:block" />
-                  <span className="font-gaming text-sm lg:text-base font-bold tracking-wide">{match.venue.split(",")[0]}</span>
+          {/* Bottom metadata — live score when live, venue/schedule otherwise */}
+          {(match.status === "live" || true) ? (
+            <div className={`transition-all duration-200 ${slideClass}`}>
+              <LiveScoreRow
+                live={liveData[match.id] ?? MOCK_LIVE}
+                team1={match.team1}
+                team2={match.team2}
+              />
+            </div>
+          ) : (
+            <div className={`flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:items-center pt-6 border-t border-[#262626] transition-all duration-200 ${slideClass}`}>
+              <div className="flex items-center gap-3 lg:block">
+                <MapPin className="w-4 h-4 text-[#c8c8c8] shrink-0 lg:hidden" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#737373] font-bold">Venue</span>
+                  <div className="flex items-center gap-2 text-white">
+                    <MapPin className="w-4 h-4 text-[#c8c8c8] hidden lg:block" />
+                    <span className="font-gaming text-sm lg:text-base font-bold tracking-wide">{match.venue.split(",")[0]}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            {/* Schedule — mobile: icon-inline row, desktop: original centered */}
-            <div className="flex items-center gap-3 lg:block">
-              <Clock className="w-4 h-4 text-[#c8c8c8] shrink-0 lg:hidden" />
-              <div className="flex flex-col gap-1 lg:items-center">
-                <span className="text-[11px] uppercase tracking-[0.2em] text-[#737373] font-bold">Schedule</span>
-                <div className="flex items-center gap-2 text-white">
-                  <Clock className="w-4 h-4 text-[#c8c8c8] hidden lg:block" />
-                  <span className="font-gaming text-sm lg:text-base font-bold tracking-wide">{formatRelativeDate(match.start_time)}</span>
+              <div className="flex items-center gap-3 lg:block">
+                <Clock className="w-4 h-4 text-[#c8c8c8] shrink-0 lg:hidden" />
+                <div className="flex flex-col gap-1 lg:items-center">
+                  <span className="text-[11px] uppercase tracking-[0.2em] text-[#737373] font-bold">Schedule</span>
+                  <div className="flex items-center gap-2 text-white">
+                    <Clock className="w-4 h-4 text-[#c8c8c8] hidden lg:block" />
+                    <span className="font-gaming text-sm lg:text-base font-bold tracking-wide">{formatRelativeDate(match.start_time)}</span>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center gap-3 lg:block lg:flex lg:justify-end">
+                {match.status === "upcoming" && <CountdownTimer tossTime={match.toss_time} variant="hero" />}
+              </div>
             </div>
-            {/* Toss — mobile: left-aligned to match Venue/Schedule, desktop: original right-aligned */}
-            <div className="flex items-center gap-3 lg:block lg:flex lg:justify-end">
-              {match.status === "upcoming" && <CountdownTimer tossTime={match.toss_time} variant="hero" />}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
