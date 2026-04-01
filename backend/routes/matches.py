@@ -641,8 +641,9 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
 
 # ── First Innings Score ────────────────────────────────────────────────────────
 
-FIRST_INNINGS_STAKE = 10
-FIRST_INNINGS_PRIZE = 10_000   # net gain on exact match
+FIRST_INNINGS_STAKES = [10, 50, 100]   # cost for guess 1, 2, 3
+FIRST_INNINGS_PRIZE  = 10_000          # net gain on exact match
+MAX_FIRST_INNINGS_PICKS = 3
 
 
 def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
@@ -684,21 +685,22 @@ def _settle_first_innings_picks(db: Session, match: Match) -> None:
         if correct:
             row.coins_won = FIRST_INNINGS_PRIZE
             apply_credit(
-                db, row.user_id, FIRST_INNINGS_STAKE + FIRST_INNINGS_PRIZE,
+                db, row.user_id, row.stake + FIRST_INNINGS_PRIZE,
                 "first_innings_win",
-                idempotency_key=f"fi_win:{row.user_id}:{row.match_id}",
+                idempotency_key=f"fi_win:{row.id}",
                 ref_type="match", ref_id=str(row.match_id),
             )
         else:
-            row.coins_won = -FIRST_INNINGS_STAKE
+            row.coins_won = -row.stake
 
 
-def _fi_status_response(row: FirstInningsPick) -> FirstInningsStatusResponse:
+def _fi_row_to_item(row: FirstInningsPick) -> "FirstInningsPickItem":
+    from schemas import FirstInningsPickItem
     settled = row.actual_score is not None
-    return FirstInningsStatusResponse(
-        played=True,
+    return FirstInningsPickItem(
         predicted_team=row.predicted_team,
         predicted_score=row.predicted_score,
+        stake=row.stake,
         actual_team=row.actual_team,
         actual_score=row.actual_score,
         coins_won=row.coins_won,
@@ -707,18 +709,31 @@ def _fi_status_response(row: FirstInningsPick) -> FirstInningsStatusResponse:
     )
 
 
-def _fi_pick_response(row: FirstInningsPick, user: User, already_played: bool) -> FirstInningsPickResponse:
-    settled = row.actual_score is not None
+def _fi_next_stake(pick_count: int) -> int | None:
+    if pick_count >= MAX_FIRST_INNINGS_PICKS:
+        return None
+    return FIRST_INNINGS_STAKES[pick_count]
+
+
+def _fi_status_from_rows(rows: list) -> "FirstInningsStatusResponse":
+    from schemas import FirstInningsStatusResponse
+    pick_count = len(rows)
+    return FirstInningsStatusResponse(
+        played=pick_count > 0,
+        picks=[_fi_row_to_item(r) for r in rows],
+        pick_count=pick_count,
+        next_stake=_fi_next_stake(pick_count),
+    )
+
+
+def _fi_pick_response_from_rows(rows: list, user: User) -> "FirstInningsPickResponse":
+    from schemas import FirstInningsPickResponse
+    pick_count = len(rows)
     return FirstInningsPickResponse(
-        predicted_team=row.predicted_team,
-        predicted_score=row.predicted_score,
-        actual_team=row.actual_team,
-        actual_score=row.actual_score,
-        coins_won=row.coins_won,
+        picks=[_fi_row_to_item(r) for r in rows],
+        pick_count=pick_count,
+        next_stake=_fi_next_stake(pick_count),
         coins_balance=user.coins,
-        already_played=already_played,
-        pending=not settled,
-        settled=settled,
     )
 
 
@@ -731,21 +746,23 @@ def get_first_innings_status(match_id: str, google_id: str = Query(..., min_leng
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    row = db.query(FirstInningsPick).filter(
-        FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
-    ).first()
+    rows = (
+        db.query(FirstInningsPick)
+        .filter(FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id)
+        .order_by(FirstInningsPick.created_at)
+        .all()
+    )
 
-    if row and row.actual_score is None and match.cricapi_id:
+    if rows and any(r.actual_score is None for r in rows) and match.cricapi_id:
         _settle_first_innings_picks(db, match)
         try:
             db.commit()
         except Exception:
             db.rollback()
-        db.refresh(row)
+        for r in rows:
+            db.refresh(r)
 
-    if not row:
-        return FirstInningsStatusResponse(played=False)
-    return _fi_status_response(row)
+    return _fi_status_from_rows(rows)
 
 
 @router.post("/{match_id}/first-innings-pick", response_model=FirstInningsPickResponse)
@@ -768,26 +785,36 @@ def play_first_innings(
     if not (50 <= body.predicted_score <= 350):
         raise HTTPException(status_code=400, detail="predicted_score must be between 50 and 350")
 
-    existing = db.query(FirstInningsPick).filter(
-        FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
-    ).first()
-    if existing:
-        if existing.actual_score is None and match.cricapi_id:
-            _settle_first_innings_picks(db, match)
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
-            db.refresh(existing)
-            db.refresh(user)
-        return _fi_pick_response(existing, user, True)
-
     now = datetime.now(timezone.utc)
     lock_time = match.start_time if match.start_time.tzinfo else match.start_time.replace(tzinfo=timezone.utc)
     if now >= lock_time:
         raise HTTPException(status_code=400, detail="First innings prediction is locked")
 
-    if user.coins < FIRST_INNINGS_STAKE:
+    existing_rows = (
+        db.query(FirstInningsPick)
+        .filter(FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id)
+        .order_by(FirstInningsPick.created_at)
+        .all()
+    )
+
+    # Try settling any unsettled picks before checking count
+    if existing_rows and any(r.actual_score is None for r in existing_rows) and match.cricapi_id:
+        _settle_first_innings_picks(db, match)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+        for r in existing_rows:
+            db.refresh(r)
+        db.refresh(user)
+
+    pick_count = len(existing_rows)
+    if pick_count >= MAX_FIRST_INNINGS_PICKS:
+        raise HTTPException(status_code=400, detail="max_guesses_reached")
+
+    stake = FIRST_INNINGS_STAKES[pick_count]
+
+    if user.coins < stake:
         raise HTTPException(status_code=400, detail="insufficient_coins")
 
     row = FirstInningsPick(
@@ -795,24 +822,15 @@ def play_first_innings(
         match_id=match.id,
         predicted_team=picked_team,
         predicted_score=body.predicted_score,
+        stake=stake,
     )
     db.add(row)
-    try:
-        db.flush()
-    except IntegrityError:
-        db.rollback()
-        existing = db.query(FirstInningsPick).filter(
-            FirstInningsPick.user_id == user.id, FirstInningsPick.match_id == match.id
-        ).first()
-        if not existing:
-            raise HTTPException(status_code=409, detail="Could not record pick") from None
-        db.refresh(user)
-        return _fi_pick_response(existing, user, True)
+    db.flush()
 
     try:
         apply_debit(
-            db, user.id, FIRST_INNINGS_STAKE, "first_innings_stake",
-            idempotency_key=f"fi_stake:{user.id}:{match.id}",
+            db, user.id, stake, "first_innings_stake",
+            idempotency_key=f"fi_stake:{row.id}",
             ref_type="match", ref_id=str(match.id),
         )
     except ValueError:
@@ -821,4 +839,5 @@ def play_first_innings(
     db.commit()
     db.refresh(user)
     db.refresh(row)
-    return _fi_pick_response(row, user, False)
+    all_rows = existing_rows + [row]
+    return _fi_pick_response_from_rows(all_rows, user)

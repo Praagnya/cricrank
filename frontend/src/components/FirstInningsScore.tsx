@@ -3,21 +3,15 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { api } from "@/lib/api";
-import type { FirstInningsPickResponse } from "@/types";
+import type { FirstInningsPickItem } from "@/types";
 import { teamHex, teamShortCode } from "@/lib/utils";
 
 type Phase = "loading" | "team" | "score" | "submitting" | "pending" | "done";
 
-const STAKE = 10;
 const PRIZE = 10_000;
 const DEFAULT_SCORE = 175;
 const MIN_SCORE = 50;
 const MAX_SCORE = 350;
-
-type View = Pick<
-  FirstInningsPickResponse,
-  "predicted_team" | "predicted_score" | "actual_team" | "actual_score" | "coins_won" | "pending" | "settled"
->;
 
 export default function FirstInningsScore({
   matchId,
@@ -35,10 +29,11 @@ export default function FirstInningsScore({
   const isLocked = startTime ? Date.now() >= new Date(startTime).getTime() : false;
 
   const [phase, setPhase] = useState<Phase>("loading");
+  const [picks, setPicks] = useState<FirstInningsPickItem[]>([]);
+  const [nextStake, setNextStake] = useState<number | null>(10);
   const [pickedTeam, setPickedTeam] = useState<string | null>(null);
   const [score, setScore] = useState(DEFAULT_SCORE);
   const [inputVal, setInputVal] = useState(String(DEFAULT_SCORE));
-  const [result, setResult] = useState<View | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,21 +44,15 @@ export default function FirstInningsScore({
       try {
         const s = await api.matches.firstInningsStatus(matchId, googleId);
         if (cancelled) return;
-        if (s.played && s.predicted_team) {
-          setPickedTeam(s.predicted_team);
-          setScore(s.predicted_score ?? DEFAULT_SCORE);
-          setResult({
-            predicted_team: s.predicted_team,
-            predicted_score: s.predicted_score ?? DEFAULT_SCORE,
-            actual_team: s.actual_team,
-            actual_score: s.actual_score,
-            coins_won: s.coins_won,
-            pending: s.pending ?? !s.settled,
-            settled: s.settled ?? false,
-          });
-          setPhase(s.settled ? "done" : "pending");
-        } else {
+        setPicks(s.picks);
+        setNextStake(s.next_stake);
+        if (!s.played) {
           setPhase("team");
+        } else if (s.next_stake !== null && !isLocked) {
+          setPhase("team");
+        } else {
+          const allSettled = s.picks.length > 0 && s.picks.every((p) => p.settled);
+          setPhase(allSettled ? "done" : "pending");
         }
       } catch {
         if (!cancelled) setPhase("team");
@@ -100,22 +89,26 @@ export default function FirstInningsScore({
     setPhase("submitting");
     try {
       const res = await api.matches.firstInningsPick(matchId, googleId, pickedTeam, score);
-      setResult({
-        predicted_team: res.predicted_team,
-        predicted_score: res.predicted_score,
-        actual_team: res.actual_team,
-        actual_score: res.actual_score,
-        coins_won: res.coins_won,
-        pending: res.pending ?? !res.settled,
-        settled: res.settled ?? false,
-      });
-      setPhase(res.settled ? "done" : "pending");
+      setPicks(res.picks);
+      setNextStake(res.next_stake);
+      // Reset entry state
+      setPickedTeam(null);
+      setScore(DEFAULT_SCORE);
+      setInputVal(String(DEFAULT_SCORE));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cricrank-coins-refresh"));
       }
+      if (res.next_stake !== null && !isLocked) {
+        setPhase("team");
+      } else {
+        const allSettled = res.picks.every((p) => p.settled);
+        setPhase(allSettled ? "done" : "pending");
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
-      setError(msg === "insufficient_coins" ? "Not enough coins to stake" : "Could not save pick");
+      if (msg === "insufficient_coins") setError("Not enough coins to stake");
+      else if (msg === "max_guesses_reached") setError("All 3 guesses used");
+      else setError("Could not save pick");
       setPhase("score");
     }
   }
@@ -127,6 +120,8 @@ export default function FirstInningsScore({
       </div>
     );
   }
+
+  const stakeLabel = nextStake ?? 0;
 
   return (
     <div className="border border-[#262626] bg-[#000000]">
@@ -140,16 +135,20 @@ export default function FirstInningsScore({
               First Innings Score
             </p>
             <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5">
-              Exact match · one entry per match
+              Exact match · up to 3 guesses
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-0.5">
-          <div className="flex items-center gap-1.5 border border-[#6366f1]/30 bg-[#6366f1]/5 px-2.5 py-1.5">
-            <span className="font-gaming text-sm font-black text-[#6366f1]">+{PRIZE.toLocaleString()}</span>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">coins</span>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#737373]">10 · 50 · 100</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stakes</span>
           </div>
-          <p className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">{STAKE} coin stake</p>
+          <div className="w-px h-7 bg-[#262626]" />
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#6366f1]">+{PRIZE.toLocaleString()}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
+          </div>
         </div>
       </div>
 
@@ -172,7 +171,8 @@ export default function FirstInningsScore({
           </div>
         )}
 
-        {(!googleId || phase === "team" || phase === "score" || phase === "submitting") && isLocked && (
+        {/* Locked with no picks */}
+        {((!googleId && isLocked) || (googleId && isLocked && picks.length === 0 && (phase === "team" || phase === "score" || phase === "submitting"))) && (
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">
             Prediction closed
           </p>
@@ -210,7 +210,6 @@ export default function FirstInningsScore({
         {/* Step 2: Enter score */}
         {googleId && (phase === "score" || phase === "submitting") && !isLocked && pickedTeam && (
           <div className="flex flex-col gap-4">
-            {/* Selected team + change */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Batting first</p>
@@ -228,7 +227,6 @@ export default function FirstInningsScore({
               </button>
             </div>
 
-            {/* Score input */}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mb-3">Predicted score</p>
               <div className="flex items-center gap-0">
@@ -262,7 +260,7 @@ export default function FirstInningsScore({
                 </button>
               </div>
               <p className="text-[8px] font-bold uppercase tracking-wider text-[#525252] mt-1.5 text-center">
-                Right-click ±/+ to jump by 10
+                Right-click −/+ to jump by 10
               </p>
             </div>
 
@@ -274,70 +272,96 @@ export default function FirstInningsScore({
               onClick={submit}
               className="w-full border border-[#6366f1] bg-[#6366f1]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#6366f1] transition-colors hover:bg-[#6366f1]/20 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {phase === "submitting" ? "Locking..." : `Lock — ${teamShortCode(pickedTeam)} ${score}`}
+              {phase === "submitting"
+                ? "Locking..."
+                : `Lock — ${teamShortCode(pickedTeam)} ${score} · ${stakeLabel} coins`}
             </button>
           </div>
         )}
 
         {/* Pending */}
-        {googleId && phase === "pending" && result && (
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your pick</p>
-              <p className="font-gaming text-2xl font-black text-white tracking-widest mt-1">
-                <span style={{ color: teamHex(result.predicted_team) }}>{teamShortCode(result.predicted_team)}</span>
-                <span className="text-[#525252] mx-2 text-lg">·</span>
-                {result.predicted_score}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Awaiting result</p>
-              <p className="font-gaming text-sm font-black text-[#6366f1] tracking-wider mt-1">
-                +{PRIZE.toLocaleString()} if exact
-              </p>
-            </div>
+        {googleId && phase === "pending" && picks.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your guesses</p>
+            {picks.map((p, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[8px] font-black uppercase tracking-wider text-[#525252] w-12">Guess {i + 1}</span>
+                  <p className="font-gaming text-xl font-black text-white tracking-widest">
+                    <span style={{ color: teamHex(p.predicted_team) }}>{teamShortCode(p.predicted_team)}</span>
+                    <span className="text-[#525252] mx-1.5 text-base">·</span>
+                    {p.predicted_score}
+                  </p>
+                </div>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252]">{p.stake} staked</p>
+              </div>
+            ))}
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#6366f1] mt-1">
+              +{PRIZE.toLocaleString()} if exact
+            </p>
           </div>
         )}
 
         {/* Done */}
-        {googleId && phase === "done" && result?.settled && result.actual_score != null && (
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-5">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Actual</p>
-                <p className="font-gaming text-2xl font-black text-white tracking-widest mt-1">
-                  {result.actual_team && (
-                    <span style={{ color: teamHex(result.actual_team) }}>{teamShortCode(result.actual_team)} </span>
-                  )}
-                  {result.actual_score}
+        {googleId && phase === "done" && picks.length > 0 && picks[0].actual_score != null && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 mb-1">
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Actual</p>
+              <p className="font-gaming text-xl font-black text-white tracking-widest">
+                {picks[0].actual_team && (
+                  <span style={{ color: teamHex(picks[0].actual_team) }}>{teamShortCode(picks[0].actual_team)} </span>
+                )}
+                {picks[0].actual_score}
+              </p>
+            </div>
+            <div className="w-full h-px bg-[#262626]" />
+            {picks.map((p, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[8px] font-black uppercase tracking-wider text-[#525252] w-12">Guess {i + 1}</span>
+                  <p className="font-gaming text-lg font-black tracking-widest" style={{ color: teamHex(p.predicted_team) }}>
+                    {teamShortCode(p.predicted_team)} <span className="text-white">{p.predicted_score}</span>
+                  </p>
+                </div>
+                <p className={`font-gaming text-lg font-black ${p.coins_won > 0 ? "text-[#6366f1]" : "text-red-500"}`}>
+                  {p.coins_won > 0 ? `+${p.coins_won.toLocaleString()}` : `-${p.stake}`}
                 </p>
               </div>
-              <div className="w-px h-10 bg-[#262626]" />
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your pick</p>
-                <p className="font-gaming text-2xl font-black text-white tracking-widest mt-1">
-                  <span style={{ color: teamHex(result.predicted_team) }}>{teamShortCode(result.predicted_team)} </span>
-                  {result.predicted_score}
-                </p>
+            ))}
+            {picks.length > 1 && (
+              <div className="flex items-center justify-between pt-2 border-t border-[#262626]">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-[#525252]">Net</span>
+                {(() => {
+                  const net = picks.reduce((sum, p) => sum + (p.coins_won > 0 ? p.coins_won : -p.stake), 0);
+                  return (
+                    <p className={`font-gaming text-lg font-black ${net >= 0 ? "text-[#6366f1]" : "text-red-500"}`}>
+                      {net >= 0 ? `+${net.toLocaleString()}` : net.toLocaleString()}
+                    </p>
+                  );
+                })()}
               </div>
-            </div>
-            <div className="text-right shrink-0">
-              {result.coins_won > 0 ? (
-                <>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Earned</p>
-                  <p className="font-gaming text-2xl font-black text-[#6366f1] mt-1">+{result.coins_won.toLocaleString()}</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Lost</p>
-                  <p className="font-gaming text-2xl font-black text-red-500 mt-1">-{STAKE}</p>
-                </>
-              )}
-            </div>
+            )}
           </div>
         )}
 
       </div>
+
+      {/* Previous guesses strip — shown during entry when picks exist */}
+      {picks.length > 0 && (phase === "team" || phase === "score" || phase === "submitting") && (
+        <div className="flex items-center gap-4 px-5 py-3 border-t border-[#262626] bg-[#0a0a0a]">
+          {picks.map((p, i) => (
+            <div key={i} className="flex items-center gap-2">
+              {i > 0 && <div className="w-px h-3 bg-[#262626]" />}
+              <span className="text-[8px] font-black uppercase tracking-wider text-[#525252]">G{i + 1}</span>
+              <span className="font-gaming text-sm font-black" style={{ color: teamHex(p.predicted_team) }}>
+                {teamShortCode(p.predicted_team)}
+              </span>
+              <span className="font-gaming text-sm font-black text-white">{p.predicted_score}</span>
+              <span className="text-[8px] text-[#525252]">· {p.stake}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

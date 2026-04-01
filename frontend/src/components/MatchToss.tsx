@@ -121,9 +121,16 @@ export default function MatchToss({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 border border-[#f59e0b]/30 bg-[#f59e0b]/5 px-2.5 py-1.5">
-          <span className="font-gaming text-sm font-black text-[#f59e0b]">+{TOSS_COINS}</span>
-          <span className="text-[9px] font-bold uppercase tracking-wider text-[#737373]">coins</span>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#737373]">{TOSS_COINS}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stake</span>
+          </div>
+          <div className="w-px h-7 bg-[#262626]" />
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#f59e0b]">+{TOSS_COINS}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
+          </div>
         </div>
       </div>
 
