@@ -52,6 +52,17 @@ export function formatDate(isoString: string): string {
   });
 }
 
+/** Compact IST date for lists (e.g. recent results). */
+export function formatShortDate(isoString: string): string {
+  const date = new Date(isoString);
+  return date.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export type PredictionState = "open" | "post_toss" | "locked";
 
 type TeamMeta = {
