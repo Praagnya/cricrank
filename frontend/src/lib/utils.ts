@@ -166,7 +166,7 @@ export function streakTierColor(tier: string): string {
     "Immortal": "text-purple-400",
     "Legend": "text-orange-400",
     "Veteran": "text-blue-400",
-    "Professional": "text-green-400",
+    "Pro": "text-green-400",
     "Rookie": "text-[var(--text-muted)]",
   };
   return c[tier] ?? "text-[var(--text-muted)]";

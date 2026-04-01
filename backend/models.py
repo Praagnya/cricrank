@@ -30,7 +30,7 @@ STREAK_TIERS = [
     (7,  "Immortal",      5.0),
     (5,  "Legend",        3.0),
     (3,  "Veteran",       2.0),
-    (2,  "Professional",  1.5),
+    (2,  "Pro",  1.5),
     (0,  "Rookie",        1.0),
 ]
 BASE_POINTS = 10

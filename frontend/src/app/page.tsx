@@ -107,7 +107,7 @@ export default async function HomePage() {
                   { tier: "Immortal",     color: "text-purple-400", streak: "7+",  mult: "×5"  },
                   { tier: "Legend",       color: "text-orange-400", streak: "5+",  mult: "×3"  },
                   { tier: "Veteran",      color: "text-blue-400",   streak: "3+",  mult: "×2"  },
-                  { tier: "Professional", color: "text-green-400",  streak: "2+",  mult: "×1.5"},
+                  { tier: "Pro", color: "text-green-400",  streak: "2+",  mult: "×1.5"},
                   { tier: "Rookie",       color: "text-[#525252]",  streak: "0+",  mult: "×1"  },
                 ].map(({ tier, color, streak, mult }) => (
                   <div key={tier} className="grid grid-cols-[135px_1fr_55px] sm:grid-cols-[180px_1fr_55px] items-center gap-3 py-1.5 border-b border-[#111111] last:border-0 hover:bg-[#111111] transition-colors -mx-3 px-3 cursor-default rounded-md">
