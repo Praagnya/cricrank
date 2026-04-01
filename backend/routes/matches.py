@@ -5,7 +5,7 @@ from sqlalchemy import func, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from coin_ledger import apply_credit
+from coin_ledger import apply_credit, apply_debit
 from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_scorecard, fetch_series_info
 from database import get_db
 from models import Match, MatchStatus, Prediction, TossPlay, User
@@ -92,18 +92,19 @@ def _settle_toss_row(db: Session, row: TossPlay, match: Match) -> None:
         return
     row.winning_team = match.toss_winner
     if row.picked_team == match.toss_winner:
-        row.coins_won = TOSS_MATCH_COINS
+        row.coins_won = TOSS_MATCH_COINS  # net gain (+100)
+        # Return stake + reward (200 total)
         apply_credit(
             db,
             row.user_id,
-            TOSS_MATCH_COINS,
+            TOSS_MATCH_COINS * 2,
             "toss_match",
             idempotency_key=f"toss_match:{row.user_id}:{row.match_id}",
             ref_type="match",
             ref_id=str(row.match_id),
         )
     else:
-        row.coins_won = 0
+        row.coins_won = -TOSS_MATCH_COINS  # net loss (stake already deducted)
 
 
 def _settle_all_toss_plays_for_match(db: Session, match: Match) -> None:
@@ -494,6 +495,9 @@ def play_toss(
             detail="Toss outcome is already known. You cannot submit a new prediction.",
         )
 
+    if user.coins < TOSS_MATCH_COINS:
+        raise HTTPException(status_code=400, detail="insufficient_coins")
+
     row = TossPlay(
         user_id=user.id,
         match_id=match.id,
@@ -525,6 +529,20 @@ def play_toss(
         db.refresh(user)
         db.refresh(existing)
         return _toss_pick_response(existing, user, True)
+
+    # Deduct stake now that the row is confirmed
+    try:
+        apply_debit(
+            db,
+            user.id,
+            TOSS_MATCH_COINS,
+            "toss_stake",
+            idempotency_key=f"toss_stake:{user.id}:{match.id}",
+            ref_type="match",
+            ref_id=str(match.id),
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="insufficient_coins")
 
     _refresh_match_toss_winner(db, match)
     _settle_toss_row(db, row, match)

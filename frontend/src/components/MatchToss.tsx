@@ -83,11 +83,13 @@ export default function MatchToss({
         settled: res.settled ?? false,
       });
       setPhase(res.settled ? "done" : "pending");
-      if (res.coins_won > 0 && typeof window !== "undefined") {
+      // Coins were staked — always refresh balance
+      if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cricrank-coins-refresh"));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save pick");
+      const msg = e instanceof Error ? e.message : "";
+      setError(msg === "insufficient_coins" ? "Not enough coins to stake" : "Could not save pick");
       setPhase("pick");
     }
   };
@@ -248,8 +250,8 @@ export default function MatchToss({
                 </>
               ) : (
                 <>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Result</p>
-                  <p className="font-gaming text-sm font-black text-[#525252] uppercase tracking-widest mt-1">No match</p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Lost</p>
+                  <p className="font-gaming text-2xl font-black text-red-500 mt-1">-{TOSS_COINS}</p>
                 </>
               )}
             </div>
