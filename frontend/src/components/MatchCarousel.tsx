@@ -25,10 +25,15 @@ export default function MatchCarousel({ matches }: Props) {
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
   const [animating, setAnimating] = useState(false);
 
-  const match = matches[idx];
   const total = matches.length;
+  const match = total > 0 ? matches[Math.min(idx, total - 1)] : undefined;
 
   useEffect(() => {
+    setIdx((i) => (total === 0 ? 0 : Math.min(i, total - 1)));
+  }, [total]);
+
+  useEffect(() => {
+    if (total === 0) return;
     if (!match) return;
     if (data[match.id]) return;
 
@@ -38,7 +43,7 @@ export default function MatchCarousel({ matches }: Props) {
     ]).then(([aiPrediction, crowd]) => {
       setData((prev) => ({ ...prev, [match.id]: { aiPrediction, crowd } }));
     });
-  }, [match?.id]);
+  }, [match?.id, total]);
 
   function navigate(dir: "left" | "right") {
     if (animating || total <= 1) return;
@@ -48,6 +53,10 @@ export default function MatchCarousel({ matches }: Props) {
       setIdx((prev) => (dir === "right" ? (prev + 1) % total : (prev - 1 + total) % total));
       setAnimating(false);
     }, 200);
+  }
+
+  if (!match || total === 0) {
+    return null;
   }
 
   const matchData = data[match.id];

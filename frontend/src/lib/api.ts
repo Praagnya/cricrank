@@ -1,4 +1,13 @@
-import { Match, AIPrediction, CrowdPrediction, User, LeaderboardEntry, Prediction, Squad, FollowUser } from "@/types";
+import {
+  Match,
+  AIPrediction,
+  CrowdPrediction,
+  User,
+  LeaderboardEntry,
+  Prediction,
+  Squad,
+  FollowUser,
+} from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 const BASE = getApiBaseUrl();

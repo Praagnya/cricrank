@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from database import engine, Base
 from schema_migrations import ensure_match_schema_upgrades
@@ -44,6 +45,34 @@ app.add_middleware(
 @app.get("/health", tags=["system"])
 def health():
     return {"status": "ok", "service": "cricgame-api"}
+
+
+@app.get("/health/cricapi", tags=["system"])
+def health_cricapi():
+    """One cached currentMatches call; does not expose CRICAPI_KEY."""
+    if not os.getenv("CRICAPI_KEY"):
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "cricapi": "not_configured"},
+        )
+    from cricapi import CricAPIError, fetch_current_matches
+
+    try:
+        matches = fetch_current_matches()
+        return {
+            "status": "ok",
+            "cricapi": "ok",
+            "current_matches_count": len(matches),
+        }
+    except CricAPIError as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "cricapi": "request_failed",
+                "detail": str(e),
+            },
+        )
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────

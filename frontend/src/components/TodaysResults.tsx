@@ -1,0 +1,31 @@
+import { Match } from "@/types";
+import { teamShortCode } from "@/lib/utils";
+
+export default function TodaysResults({ matches }: { matches: Match[] }) {
+  if (!matches.length) return null;
+
+  return (
+    <div className="border border-[#262626] bg-[#000000] px-4 py-5 sm:px-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-[3px] h-5 bg-[#262626]" />
+        <span className="text-[#a3a3a3] tracking-[0.25em] text-[13px] font-gaming uppercase">Today&apos;s results</span>
+        <div className="h-px flex-1 bg-[#262626]" />
+      </div>
+      <ul className="flex flex-col gap-4">
+        {matches.map((m) => (
+          <li key={m.id} className="flex flex-col gap-1.5 border-b border-[#1a1a1a] last:border-0 pb-4 last:pb-0">
+            <div className="flex flex-wrap items-center gap-2 text-white">
+              <span className="font-gaming text-sm font-bold">{teamShortCode(m.team1)}</span>
+              <span className="text-[#525252] text-xs">vs</span>
+              <span className="font-gaming text-sm font-bold">{teamShortCode(m.team2)}</span>
+              <span className="text-[10px] font-black tracking-widest text-[#737373] uppercase border border-[#262626] px-2 py-0.5">
+                Final
+              </span>
+            </div>
+            {m.result_summary && <p className="text-sm text-[#a3a3a3]">{m.result_summary}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

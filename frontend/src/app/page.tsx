@@ -4,6 +4,7 @@ import MatchCard from "@/components/MatchCard";
 import { CalendarDays } from "lucide-react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import MatchCarousel from "@/components/MatchCarousel";
+import TodaysResults from "@/components/TodaysResults";
 
 export const revalidate = 60;
 
@@ -14,11 +15,13 @@ export default async function HomePage() {
     api.leaderboard.global(3).catch(() => []),
   ]);
 
-  // Merge: today's matches first (live/completed/today-upcoming), then future upcoming
+  const settledToday = today.filter((m) => m.status === "completed");
+  const todayOpen = today.filter((m) => m.status !== "completed");
   const todayIds = new Set(today.map((m) => m.id));
-  const matches = [...today, ...upcoming.filter((m) => !todayIds.has(m.id))];
+  // Hero carousel: only matches you can still engage with (not settled today)
+  const carouselMatches = [...todayOpen, ...upcoming.filter((m) => !todayIds.has(m.id))];
 
-  if (matches.length === 0) {
+  if (carouselMatches.length === 0 && settledToday.length === 0) {
     return (
       <>
         <Header />
@@ -38,12 +41,12 @@ export default async function HomePage() {
       <div className="flex items-start">
 
         {/* ── Left sidebar: Upcoming matches ──────────────── */}
-        {matches.length > 1 && (
+        {carouselMatches.length > 1 && (
           <aside className="hidden lg:block w-[380px] shrink-0 border-r border-[#262626] sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
             <div className="px-4 py-6">
               <SectionLabel>UPCOMING THIS WEEK</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
-                {matches.slice(1).map((m) => (
+                {carouselMatches.slice(1).map((m) => (
                   <MatchCard key={m.id} match={m} variant="sidebar" />
                 ))}
               </div>
@@ -51,9 +54,21 @@ export default async function HomePage() {
           </aside>
         )}
 
-        {/* ── Middle: Match Carousel ── */}
+        {/* ── Middle: Match Carousel + settled today below ── */}
         <div className="flex-1 min-w-0 px-6 py-6 pb-14">
-          <MatchCarousel matches={matches} />
+          {carouselMatches.length === 0 ? (
+            <div className="border border-[#262626] bg-[#000000] px-6 py-12 text-center mb-6">
+              <p className="font-semibold text-white">No upcoming matches right now</p>
+              <p className="text-sm text-[var(--text-muted)] mt-2">Predictions open when the next fixture is listed.</p>
+            </div>
+          ) : (
+            <MatchCarousel matches={carouselMatches} />
+          )}
+          {settledToday.length > 0 && (
+            <div className={carouselMatches.length > 0 ? "mt-8" : ""}>
+              <TodaysResults matches={settledToday} />
+            </div>
+          )}
           
           {/* MOBILE ONLY: Rules & Tiers (Desktop handles this in Sidebar) */}
           <div className="flex flex-col gap-4 mt-8 lg:hidden">
