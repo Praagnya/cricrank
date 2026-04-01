@@ -224,7 +224,7 @@ export default function MatchToss({
           </div>
         )}
 
-        {googleId && phase === "done" && result && "winning_team" in result && (
+        {googleId && phase === "done" && result && result.winning_team && result.picked_team && (
           <div className="space-y-8 text-center">
             <div
               className={`mx-auto max-w-md border-2 px-6 py-8 ${
@@ -264,7 +264,7 @@ export default function MatchToss({
                 </p>
               )}
             </div>
-            {result.already_played && (
+            {"already_played" in result && result.already_played && (
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#525252]">
                 You already played this toss for this match
               </p>
