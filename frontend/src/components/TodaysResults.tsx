@@ -18,9 +18,6 @@ export default function TodaysResults({ matches }: { matches: Match[] }) {
               <span className="font-gaming text-sm font-bold">{teamShortCode(m.team1)}</span>
               <span className="text-[#525252] text-xs">vs</span>
               <span className="font-gaming text-sm font-bold">{teamShortCode(m.team2)}</span>
-              <span className="text-[10px] font-black tracking-widest text-[#737373] uppercase border border-[#262626] px-2 py-0.5">
-                Final
-              </span>
             </div>
             {m.result_summary && <p className="text-sm text-[#a3a3a3]">{m.result_summary}</p>}
           </li>
