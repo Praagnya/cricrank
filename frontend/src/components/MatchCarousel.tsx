@@ -15,7 +15,7 @@ interface MatchData {
   crowd: unknown | null;
 }
 
-// Mock live data for development — remove when real live matches are available
+// Mock live data for development
 const MOCK_LIVE: MatchLive = {
   match_id: "",
   cricapi_id: "",
@@ -29,12 +29,34 @@ const MOCK_LIVE: MatchLive = {
     { r: 142, w: 6, o: 16.2, inning: "Lucknow Super Giants Inning 1" },
   ] as Record<string, unknown>[],
   bbb: [
-    { n: 97, inning: 0, over: 16, ball: 2, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 1, penalty: null, extras: 0 },
+    // previous balls by KL Rahul off Kuldeep
+    { n: 80, inning: 0, over: 13, ball: 1, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 4, penalty: null, extras: 0 },
+    { n: 81, inning: 0, over: 13, ball: 2, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 0, penalty: null, extras: 0 },
+    { n: 82, inning: 0, over: 13, ball: 3, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 1, penalty: null, extras: 0 },
+    { n: 83, inning: 0, over: 13, ball: 4, batsman: { id: "3", name: "N Pooran" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 6, penalty: null, extras: 0 },
+    { n: 84, inning: 0, over: 13, ball: 5, batsman: { id: "3", name: "N Pooran" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 0, penalty: null, extras: 0 },
+    { n: 85, inning: 0, over: 13, ball: 6, batsman: { id: "3", name: "N Pooran" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 2, penalty: null, extras: 0 },
+    // current over 16 - Kuldeep bowling
+    { n: 96, inning: 0, over: 16, ball: 1, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 1, penalty: null, extras: 0 },
+    { n: 97, inning: 0, over: 16, ball: 2, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 4, penalty: null, extras: 0 },
+    { n: 98, inning: 0, over: 16, ball: 3, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 6, penalty: null, extras: 0 },
+    { n: 99, inning: 0, over: 16, ball: 4, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 0, penalty: null, extras: 0 },
+    { n: 100, inning: 0, over: 16, ball: 5, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 0, penalty: "wide", extras: 1 },
+    { n: 101, inning: 0, over: 16, ball: 5, batsman: { id: "1", name: "KL Rahul" }, bowler: { id: "2", name: "Kuldeep Yadav" }, runs: 2, penalty: null, extras: 0 },
   ] as Record<string, unknown>[],
 };
 
 type ScoreEntry = { r: number; w: number; o: number; inning: string };
-type BbbEntry = { batsman: { name: string }; bowler: { name: string }; runs: number };
+type BbbEntry = { n: number; inning: number; over: number; ball: number; batsman: { name: string }; bowler: { name: string }; runs: number; penalty: string | null; extras: number };
+
+function ballLabel(b: BbbEntry): { text: string; cls: string } {
+  if (b.penalty === "wide") return { text: "wd", cls: "text-[#f59e0b] border-[#f59e0b]" };
+  if (b.penalty === "noball") return { text: "nb", cls: "text-[#f59e0b] border-[#f59e0b]" };
+  if (b.runs === 0) return { text: "·", cls: "text-[#525252] border-[#262626]" };
+  if (b.runs === 4) return { text: "4", cls: "text-[#3b82f6] border-[#3b82f6]" };
+  if (b.runs === 6) return { text: "6", cls: "text-[#10b981] border-[#10b981]" };
+  return { text: String(b.runs), cls: "text-white border-[#444]" };
+}
 
 function LiveScoreRow({ live, team1, team2 }: { live: MatchLive; team1: string; team2: string }) {
   const scores = live.score as ScoreEntry[];
@@ -42,51 +64,97 @@ function LiveScoreRow({ live, team1, team2 }: { live: MatchLive; team1: string; 
 
   const t1Score = scores.find(s => s.inning.includes(team1));
   const t2Score = scores.find(s => s.inning.includes(team2));
+
   const current = bbb.length > 0 ? bbb[bbb.length - 1] : null;
 
+  // Batsman stats from bbb
+  const batsmanBalls = current ? bbb.filter(b => b.batsman.name === current.batsman.name && b.penalty !== "wide" && b.penalty !== "noball") : [];
+  const batsmanRuns = batsmanBalls.reduce((s, b) => s + b.runs, 0);
+
+  // Bowler stats from bbb
+  const bowlerLegal = current ? bbb.filter(b => b.bowler.name === current.bowler.name && b.penalty !== "wide" && b.penalty !== "noball") : [];
+  const bowlerRuns = current ? bbb.filter(b => b.bowler.name === current.bowler.name).reduce((s, b) => s + b.runs + b.extras, 0) : 0;
+  const bowlerOvers = `${Math.floor(bowlerLegal.length / 6)}.${bowlerLegal.length % 6}`;
+
+  // Current over balls
+  const currentOver = current?.over ?? 0;
+  const currentInning = current?.inning ?? 0;
+  const overBalls = bbb.filter(b => b.over === currentOver && b.inning === currentInning);
+
   return (
-    <div className="pt-6 border-t border-[#262626] flex flex-col gap-4">
-      {/* Scores */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team1) }}>{teamShortCode(team1)}</span>
-          {t1Score ? (
-            <span className="font-gaming text-2xl font-black text-white tracking-tight">
-              {t1Score.r}/{t1Score.w} <span className="text-sm text-[#737373]">({t1Score.o} ov)</span>
-            </span>
-          ) : (
-            <span className="text-sm font-black text-[#525252] uppercase tracking-widest">Yet to bat</span>
-          )}
+    <div className="pt-6 border-t border-[#262626] flex flex-col gap-5">
+
+      {/* Score row */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Team 1 */}
+        <div className="flex items-center gap-3 min-w-0">
+          <TeamCrest team={team1} size="sm" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team1) }}>{teamShortCode(team1)}</span>
+            {t1Score ? (
+              <span className="font-gaming text-xl font-black text-white tracking-tight leading-none">
+                {t1Score.r}/{t1Score.w} <span className="text-xs text-[#737373] font-bold">({t1Score.o})</span>
+              </span>
+            ) : (
+              <span className="text-xs font-black text-[#525252] uppercase tracking-wider">Yet to bat</span>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1">
+        {/* Live indicator */}
+        <div className="flex flex-col items-center gap-1 shrink-0">
           <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#10b981]">Live</span>
         </div>
 
-        <div className="flex flex-col gap-0.5 items-end">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team2) }}>{teamShortCode(team2)}</span>
-          {t2Score ? (
-            <span className="font-gaming text-2xl font-black text-white tracking-tight">
-              {t2Score.r}/{t2Score.w} <span className="text-sm text-[#737373]">({t2Score.o} ov)</span>
-            </span>
-          ) : (
-            <span className="text-sm font-black text-[#525252] uppercase tracking-widest">Yet to bat</span>
-          )}
+        {/* Team 2 */}
+        <div className="flex items-center gap-3 justify-end min-w-0">
+          <div className="flex flex-col items-end min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: teamHex(team2) }}>{teamShortCode(team2)}</span>
+            {t2Score ? (
+              <span className="font-gaming text-xl font-black text-white tracking-tight leading-none">
+                {t2Score.r}/{t2Score.w} <span className="text-xs text-[#737373] font-bold">({t2Score.o})</span>
+              </span>
+            ) : (
+              <span className="text-xs font-black text-[#525252] uppercase tracking-wider">Yet to bat</span>
+            )}
+          </div>
+          <TeamCrest team={team2} size="sm" />
         </div>
       </div>
 
-      {/* Current batsman / bowler */}
       {current && (
-        <div className="flex items-center justify-between border-t border-[#1a1a1a] pt-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Batsman</span>
-            <span className="text-xs font-black text-white uppercase tracking-wide">{current.batsman.name}</span>
+        <div className="flex flex-col gap-3 border-t border-[#1a1a1a] pt-4">
+          {/* Batsman + Bowler */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Batsman</span>
+              <span className="text-xs font-black text-white uppercase tracking-wide leading-none">{current.batsman.name}</span>
+              <span className="text-[11px] font-black text-[#a3a3a3] tabular-nums">{batsmanRuns} <span className="text-[#525252]">({batsmanBalls.length}b)</span></span>
+            </div>
+            <div className="flex flex-col gap-1 items-end">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Bowler</span>
+              <span className="text-xs font-black text-white uppercase tracking-wide leading-none text-right">{current.bowler.name}</span>
+              <span className="text-[11px] font-black text-[#a3a3a3] tabular-nums">{bowlerOvers} ov · {bowlerRuns} runs</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5 items-end">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252]">Bowler</span>
-            <span className="text-xs font-black text-white uppercase tracking-wide">{current.bowler.name}</span>
-          </div>
+
+          {/* Current over */}
+          {overBalls.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#525252] shrink-0">This over</span>
+              <div className="flex items-center gap-1.5">
+                {overBalls.map((b, i) => {
+                  const { text, cls } = ballLabel(b);
+                  return (
+                    <span key={i} className={`w-7 h-7 flex items-center justify-center text-[11px] font-black border ${cls}`}>
+                      {text}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
