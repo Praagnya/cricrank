@@ -130,7 +130,7 @@ export default function ChallengePage() {
   const STEPS: CreateStep[] = ["match", "team", "stakes", "invite"];
 
   const tabCls = (t: PageTab) =>
-    `flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors ${
+    `flex-1 py-2.5 text-xs font-black uppercase tracking-widest border-b-2 transition-colors ${
       tab === t ? "border-white text-white" : "border-transparent text-[#525252] hover:text-[#a3a3a3]"
     }`;
 
@@ -158,42 +158,43 @@ export default function ChallengePage() {
   return (
     <>
       <Header />
-      <main className="pb-20">
+      <main className="pb-24">
+        <div className="max-w-2xl mx-auto">
 
-        {/* Pending banner — full width */}
+        {/* Pending banner */}
         {pendingCount > 0 && (
           <button onClick={() => setTab("mine")}
-            className="w-full border-b border-[#f59e0b]/30 bg-[#f59e0b]/5 px-4 py-2.5 flex items-center justify-between">
+            className="w-full border-b border-[#f59e0b]/30 bg-[#f59e0b]/5 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="w-3.5 h-3.5 text-[#f59e0b] animate-pulse shrink-0" />
-              <span className="text-[#f59e0b] font-black text-xs">
+              <Bell className="w-4 h-4 text-[#f59e0b] animate-pulse shrink-0" />
+              <span className="text-[#f59e0b] font-black text-sm">
                 {pendingCount} challenge{pendingCount !== 1 ? "s" : ""} waiting for you
               </span>
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />
+            <ChevronRight className="w-4 h-4 text-[#f59e0b] shrink-0" />
           </button>
         )}
 
-        {/* Tabs — edge to edge */}
+        {/* Tabs */}
         <div className="flex border-b border-[#1a1a1a] px-2">
           <button onClick={() => setTab("new")} className={tabCls("new")}>New</button>
           <button onClick={() => setTab("open")} className={tabCls("open")}>
-            <span className="flex items-center justify-center gap-1"><Globe className="w-3 h-3" />Open</span>
+            <span className="flex items-center justify-center gap-1.5"><Globe className="w-3.5 h-3.5" />Open</span>
           </button>
           <button onClick={() => setTab("mine")} className={tabCls("mine")}>
-            Mine{myChallenges.length > 0 && <span className="ml-1 text-[8px] bg-[#1a1a1a] px-1.5 py-0.5 rounded-full">{myChallenges.length}</span>}
+            Mine{myChallenges.length > 0 && <span className="ml-1.5 text-[10px] bg-[#1a1a1a] px-1.5 py-0.5 rounded-full">{myChallenges.length}</span>}
           </button>
         </div>
 
         {/* ══ NEW ════════════════════════════════════════════════ */}
         {tab === "new" && (
-          <div className="px-3 pt-4">
+          <div className="px-4 pt-5">
             {/* Header row */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-gaming text-base text-white tracking-widest">New Challenge</span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-gaming text-lg text-white tracking-widest">New Challenge</span>
               {step !== "match" && step !== "share" && (
-                <button onClick={resetFlow} className="flex items-center gap-1 text-[#525252] hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
-                  <ArrowLeft className="w-3 h-3" />Reset
+                <button onClick={resetFlow} className="flex items-center gap-1 text-[#525252] hover:text-white text-xs font-black uppercase tracking-widest transition-colors">
+                  <ArrowLeft className="w-3.5 h-3.5" />Reset
                 </button>
               )}
             </div>
@@ -212,31 +213,31 @@ export default function ChallengePage() {
             {/* ── STEP 1: Match ── */}
             {step === "match" && (
               <div>
-                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-2">Pick a match</p>
+                <p className="text-[#525252] text-xs font-black uppercase tracking-widest mb-3">Pick a match</p>
                 {dataLoading ? (
-                  <div className="space-y-1.5">
-                    {[1, 2, 3].map(n => <div key={n} className="h-14 bg-[#111] border border-[#1a1a1a] animate-pulse rounded" />)}
+                  <div className="space-y-2">
+                    {[1, 2, 3].map(n => <div key={n} className="h-16 bg-[#111] border border-[#1a1a1a] animate-pulse rounded" />)}
                   </div>
                 ) : upcomingMatches.length === 0 ? (
                   <p className="text-[#525252] text-sm py-8 text-center">No upcoming matches.</p>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {upcomingMatches.map(m => {
                       const t1 = teamHex(m.team1), t2 = teamHex(m.team2);
                       return (
                         <button key={m.id}
                           onClick={() => { setSelectedMatch(m); setStep("team"); }}
-                          className="w-full border border-[#1a1a1a] bg-[#0a0a0a] active:bg-[#111] p-2.5 flex items-center gap-2.5 text-left">
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          className="w-full border border-[#1a1a1a] bg-[#0a0a0a] active:bg-[#111] p-3 flex items-center gap-3 text-left">
+                          <div className="flex items-center gap-2 shrink-0">
                             <TeamCrest team={m.team1} size="sm" />
-                            <span className="text-[9px] text-[#525252] font-black">vs</span>
+                            <span className="text-[10px] text-[#525252] font-black">vs</span>
                             <TeamCrest team={m.team2} size="sm" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-white font-bold text-xs truncate">{teamShortCode(m.team1)} vs {teamShortCode(m.team2)}</p>
-                            <p className="text-[10px] text-[#525252]">{formatRelativeDate(m.start_time)}</p>
+                            <p className="text-white font-bold text-sm truncate">{teamShortCode(m.team1)} vs {teamShortCode(m.team2)}</p>
+                            <p className="text-xs text-[#525252]">{formatRelativeDate(m.start_time)}</p>
                           </div>
-                          <div className="w-1 h-8 shrink-0 rounded-full" style={{ background: `linear-gradient(to bottom, ${t1}, ${t2})` }} />
+                          <div className="w-1 h-9 shrink-0 rounded-full" style={{ background: `linear-gradient(to bottom, ${t1}, ${t2})` }} />
                         </button>
                       );
                     })}
@@ -248,19 +249,19 @@ export default function ChallengePage() {
             {/* ── STEP 2: Team ── */}
             {step === "team" && selectedMatch && (
               <div>
-                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
+                <p className="text-[#525252] text-xs font-black uppercase tracking-widest mb-4">
                   {teamShortCode(selectedMatch.team1)} vs {teamShortCode(selectedMatch.team2)} · {formatRelativeDate(selectedMatch.start_time)}
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {[selectedMatch.team1, selectedMatch.team2].map(team => {
                     const hex = teamHex(team);
                     return (
                       <button key={team}
                         onClick={() => { setSelectedTeam(team); setStep("stakes"); }}
-                        className="border p-3 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+                        className="border p-4 flex flex-col items-center gap-3 active:scale-[0.98] transition-transform"
                         style={{ borderColor: hex + "55", background: hex + "0d" }}>
                         <TeamCrest team={team} size="md" />
-                        <span className="font-black text-white text-xs text-center leading-tight">{team}</span>
+                        <span className="font-black text-white text-sm text-center leading-tight">{team}</span>
                       </button>
                     );
                   })}
@@ -271,40 +272,40 @@ export default function ChallengePage() {
             {/* ── STEP 3: Stakes ── */}
             {step === "stakes" && selectedMatch && selectedTeam && (
               <div>
-                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
+                <p className="text-[#525252] text-xs font-black uppercase tracking-widest mb-4">
                   Backing <span className="text-white">{teamShortCode(selectedTeam)}</span>
                   <span className="text-[#333]"> · </span>
                   {teamShortCode(selectedMatch.team1)} vs {teamShortCode(selectedMatch.team2)}
                 </p>
 
-                {/* Stake row */}
+                {/* Stake rows */}
                 {([
                   { label: "I put in", value: challengerStake, set: setChallengerStake, min: 10, presets: [50, 100, 250, 500] },
                   { label: "I want to win", value: challengerWants, set: setChallengerWants, min: challengerStake + 10,
                     presets: [1.5, 2, 3].map(x => Math.round(challengerStake * x / 10) * 10) },
                 ] as const).map(({ label, value, set, min, presets }) => (
-                  <div key={label} className="mb-3">
-                    <div className="flex items-center justify-between bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2">
-                      <span className="text-[#525252] text-[10px] font-black uppercase tracking-widest">{label}</span>
-                      <div className="flex items-center gap-2">
+                  <div key={label} className="mb-4">
+                    <div className="flex items-center justify-between bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-3">
+                      <span className="text-[#525252] text-xs font-black uppercase tracking-widest">{label}</span>
+                      <div className="flex items-center gap-3">
                         <button onClick={() => set((v: number) => Math.max(min, v - 10))}
-                          className="w-6 h-6 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                          <Minus className="w-3 h-3" />
+                          className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <div className="flex items-center gap-1 w-20 justify-center">
-                          <span className="text-[#f59e0b] text-sm">◈</span>
-                          <span className="font-gaming text-xl font-black text-white tabular-nums">{value}</span>
+                        <div className="flex items-center gap-1 w-24 justify-center">
+                          <span className="text-[#f59e0b] text-base">◈</span>
+                          <span className="font-gaming text-2xl font-black text-white tabular-nums">{value}</span>
                         </div>
                         <button onClick={() => set((v: number) => v + 10)}
-                          className="w-6 h-6 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                          <Plus className="w-3 h-3" />
+                          className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
+                          <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                    <div className="flex gap-1 mt-1">
+                    <div className="flex gap-1 mt-1.5">
                       {presets.map(v => (
                         <button key={v} onClick={() => set(v as number)}
-                          className={`flex-1 text-[9px] font-black py-1 border transition-colors ${
+                          className={`flex-1 text-xs font-black py-1.5 border transition-colors ${
                             value === v ? "border-white text-white bg-[#111]" : "border-[#1a1a1a] text-[#525252] hover:text-white"
                           }`}>◈{v}</button>
                       ))}
@@ -312,24 +313,24 @@ export default function ChallengePage() {
                   </div>
                 ))}
 
-                {/* Compact summary */}
-                <div className="flex items-center justify-between border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2 mb-3">
+                {/* Summary */}
+                <div className="flex items-center justify-between border border-[#1a1a1a] bg-[#0a0a0a] px-4 py-3 mb-4">
                   <div className="text-center">
-                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">You stake</p>
-                    <p className="text-sm font-black text-white">◈{challengerStake}</p>
+                    <p className="text-xs text-[#525252] uppercase tracking-widest mb-1">You stake</p>
+                    <p className="text-base font-black text-white">◈{challengerStake}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">They stake</p>
-                    <p className="text-sm font-black text-white">◈{acceptorStake}</p>
+                    <p className="text-xs text-[#525252] uppercase tracking-widest mb-1">They stake</p>
+                    <p className="text-base font-black text-white">◈{acceptorStake}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">Winner gets</p>
-                    <p className="text-base font-black text-[#f59e0b]">◈{challengerWants}</p>
+                    <p className="text-xs text-[#525252] uppercase tracking-widest mb-1">Winner gets</p>
+                    <p className="text-lg font-black text-[#f59e0b]">◈{challengerWants}</p>
                   </div>
                 </div>
 
                 <button onClick={() => setStep("invite")} disabled={acceptorStake <= 0}
-                  className="w-full py-2.5 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
+                  className="w-full py-3 bg-white text-black font-black uppercase tracking-widest text-sm hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
                   Next: Invite a Friend
                 </button>
               </div>
@@ -338,7 +339,7 @@ export default function ChallengePage() {
             {/* ── STEP 4: Invite ── */}
             {step === "invite" && (
               <div>
-                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
+                <p className="text-[#525252] text-xs font-black uppercase tracking-widest mb-4">
                   Invite a follower <span className="text-[#333] normal-case font-normal tracking-normal">— optional</span>
                 </p>
 
@@ -397,11 +398,11 @@ export default function ChallengePage() {
 
                 <div className="flex gap-2">
                   <button onClick={() => { setInvitedUser(null); handleCreate(); }} disabled={creating}
-                    className="flex-1 flex items-center justify-center gap-1 py-2.5 border border-[#262626] text-[#525252] hover:text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-40 transition-colors">
-                    <SkipForward className="w-3 h-3" />Skip
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 border border-[#262626] text-[#525252] hover:text-white font-black text-xs uppercase tracking-widest disabled:opacity-40 transition-colors">
+                    <SkipForward className="w-3.5 h-3.5" />Skip
                   </button>
                   <button onClick={handleCreate} disabled={creating}
-                    className="flex-1 py-2.5 bg-white text-black font-black uppercase tracking-widest text-[10px] hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
+                    className="flex-1 py-3 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
                     {creating ? "Creating..." : invitedUser ? `Send to ${invitedUser.name.split(" ")[0]}` : "Create"}
                   </button>
                 </div>
@@ -429,24 +430,24 @@ export default function ChallengePage() {
                   <p className="text-white text-[10px] font-mono break-all mb-2.5 leading-relaxed">{shareUrl}</p>
                   <div className="flex gap-2">
                     <button onClick={handleCopy}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
-                      {copied ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-3 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
+                      {copied ? <Check className="w-3.5 h-3.5 text-[#10b981]" /> : <Copy className="w-3.5 h-3.5" />}
                       {copied ? "Copied!" : "Copy"}
                     </button>
                     <button onClick={handleNativeShare}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
-                      <Share2 className="w-3 h-3" />Share
+                      className="flex-1 flex items-center justify-center gap-1.5 py-3 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
+                      <Share2 className="w-3.5 h-3.5" />Share
                     </button>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
                   <button onClick={() => { resetFlow(); setTab("open"); loadOpen(); }}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
-                    <Globe className="w-3 h-3" />View Open
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
+                    <Globe className="w-3.5 h-3.5" />View Open
                   </button>
                   <button onClick={resetFlow}
-                    className="flex-1 py-2 border border-[#1a1a1a] hover:border-[#333] text-[10px] font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
+                    className="flex-1 py-2.5 border border-[#1a1a1a] hover:border-[#333] text-xs font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
                     Create Another
                   </button>
                 </div>
@@ -457,12 +458,12 @@ export default function ChallengePage() {
 
         {/* ══ OPEN ══════════════════════════════════════════════ */}
         {tab === "open" && (
-          <div className="px-3 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-gaming text-base text-white tracking-widest">Open Challenges</span>
+          <div className="px-4 pt-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-gaming text-lg text-white tracking-widest">Open Challenges</span>
               <button onClick={loadOpen} disabled={openLoading}
-                className="flex items-center gap-1 text-[#525252] hover:text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-colors">
-                <RefreshCw className={`w-3 h-3 ${openLoading ? "animate-spin" : ""}`} />Refresh
+                className="flex items-center gap-1.5 text-[#525252] hover:text-white text-xs font-black uppercase tracking-widest disabled:opacity-40 transition-colors">
+                <RefreshCw className={`w-3.5 h-3.5 ${openLoading ? "animate-spin" : ""}`} />Refresh
               </button>
             </div>
 
@@ -494,7 +495,7 @@ export default function ChallengePage() {
 
         {/* ══ MINE ══════════════════════════════════════════════ */}
         {tab === "mine" && (
-          <div className="px-3 pt-4">
+          <div className="px-4 pt-5">
             {invitedChallenges.length > 0 && (
               <div className="mb-5">
                 <div className="flex items-center gap-1.5 mb-2">
@@ -541,6 +542,7 @@ export default function ChallengePage() {
             )}
           </div>
         )}
+        </div>{/* max-w-2xl */}
       </main>
     </>
   );

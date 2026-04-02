@@ -43,15 +43,15 @@ export default function ChallengeCard({ challenge, viewerGoogleId }: Props) {
             <span className="text-[9px] font-black text-[#333]">vs</span>
             <TeamCrest team={match.team2} size="sm" />
             <div className="ml-1 min-w-0">
-              <p className="text-[11px] font-bold text-white leading-tight truncate">
+              <p className="text-xs font-bold text-white leading-tight truncate">
                 {teamShortCode(match.team1)} vs {teamShortCode(match.team2)}
               </p>
-              <p className="text-[9px] text-[#525252]">{formatRelativeDate(match.start_time)}</p>
+              <p className="text-[10px] text-[#525252]">{formatRelativeDate(match.start_time)}</p>
             </div>
           </div>
           <div className={`flex items-center gap-1 shrink-0 ml-2 ${color}`}>
-            <Icon className="w-3 h-3" strokeWidth={2} />
-            <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+            <Icon className="w-3.5 h-3.5" strokeWidth={2} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
           </div>
         </div>
 
@@ -63,21 +63,21 @@ export default function ChallengeCard({ challenge, viewerGoogleId }: Props) {
               style={{ background: challengerHex }}>
               {teamShortCode(challenge.challenger_team)}
             </div>
-            <p className="text-[9px] text-white font-bold truncate max-w-[64px] text-center">
+            <p className="text-[10px] text-white font-bold truncate max-w-[64px] text-center">
               {isChallenger ? "You" : challenger.name.split(" ")[0]}
             </p>
             <div className="flex items-center gap-0.5">
-              <span className="text-[9px] text-[#f59e0b]">◈</span>
-              <span className="text-sm font-black text-white tabular-nums">{challenge.challenger_stake}</span>
+              <span className="text-[10px] text-[#f59e0b]">◈</span>
+              <span className="text-base font-black text-white tabular-nums">{challenge.challenger_stake}</span>
             </div>
           </div>
 
           {/* Pot */}
           <div className="flex flex-col items-center px-2">
-            <p className="text-[8px] text-[#525252] uppercase tracking-widest mb-0.5">pot</p>
+            <p className="text-[10px] text-[#525252] uppercase tracking-widest mb-0.5">pot</p>
             <div className="flex items-center gap-0.5">
-              <span className="text-[#f59e0b] text-xs">◈</span>
-              <span className="text-base font-black text-white tabular-nums">{challenge.challenger_wants}</span>
+              <span className="text-[#f59e0b] text-sm">◈</span>
+              <span className="text-lg font-black text-white tabular-nums">{challenge.challenger_wants}</span>
             </div>
           </div>
 
@@ -91,12 +91,12 @@ export default function ChallengeCard({ challenge, viewerGoogleId }: Props) {
               }}>
               {acceptor ? teamShortCode(opponentTeam) : "?"}
             </div>
-            <p className="text-[9px] text-white font-bold truncate max-w-[64px] text-center">
+            <p className="text-[10px] text-white font-bold truncate max-w-[64px] text-center">
               {acceptor ? acceptor.name.split(" ")[0] : "Open"}
             </p>
             <div className="flex items-center gap-0.5">
-              <span className="text-[9px] text-[#f59e0b]">◈</span>
-              <span className="text-sm font-black text-white tabular-nums">{challenge.acceptor_stake}</span>
+              <span className="text-[10px] text-[#f59e0b]">◈</span>
+              <span className="text-base font-black text-white tabular-nums">{challenge.acceptor_stake}</span>
             </div>
           </div>
         </div>

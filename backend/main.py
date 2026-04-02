@@ -19,7 +19,21 @@ async def lifespan(app: FastAPI):
     ensure_toss_winner_schema(engine)
     ensure_first_innings_schema(engine)
     ensure_challenge_schema(engine)
+
+    from poller import get_scheduler, bootstrap_scheduler, schedule_daily_bootstrap
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        bootstrap_scheduler(db)
+    finally:
+        db.close()
+    scheduler = get_scheduler()
+    schedule_daily_bootstrap(scheduler)
+    scheduler.start()
+
     yield
+
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(

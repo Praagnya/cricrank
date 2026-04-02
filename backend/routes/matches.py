@@ -80,12 +80,10 @@ def _extract_toss_winner_name(payload: dict, team1: str, team2: str) -> str | No
 
 
 def _refresh_match_toss_winner(db: Session, match: Match) -> None:
-    if match.toss_winner:
-        return
-    merged = _merge_toss_sources(match)
-    tw = _extract_toss_winner_name(merged, match.team1, match.team2)
-    if tw:
-        match.toss_winner = tw
+    """Read toss winner from DB only. The background poller writes it via CricAPI."""
+    # toss_winner is already loaded on the match object by SQLAlchemy.
+    # No CricAPI call here — that is handled by poller.job_check_toss().
+    pass
 
 
 def _settle_toss_row(db: Session, row: TossPlay, match: Match) -> None:
