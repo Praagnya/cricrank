@@ -17,7 +17,6 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
   const { token } = use(params);
   const { user, loading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
-  const router = useRouter();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [fetching, setFetching] = useState(true);
