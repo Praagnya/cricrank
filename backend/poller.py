@@ -15,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import Match, MatchStatus
+from models import Match, MatchStatus, Prediction
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +254,27 @@ def bootstrap_scheduler(db: Session) -> None:
         _schedule_result_jobs(scheduler, match)
 
     logger.info("poller: bootstrap done — scheduled jobs for %d matches", len(matches))
+
+    # Re-settle any completed matches that have unsettled predictions (recovery from missed settlement)
+    from routes.predictions import _settle_match_internal
+    stuck_matches = (
+        db.query(Match)
+        .filter(
+            Match.status == MatchStatus.completed,
+            Match.winner.isnot(None),
+            Match.start_time >= now - timedelta(days=30),
+        )
+        .all()
+    )
+    for match in stuck_matches:
+        unsettled = (
+            db.query(Prediction)
+            .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
+            .count()
+        )
+        if unsettled > 0:
+            logger.warning("poller: re-settling %d unsettled predictions for completed match %s", unsettled, match.id)
+            _settle_match_internal(db, match)
 
 
 def job_daily_bootstrap() -> None:

@@ -192,9 +192,6 @@ def settle_match(match_id: str, winner: str, result_summary: str | None = None, 
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
 
-    if match.status == MatchStatus.completed:
-        raise HTTPException(status_code=400, detail="Match already settled")
-
     if winner not in (match.team1, match.team2):
         raise HTTPException(
             status_code=400,
