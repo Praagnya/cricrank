@@ -163,6 +163,7 @@ export interface Challenge {
   acceptor_stake: number;
   challenger: ChallengeUser;
   acceptor?: ChallengeUser | null;
+  invited_user?: ChallengeUser | null;
   match: Match;
   counter_challenger_stake?: number | null;
   counter_challenger_wants?: number | null;

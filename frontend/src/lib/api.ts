@@ -102,6 +102,8 @@ export const api = {
       fetch(`${BASE}/users/${targetId}/follow?follower_id=${followerId}`, { method: "POST" }),
     unfollow: (targetId: string, followerId: string) =>
       fetch(`${BASE}/users/${targetId}/follow?follower_id=${followerId}`, { method: "DELETE" }),
+    following: (googleId: string) =>
+      getNoStore<FollowUser[]>(`/users/${encodeURIComponent(googleId)}/following`),
   },
   predictions: {
     submit: (googleId: string, matchId: string, selectedTeam: string) =>
@@ -123,12 +125,13 @@ export const api = {
       get<LeaderboardEntry[]>(`/squads/${squadId}/leaderboard`),
   },
   challenges: {
-    create: (googleId: string, matchId: string, challengerTeam: string, challengerStake: number, challengerWants: number) =>
+    create: (googleId: string, matchId: string, challengerTeam: string, challengerStake: number, challengerWants: number, invitedGoogleId?: string) =>
       postNoStore<Challenge>(`/challenges/?google_id=${encodeURIComponent(googleId)}`, {
         match_id: matchId,
         challenger_team: challengerTeam,
         challenger_stake: challengerStake,
         challenger_wants: challengerWants,
+        ...(invitedGoogleId ? { invited_google_id: invitedGoogleId } : {}),
       }),
     byToken: (token: string) => getNoStore<Challenge>(`/challenges/token/${token}`),
     byUser: (googleId: string) =>

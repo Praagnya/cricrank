@@ -294,6 +294,7 @@ class ChallengeCreate(BaseModel):
     challenger_team: str
     challenger_stake: int
     challenger_wants: int
+    invited_google_id: Optional[str] = None
 
 
 class ChallengeUserPublic(BaseModel):
@@ -316,6 +317,7 @@ class ChallengePublic(BaseModel):
     acceptor_stake: int          # derived: challenger_wants - challenger_stake
     challenger: ChallengeUserPublic
     acceptor: Optional[ChallengeUserPublic] = None
+    invited_user: Optional[ChallengeUserPublic] = None
     match: MatchPublic
     counter_challenger_stake: Optional[int] = None
     counter_challenger_wants: Optional[int] = None

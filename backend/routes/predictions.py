@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, timezone
 from database import get_db
-from models import Match, Prediction, User, MatchStatus, calculate_points, POST_TOSS_MULTIPLIER
+from models import Match, Prediction, User, MatchStatus, Challenge, calculate_points, POST_TOSS_MULTIPLIER
 from schemas import PredictionCreate, PredictionPublic, PredictionWithMatch
+from coin_ledger import apply_credit
 
 router = APIRouter()
 
@@ -141,4 +142,55 @@ def settle_match(match_id: str, winner: str, result_summary: str | None = None, 
             pred.points_awarded = 0
 
     db.commit()
-    return {"settled": True, "winner": winner, "predictions_updated": len(predictions)}
+
+    # Settle all challenges for this match
+    challenges_settled = 0
+    challenges_expired = 0
+    now = datetime.now(timezone.utc)
+
+    accepted_challenges = (
+        db.query(Challenge)
+        .filter(Challenge.match_id == match_id, Challenge.status == "accepted")
+        .all()
+    )
+    for c in accepted_challenges:
+        if c.challenger_team == winner:
+            winner_id = c.challenger_id
+        else:
+            winner_id = c.acceptor_id
+        if winner_id is None:
+            continue
+        try:
+            apply_credit(db, winner_id, c.challenger_wants, "challenge_win", f"chal_{c.id}_settle")
+        except Exception:
+            pass
+        c.winner_id = winner_id
+        c.status = "settled"
+        c.settled_at = now
+        challenges_settled += 1
+
+    open_challenges = (
+        db.query(Challenge)
+        .filter(
+            Challenge.match_id == match_id,
+            Challenge.status.in_(["open", "counter_offered"]),
+        )
+        .all()
+    )
+    for c in open_challenges:
+        try:
+            apply_credit(db, c.challenger_id, c.challenger_stake, "challenge_refund", f"chal_{c.id}_refund")
+        except Exception:
+            pass
+        c.status = "expired"
+        challenges_expired += 1
+
+    db.commit()
+
+    return {
+        "settled": True,
+        "winner": winner,
+        "predictions_updated": len(predictions),
+        "challenges_settled": challenges_settled,
+        "challenges_expired": challenges_expired,
+    }

@@ -9,7 +9,7 @@ import { Challenge } from "@/types";
 import { teamHex, teamShortCode, formatRelativeDate } from "@/lib/utils";
 import {
   Handshake, CheckCircle, XCircle, RefreshCw, Trophy,
-  Minus, Plus, Copy, Check, Share2, ArrowLeft,
+  Minus, Plus, Copy, Check, Share2, ArrowLeft, Bell,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -200,7 +200,7 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
 
   const isChallenger = googleId === challenge.challenger.google_id;
   const isAcceptor = challenge.acceptor && googleId === challenge.acceptor.google_id;
-  const isInChallenge = isChallenger || isAcceptor;
+  const isInvited = challenge.invited_user && googleId === challenge.invited_user.google_id;
 
   const counterAcceptorStake = Math.max(0, counterWants - counterStake);
 
@@ -231,6 +231,19 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
             </p>
           </div>
         </div>
+
+        {/* Invited notification banner */}
+        {isInvited && challenge.status === "open" && (
+          <div className="border border-[#f59e0b]/40 bg-[#f59e0b]/5 px-4 py-3 mb-5 flex items-center gap-3">
+            <Bell className="w-4 h-4 text-[#f59e0b] shrink-0 animate-pulse" />
+            <div>
+              <p className="text-[#f59e0b] font-black text-sm leading-tight">
+                {challenge.challenger.name.split(" ")[0]} challenged you!
+              </p>
+              <p className="text-[#a3a3a3] text-xs">Accept, counter, or decline below.</p>
+            </div>
+          </div>
+        )}
 
         {/* Match header */}
         <div

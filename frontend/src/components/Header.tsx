@@ -217,6 +217,7 @@ export default function Header() {
               {[
                 { href: "/", label: "Home" },
                 { href: "/leaderboard", label: "Leaderboard" },
+                { href: "/challenge", label: "Challenge" },
                 ...(user ? [{ href: "/profile", label: "My Profile" }] : []),
               ].map(({ href, label }) => (
                 <Link

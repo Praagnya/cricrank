@@ -44,6 +44,7 @@ def _to_public(c: Challenge) -> ChallengePublic:
         acceptor_stake=c.challenger_wants - c.challenger_stake,
         challenger=_build_user_public(c.challenger),
         acceptor=_build_user_public(c.acceptor),
+        invited_user=_build_user_public(c.invited_user),
         match=c.match,
         counter_challenger_stake=c.counter_challenger_stake,
         counter_challenger_wants=c.counter_challenger_wants,
@@ -58,6 +59,7 @@ def _load_challenge(challenge_id: str, db: Session) -> Challenge:
         .options(
             joinedload(Challenge.challenger),
             joinedload(Challenge.acceptor),
+            joinedload(Challenge.invited_user),
             joinedload(Challenge.match),
         )
         .filter(Challenge.id == challenge_id)
@@ -102,6 +104,15 @@ def create_challenge(
             detail=f"challenger_team must be '{match.team1}' or '{match.team2}'"
         )
 
+    invited_user_id = None
+    if payload.invited_google_id:
+        invited = db.query(User).filter(User.google_id == payload.invited_google_id).first()
+        if not invited:
+            raise HTTPException(status_code=404, detail="Invited user not found")
+        if invited.id == user.id:
+            raise HTTPException(status_code=400, detail="Cannot invite yourself")
+        invited_user_id = invited.id
+
     token = secrets.token_urlsafe(10)
 
     c = Challenge(
@@ -110,6 +121,7 @@ def create_challenge(
         challenger_team=payload.challenger_team,
         challenger_stake=payload.challenger_stake,
         challenger_wants=payload.challenger_wants,
+        invited_user_id=invited_user_id,
         share_token=token,
         status="open",
         expires_at=match.start_time,
@@ -145,6 +157,7 @@ def get_by_token(token: str, db: Session = Depends(get_db)):
         .options(
             joinedload(Challenge.challenger),
             joinedload(Challenge.acceptor),
+            joinedload(Challenge.invited_user),
             joinedload(Challenge.match),
         )
         .filter(Challenge.share_token == token)
@@ -170,28 +183,26 @@ def list_user_challenges(
         .options(
             joinedload(Challenge.challenger),
             joinedload(Challenge.acceptor),
+            joinedload(Challenge.invited_user),
             joinedload(Challenge.match),
         )
         .filter(
-            (Challenge.challenger_id == user.id) | (Challenge.acceptor_id == user.id)
+            (Challenge.challenger_id == user.id) |
+            (Challenge.acceptor_id == user.id) |
+            (Challenge.invited_user_id == user.id)
         )
         .order_by(Challenge.created_at.desc())
         .all()
     )
 
-    # Also include open challenges sent to the user's share links they've visited
-    # but not yet accepted — can't know those without acceptor_id, so only count
-    # open challenges WHERE the current user is the acceptor (would need notif system)
-    # For now: pending = challenges where status = counter_offered and user is challenger
-    #          + challenges where status = open and user received via link (not possible without visit)
-    # Practical: count challenges where user is acceptor and status=open (means challenger is waiting)
-    # or where user is challenger and status=counter_offered
-
+    # pending = challenges the user needs to act on:
+    # - invited (open, user hasn't accepted yet)
+    # - counter offer received (user is challenger, status=counter_offered)
     pending_count = sum(
         1 for ch in challenges
         if (
-            (ch.challenger_id == user.id and ch.status == "counter_offered") or
-            (ch.acceptor_id == user.id and ch.status == "open")
+            (ch.invited_user_id == user.id and ch.status == "open") or
+            (ch.challenger_id == user.id and ch.status == "counter_offered")
         )
     )
 
@@ -208,14 +219,16 @@ def pending_count(google_id: str, db: Session = Depends(get_db)):
     if not user:
         return {"count": 0}
 
+    # Invited to open challenges not yet accepted
     count = (
         db.query(Challenge)
         .filter(
-            Challenge.acceptor_id == user.id,
+            Challenge.invited_user_id == user.id,
             Challenge.status == "open",
         )
         .count()
     )
+    # Counter offers waiting on challenger
     count += (
         db.query(Challenge)
         .filter(

@@ -257,6 +257,7 @@ class Challenge(Base):
     challenger_wants = Column(Integer, nullable=False)
 
     acceptor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    invited_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     share_token = Column(String, unique=True, nullable=False, default=lambda: secrets.token_urlsafe(10))
 
     status = Column(String, nullable=False, default="open")
@@ -272,6 +273,7 @@ class Challenge(Base):
 
     challenger = relationship("User", foreign_keys=[challenger_id])
     acceptor = relationship("User", foreign_keys=[acceptor_id])
+    invited_user = relationship("User", foreign_keys=[invited_user_id])
     match = relationship("Match")
 
 
