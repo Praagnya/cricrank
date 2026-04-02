@@ -639,9 +639,27 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
 
 # ── First Innings Score ────────────────────────────────────────────────────────
 
-FIRST_INNINGS_STAKES = [10, 50, 100]   # cost for guess 1, 2, 3
-FIRST_INNINGS_PRIZE  = 10_000          # net gain on exact match
-MAX_FIRST_INNINGS_PICKS = 3
+ENTRY_COINS          = 100   # flat entry cost
+MAX_REWARD           = 5_000 # max net gain (exact match)
+REWARD_WINDOW        = 20    # runs within which a reward is paid
+MAX_FIRST_INNINGS_PICKS = 1
+
+
+def calculate_first_innings_reward(predicted_score: int, actual_score: int) -> int:
+    """
+    Sliding-scale reward for a first innings score prediction.
+
+    - Within REWARD_WINDOW runs: reward = MAX_REWARD - (MAX_REWARD / REWARD_WINDOW) * diff
+    - Outside window: reward = 0
+    - Result is rounded to nearest 100 and clamped to >= 0.
+    """
+    if predicted_score < 0 or actual_score < 0:
+        return 0
+    diff = abs(predicted_score - actual_score)
+    if diff >= REWARD_WINDOW:
+        return 0
+    raw = MAX_REWARD - (MAX_REWARD / REWARD_WINDOW) * diff
+    return max(0, round(raw / 100) * 100)
 
 
 def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
@@ -679,11 +697,11 @@ def _settle_first_innings_picks(db: Session, match: Match) -> None:
     for row in rows:
         row.actual_team = actual_team
         row.actual_score = actual_score
-        correct = row.predicted_team == actual_team and row.predicted_score == actual_score
-        if correct:
-            row.coins_won = FIRST_INNINGS_PRIZE
+        reward = calculate_first_innings_reward(row.predicted_score, actual_score)
+        if reward > 0:
+            row.coins_won = reward
             apply_credit(
-                db, row.user_id, row.stake + FIRST_INNINGS_PRIZE,
+                db, row.user_id, row.stake + reward,
                 "first_innings_win",
                 idempotency_key=f"fi_win:{row.id}",
                 ref_type="match", ref_id=str(row.match_id),
@@ -710,7 +728,7 @@ def _fi_row_to_item(row: FirstInningsPick) -> "FirstInningsPickItem":
 def _fi_next_stake(pick_count: int) -> int | None:
     if pick_count >= MAX_FIRST_INNINGS_PICKS:
         return None
-    return FIRST_INNINGS_STAKES[pick_count]
+    return ENTRY_COINS
 
 
 def _fi_status_from_rows(rows: list) -> "FirstInningsStatusResponse":
@@ -810,14 +828,7 @@ def play_first_innings(
     if pick_count >= MAX_FIRST_INNINGS_PICKS:
         raise HTTPException(status_code=400, detail="max_guesses_reached")
 
-    duplicate = any(
-        r.predicted_team == picked_team and r.predicted_score == body.predicted_score
-        for r in existing_rows
-    )
-    if duplicate:
-        raise HTTPException(status_code=400, detail="duplicate_pick")
-
-    stake = FIRST_INNINGS_STAKES[pick_count]
+    stake = ENTRY_COINS
 
     if user.coins < stake:
         raise HTTPException(status_code=400, detail="insufficient_coins")
