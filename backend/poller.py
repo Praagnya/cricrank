@@ -66,8 +66,8 @@ def job_check_toss(match_id: str) -> None:
 # ── Result job ───────────────────────────────────────────────────────────────
 
 def job_check_result(match_id: str) -> None:
-    """Update match status/winner from CricAPI when the match has ended."""
-    from cricapi import CricAPIError, fetch_match_bbb
+    """Update match status/winner from CricAPI and auto-settle when match ends."""
+    from cricapi import CricAPIError, fetch_match_bbb, fetch_match_info
     from routes.matches import _find_current_match_payload, _match_status_from_payload
     from team_metadata import canonicalize_winner
 
@@ -85,6 +85,15 @@ def job_check_result(match_id: str) -> None:
                 payload = fetch_match_bbb(match.cricapi_id) or {}
             except CricAPIError:
                 payload = {}
+
+        # Fallback to match_info for completed matches
+        if not payload.get("matchEnded"):
+            try:
+                info = fetch_match_info(match.cricapi_id) or {}
+                if info.get("matchEnded"):
+                    payload = {**info, **payload}
+            except CricAPIError:
+                pass
 
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
@@ -110,6 +119,13 @@ def job_check_result(match_id: str) -> None:
                 "poller/result: match %s → status=%s winner=%s",
                 match_id, match.status, match.winner,
             )
+
+        # Auto-settle predictions and challenges once match is complete
+        if match.status == MatchStatus.completed and match.winner:
+            from routes.predictions import _settle_match_internal
+            _settle_match_internal(db, match)
+            logger.info("poller/result: auto-settled predictions for match %s", match_id)
+
     except Exception as exc:
         logger.error("poller/result: job failed for %s: %s", match_id, exc)
         db.rollback()

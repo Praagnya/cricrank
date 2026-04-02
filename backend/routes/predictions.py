@@ -93,33 +93,21 @@ def user_predictions(google_id: str, db: Session = Depends(get_db)):
     return predictions
 
 
-@router.post("/settle/{match_id}")
-def settle_match(match_id: str, winner: str, result_summary: str | None = None, db: Session = Depends(get_db)):
+def _settle_match_internal(db: Session, match: Match) -> dict:
     """
-    Admin endpoint — called when a match result is known.
-    Sets the winner, marks match completed, awards points to correct predictors.
+    Core settlement logic shared by the HTTP endpoint and the background poller.
+    Assumes match.winner is already set and match.status == MatchStatus.completed.
+    Idempotent: skips predictions already settled (is_correct not None) and
+    challenges already in a terminal status.
     """
-    match = db.query(Match).filter(Match.id == match_id).first()
-    if not match:
-        raise HTTPException(status_code=404, detail="Match not found")
-
-    if match.status == MatchStatus.completed:
-        raise HTTPException(status_code=400, detail="Match already settled")
-
-    if winner not in (match.team1, match.team2):
-        raise HTTPException(
-            status_code=400,
-            detail=f"winner must be '{match.team1}' or '{match.team2}'",
-        )
-
-    match.winner = winner
-    match.status = MatchStatus.completed
-    if result_summary:
-        match.result_summary = result_summary
+    winner = match.winner
+    match_id = str(match.id)
 
     predictions = db.query(Prediction).filter(Prediction.match_id == match_id).all()
-
+    updated = 0
     for pred in predictions:
+        if pred.is_correct is not None:
+            continue
         user = db.query(User).filter(User.id == pred.user_id).first()
         if not user:
             continue
@@ -140,10 +128,10 @@ def settle_match(match_id: str, winner: str, result_summary: str | None = None, 
             pred.is_correct = 0
             user.current_streak = 0
             pred.points_awarded = 0
+        updated += 1
 
     db.commit()
 
-    # Settle all challenges for this match
     challenges_settled = 0
     challenges_expired = 0
     now = datetime.now(timezone.utc)
@@ -188,9 +176,36 @@ def settle_match(match_id: str, winner: str, result_summary: str | None = None, 
     db.commit()
 
     return {
-        "settled": True,
-        "winner": winner,
-        "predictions_updated": len(predictions),
+        "predictions_updated": updated,
         "challenges_settled": challenges_settled,
         "challenges_expired": challenges_expired,
     }
+
+
+@router.post("/settle/{match_id}")
+def settle_match(match_id: str, winner: str, result_summary: str | None = None, db: Session = Depends(get_db)):
+    """
+    Admin endpoint — called when a match result is known.
+    Sets the winner, marks match completed, awards points to correct predictors.
+    """
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    if match.status == MatchStatus.completed:
+        raise HTTPException(status_code=400, detail="Match already settled")
+
+    if winner not in (match.team1, match.team2):
+        raise HTTPException(
+            status_code=400,
+            detail=f"winner must be '{match.team1}' or '{match.team2}'",
+        )
+
+    match.winner = winner
+    match.status = MatchStatus.completed
+    if result_summary:
+        match.result_summary = result_summary
+    db.commit()
+
+    result = _settle_match_internal(db, match)
+    return {"settled": True, "winner": winner, **result}
