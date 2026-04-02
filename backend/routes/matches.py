@@ -43,7 +43,16 @@ def _merge_toss_sources(match: Match) -> dict:
         bbb = {}
     if not isinstance(bbb, dict):
         bbb = {}
-    return {**source, **bbb}
+    merged = {**source, **bbb}
+    # If toss winner still not found, try scorecard (has tossWinner for completed matches)
+    if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
+        try:
+            sc = fetch_match_scorecard(match.cricapi_id) or {}
+            if isinstance(sc, dict):
+                merged = {**sc, **merged}
+        except CricAPIError:
+            pass
+    return merged
 
 
 def _extract_toss_winner_name(payload: dict, team1: str, team2: str) -> str | None:
@@ -381,12 +390,18 @@ def recent_completed_matches(
 
 
 @router.post("/{match_id}/settle-toss")
-def settle_toss(match_id: str, db: Session = Depends(get_db)):
-    """Manually trigger toss settlement for a match. Use when poller missed a job."""
+def settle_toss(match_id: str, winner: str = Query(None), db: Session = Depends(get_db)):
+    """Manually trigger toss settlement. Pass ?winner=TeamName to override CricAPI."""
     match = db.query(Match).filter(Match.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
-    _refresh_match_toss_winner(db, match)
+    if winner:
+        tw = canonicalize_team(winner)
+        if tw not in (match.team1, match.team2):
+            raise HTTPException(status_code=400, detail=f"winner must be '{match.team1}' or '{match.team2}'")
+        match.toss_winner = tw
+    else:
+        _refresh_match_toss_winner(db, match)
     if not match.toss_winner:
         return {"settled": False, "detail": "Toss winner not yet available from CricAPI"}
     _settle_all_toss_plays_for_match(db, match)
