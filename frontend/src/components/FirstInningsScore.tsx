@@ -144,20 +144,27 @@ export default function FirstInningsScore({
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-[3px] h-5 bg-[#6366f1] shrink-0" />
-          <div className="min-w-0">
-            <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white whitespace-nowrap">
+        <div className="flex items-center gap-3">
+          <div className="w-[3px] h-5 bg-[#6366f1]" />
+          <div>
+            <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white">
               1st Innings Score
             </p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5 flex items-center gap-1 flex-wrap">
-              Exact match · <CoinDot />10 / <CoinDot />50 / <CoinDot />100
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mt-0.5">
+              Exact score · 3 guesses
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-0.5 shrink-0 ml-4">
-          <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{PRIZE.toLocaleString()}</span>
-          <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">if exact</span>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#737373] flex items-center gap-1"><CoinDot />10/50/100</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stake</span>
+          </div>
+          <div className="w-px h-7 bg-[#262626]" />
+          <div className="flex flex-col items-start gap-0.5">
+            <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{PRIZE.toLocaleString()}</span>
+            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">if exact</span>
+          </div>
         </div>
       </div>
 
@@ -375,7 +382,7 @@ export default function FirstInningsScore({
                 {teamShortCode(p.predicted_team)}
               </span>
               <span className="font-gaming text-sm font-black text-white">{p.predicted_score}</span>
-              <span className="text-[8px] text-[#525252]">· ₡{p.stake}</span>
+              <span className="text-[8px] text-[#525252] flex items-center gap-1">· <CoinDot />{p.stake}</span>
             </div>
           ))}
         </div>
