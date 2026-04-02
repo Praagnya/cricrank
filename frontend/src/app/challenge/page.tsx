@@ -16,7 +16,6 @@ type CreateStep = "match" | "team" | "stakes" | "share";
 export default function ChallengePage() {
   const { user, loading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
-  const router = useRouter();
 
   // Data
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
