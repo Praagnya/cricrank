@@ -11,7 +11,7 @@ import { Match, Challenge, FollowUser } from "@/types";
 import { teamHex, teamShortCode, formatRelativeDate } from "@/lib/utils";
 import {
   Handshake, ChevronRight, Minus, Plus, Share2, Copy,
-  Check, ArrowLeft, UserCheck, SkipForward, Bell, Globe,
+  Check, ArrowLeft, UserCheck, SkipForward, Bell, Globe, RefreshCw,
 } from "lucide-react";
 
 type CreateStep = "match" | "team" | "stakes" | "invite" | "share";
@@ -21,10 +21,7 @@ export default function ChallengePage() {
   const { user, loading, signInWithGoogle } = useUser();
   const googleId = user?.id ?? null;
 
-  // Page tab
   const [tab, setTab] = useState<PageTab>("new");
-
-  // Data
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [myChallenges, setMyChallenges] = useState<Challenge[]>([]);
   const [openChallenges, setOpenChallenges] = useState<Challenge[]>([]);
@@ -32,11 +29,9 @@ export default function ChallengePage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [openLoading, setOpenLoading] = useState(false);
 
-  // Following list for invite step
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [followingLoaded, setFollowingLoaded] = useState(false);
 
-  // Create flow
   const [step, setStep] = useState<CreateStep>("match");
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string>("");
@@ -55,46 +50,31 @@ export default function ChallengePage() {
     try {
       const matches = await api.matches.upcoming(20, 14).catch(() => []);
       setUpcomingMatches(matches.filter((m) => m.status === "upcoming"));
-
       if (googleId) {
         const res = await api.challenges.byUser(googleId).catch(() => null);
-        if (res) {
-          setMyChallenges(res.challenges);
-          setPendingCount(res.pending_count);
-        }
+        if (res) { setMyChallenges(res.challenges); setPendingCount(res.pending_count); }
       }
-    } finally {
-      setDataLoading(false);
-    }
+    } finally { setDataLoading(false); }
   }, [googleId]);
 
   const loadOpen = useCallback(async () => {
     setOpenLoading(true);
     try {
-      const list = await api.challenges.open(googleId ?? undefined);
-      setOpenChallenges(list);
-    } catch {
-      setOpenChallenges([]);
-    } finally {
-      setOpenLoading(false);
-    }
+      setOpenChallenges(await api.challenges.open(googleId ?? undefined));
+    } catch { setOpenChallenges([]); }
+    finally { setOpenLoading(false); }
   }, [googleId]);
 
-  useEffect(() => {
-    if (!loading) loadData();
-  }, [loading, loadData]);
+  useEffect(() => { if (!loading) loadData(); }, [loading, loadData]);
 
   useEffect(() => {
-    if (tab === "open" && openChallenges.length === 0 && !openLoading) {
-      loadOpen();
-    }
+    if (tab === "open" && openChallenges.length === 0 && !openLoading) loadOpen();
   }, [tab, openChallenges.length, openLoading, loadOpen]);
 
-  // Load following list when reaching invite step
   useEffect(() => {
     if (step === "invite" && googleId && !followingLoaded) {
       api.users.following(googleId)
-        .then((list) => { setFollowing(list); setFollowingLoaded(true); })
+        .then((l) => { setFollowing(l); setFollowingLoaded(true); })
         .catch(() => setFollowingLoaded(true));
     }
   }, [step, googleId, followingLoaded]);
@@ -109,28 +89,19 @@ export default function ChallengePage() {
     setCreating(true);
     try {
       const c = await api.challenges.create(
-        googleId,
-        selectedMatch.id,
-        selectedTeam,
-        challengerStake,
-        challengerWants,
-        invitedUser?.google_id,
+        googleId, selectedMatch.id, selectedTeam,
+        challengerStake, challengerWants, invitedUser?.google_id,
       );
       setCreatedChallenge(c);
       setStep("share");
-      window.dispatchEvent(
-        new CustomEvent("cricrank-coin-toast", { detail: { amount: challengerStake, type: "debit" } })
-      );
+      window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: challengerStake, type: "debit" } }));
       window.dispatchEvent(new Event("cricrank-coins-refresh"));
       const res = await api.challenges.byUser(googleId).catch(() => null);
       if (res) { setMyChallenges(res.challenges); setPendingCount(res.pending_count); }
-      // Invalidate open cache so new challenge shows up
       setOpenChallenges([]);
     } catch (e: unknown) {
       setCreateError(e instanceof Error ? e.message : "Failed to create challenge.");
-    } finally {
-      setCreating(false);
-    }
+    } finally { setCreating(false); }
   };
 
   const shareUrl = createdChallenge
@@ -138,60 +109,45 @@ export default function ChallengePage() {
     : "";
 
   const handleCopy = async () => {
-    if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* ignore */ }
   };
 
   const handleNativeShare = async () => {
     if (!shareUrl || !createdChallenge) return;
-    const match = createdChallenge.match;
-    const inviteName = createdChallenge.invited_user?.name ?? null;
-    const text = `${inviteName ? `Hey ${inviteName.split(" ")[0]}, ` : ""}I challenge you to a ${teamShortCode(createdChallenge.challenger_team)} vs ${teamShortCode(match.team1 === createdChallenge.challenger_team ? match.team2 : match.team1)} bet! I stake ◈${createdChallenge.challenger_stake}, winner takes ◈${createdChallenge.challenger_wants}.`;
-    if (navigator.share) {
-      await navigator.share({ title: "CricRank Challenge", text, url: shareUrl });
-    } else {
-      handleCopy();
-    }
+    const m = createdChallenge.match;
+    const opp = teamShortCode(m.team1 === createdChallenge.challenger_team ? m.team2 : m.team1);
+    const text = `I challenge you — ${teamShortCode(createdChallenge.challenger_team)} vs ${opp}. Stake ◈${createdChallenge.challenger_stake}, winner takes ◈${createdChallenge.challenger_wants}.`;
+    navigator.share ? await navigator.share({ title: "CricRank Challenge", text, url: shareUrl }) : handleCopy();
   };
 
   const resetFlow = () => {
-    setStep("match");
-    setSelectedMatch(null);
-    setSelectedTeam("");
-    setChallengerStake(100);
-    setChallengerWants(200);
-    setInvitedUser(null);
-    setCreatedChallenge(null);
-    setCreateError(null);
+    setStep("match"); setSelectedMatch(null); setSelectedTeam("");
+    setChallengerStake(100); setChallengerWants(200);
+    setInvitedUser(null); setCreatedChallenge(null); setCreateError(null);
   };
 
   const STEPS: CreateStep[] = ["match", "team", "stakes", "invite"];
-  const stepIndex = (s: CreateStep) => STEPS.indexOf(s);
 
   const tabCls = (t: PageTab) =>
-    `flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors ${
-      tab === t
-        ? "border-white text-white"
-        : "border-transparent text-[#525252] hover:text-[#a3a3a3]"
+    `flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-b-2 transition-colors ${
+      tab === t ? "border-white text-white" : "border-transparent text-[#525252] hover:text-[#a3a3a3]"
     }`;
 
-  // ── Not logged in ─────────────────────────────────────────────────────────
+  const invitedChallenges = myChallenges.filter(c => c.invited_user?.google_id === googleId && c.status === "open");
+  const myOtherChallenges = myChallenges.filter(c => !(c.invited_user?.google_id === googleId && c.status === "open"));
+
+  // ── Not logged in ──────────────────────────────────────────────────────────
   if (!loading && !user) {
     return (
       <>
         <Header />
-        <main className="max-w-lg mx-auto px-4 py-16 text-center pb-20">
-          <Handshake className="w-12 h-12 text-[#262626] mx-auto mb-4" />
-          <p className="font-gaming text-2xl text-white mb-2">Challenge a Friend</p>
-          <p className="text-[#525252] text-sm mb-8">Sign in to create and accept challenges.</p>
-          <button
-            onClick={signInWithGoogle}
-            className="px-6 py-3 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] transition-colors"
-          >
+        <main className="px-4 py-16 text-center pb-20">
+          <Handshake className="w-10 h-10 text-[#262626] mx-auto mb-3" />
+          <p className="font-gaming text-xl text-white mb-1">Challenge a Friend</p>
+          <p className="text-[#525252] text-sm mb-6">Sign in to create and accept challenges.</p>
+          <button onClick={signInWithGoogle}
+            className="px-6 py-2.5 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] transition-colors">
             Sign In with Google
           </button>
         </main>
@@ -199,106 +155,88 @@ export default function ChallengePage() {
     );
   }
 
-  // Separate invited challenges from self-created
-  const invitedChallenges = myChallenges.filter(
-    (c) => c.invited_user?.google_id === googleId && c.status === "open"
-  );
-  const myOtherChallenges = myChallenges.filter(
-    (c) => !(c.invited_user?.google_id === googleId && c.status === "open")
-  );
-
   return (
     <>
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-24">
+      <main className="pb-20">
 
-        {/* ── Pending notification banner ─────────────────────── */}
+        {/* Pending banner — full width */}
         {pendingCount > 0 && (
-          <div className="border border-[#f59e0b]/40 bg-[#f59e0b]/5 px-4 py-3 mb-5 flex items-center justify-between">
+          <button onClick={() => setTab("mine")}
+            className="w-full border-b border-[#f59e0b]/30 bg-[#f59e0b]/5 px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#f59e0b] animate-pulse" />
-              <span className="text-[#f59e0b] font-black text-sm">
+              <Bell className="w-3.5 h-3.5 text-[#f59e0b] animate-pulse shrink-0" />
+              <span className="text-[#f59e0b] font-black text-xs">
                 {pendingCount} challenge{pendingCount !== 1 ? "s" : ""} waiting for you
               </span>
             </div>
-            <button onClick={() => setTab("mine")} className="flex items-center gap-1 text-[#f59e0b] text-xs font-bold">
-              View <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+            <ChevronRight className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />
+          </button>
         )}
 
-        {/* ── Page tabs ────────────────────────────────────────── */}
-        <div className="flex border-b border-[#1a1a1a] mb-6">
+        {/* Tabs — edge to edge */}
+        <div className="flex border-b border-[#1a1a1a] px-2">
           <button onClick={() => setTab("new")} className={tabCls("new")}>New</button>
           <button onClick={() => setTab("open")} className={tabCls("open")}>
-            <span className="flex items-center justify-center gap-1">
-              <Globe className="w-3 h-3" />
-              Open
-            </span>
+            <span className="flex items-center justify-center gap-1"><Globe className="w-3 h-3" />Open</span>
           </button>
           <button onClick={() => setTab("mine")} className={tabCls("mine")}>
-            Mine {myChallenges.length > 0 && (
-              <span className="ml-1 text-[8px] bg-[#1a1a1a] px-1.5 py-0.5 rounded-full">{myChallenges.length}</span>
-            )}
+            Mine{myChallenges.length > 0 && <span className="ml-1 text-[8px] bg-[#1a1a1a] px-1.5 py-0.5 rounded-full">{myChallenges.length}</span>}
           </button>
         </div>
 
-        {/* ══ TAB: NEW (create flow) ═══════════════════════════ */}
+        {/* ══ NEW ════════════════════════════════════════════════ */}
         {tab === "new" && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-gaming text-xl text-white tracking-widest">New Challenge</h2>
+          <div className="px-3 pt-4">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-gaming text-base text-white tracking-widest">New Challenge</span>
               {step !== "match" && step !== "share" && (
-                <button onClick={resetFlow} className="flex items-center gap-1 text-[#525252] hover:text-white text-xs font-bold uppercase tracking-widest transition-colors">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Reset
+                <button onClick={resetFlow} className="flex items-center gap-1 text-[#525252] hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+                  <ArrowLeft className="w-3 h-3" />Reset
                 </button>
               )}
             </div>
 
-            {/* Step indicator */}
+            {/* Step dots */}
             {step !== "share" && (
-              <div className="flex gap-1.5 mb-5">
+              <div className="flex gap-1 mb-4">
                 {STEPS.map((s, i) => (
-                  <div key={s} className={`flex-1 h-1 transition-colors ${
-                    step === s ? "bg-white" : stepIndex(step) > i ? "bg-[#525252]" : "bg-[#1a1a1a]"
+                  <div key={s} className={`flex-1 h-0.5 rounded-full transition-colors ${
+                    step === s ? "bg-white" : STEPS.indexOf(step) > i ? "bg-[#444]" : "bg-[#1a1a1a]"
                   }`} />
                 ))}
               </div>
             )}
 
-            {/* STEP 1: Pick match */}
+            {/* ── STEP 1: Match ── */}
             {step === "match" && (
               <div>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-3">Pick a match</p>
+                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-2">Pick a match</p>
                 {dataLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((n) => <div key={n} className="h-16 bg-[#111111] border border-[#1a1a1a] animate-pulse" />)}
+                  <div className="space-y-1.5">
+                    {[1, 2, 3].map(n => <div key={n} className="h-14 bg-[#111] border border-[#1a1a1a] animate-pulse rounded" />)}
                   </div>
                 ) : upcomingMatches.length === 0 ? (
-                  <p className="text-[#525252] text-sm py-8 text-center">No upcoming matches available.</p>
+                  <p className="text-[#525252] text-sm py-8 text-center">No upcoming matches.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {upcomingMatches.map((m) => {
-                      const t1 = teamHex(m.team1);
-                      const t2 = teamHex(m.team2);
+                  <div className="space-y-1.5">
+                    {upcomingMatches.map(m => {
+                      const t1 = teamHex(m.team1), t2 = teamHex(m.team2);
                       return (
-                        <button
-                          key={m.id}
+                        <button key={m.id}
                           onClick={() => { setSelectedMatch(m); setStep("team"); }}
-                          className="w-full border border-[#1a1a1a] bg-[#0a0a0a] hover:bg-[#111111] hover:border-[#333] transition-all p-3 flex items-center gap-3"
-                        >
-                          <div className="flex items-center gap-2">
+                          className="w-full border border-[#1a1a1a] bg-[#0a0a0a] active:bg-[#111] p-2.5 flex items-center gap-2.5 text-left">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <TeamCrest team={m.team1} size="sm" />
-                            <span className="text-[10px] text-[#525252] font-black">vs</span>
+                            <span className="text-[9px] text-[#525252] font-black">vs</span>
                             <TeamCrest team={m.team2} size="sm" />
                           </div>
-                          <div className="text-left flex-1 min-w-0">
-                            <p className="text-white font-bold text-sm truncate">
-                              {teamShortCode(m.team1)} vs {teamShortCode(m.team2)}
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-bold text-xs truncate">{teamShortCode(m.team1)} vs {teamShortCode(m.team2)}</p>
                             <p className="text-[10px] text-[#525252]">{formatRelativeDate(m.start_time)}</p>
                           </div>
-                          <div className="w-1.5 h-10 shrink-0" style={{ background: `linear-gradient(to bottom, ${t1}, ${t2})` }} />
+                          <div className="w-1 h-8 shrink-0 rounded-full" style={{ background: `linear-gradient(to bottom, ${t1}, ${t2})` }} />
                         </button>
                       );
                     })}
@@ -307,25 +245,22 @@ export default function ChallengePage() {
               </div>
             )}
 
-            {/* STEP 2: Pick team */}
+            {/* ── STEP 2: Team ── */}
             {step === "team" && selectedMatch && (
               <div>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-1">
+                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
                   {teamShortCode(selectedMatch.team1)} vs {teamShortCode(selectedMatch.team2)} · {formatRelativeDate(selectedMatch.start_time)}
                 </p>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-4">Which team are you backing?</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[selectedMatch.team1, selectedMatch.team2].map((team) => {
+                <div className="grid grid-cols-2 gap-2">
+                  {[selectedMatch.team1, selectedMatch.team2].map(team => {
                     const hex = teamHex(team);
                     return (
-                      <button
-                        key={team}
+                      <button key={team}
                         onClick={() => { setSelectedTeam(team); setStep("stakes"); }}
-                        className="border-2 p-4 flex flex-col items-center gap-3 transition-all hover:scale-[1.02]"
-                        style={{ borderColor: hex + "66", background: hex + "0d" }}
-                      >
-                        <TeamCrest team={team} size="lg" />
-                        <span className="font-black text-white text-sm">{team}</span>
+                        className="border p-3 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform"
+                        style={{ borderColor: hex + "55", background: hex + "0d" }}>
+                        <TeamCrest team={team} size="md" />
+                        <span className="font-black text-white text-xs text-center leading-tight">{team}</span>
                       </button>
                     );
                   })}
@@ -333,229 +268,185 @@ export default function ChallengePage() {
               </div>
             )}
 
-            {/* STEP 3: Set stakes */}
+            {/* ── STEP 3: Stakes ── */}
             {step === "stakes" && selectedMatch && selectedTeam && (
               <div>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-1">
-                  Backing <span className="text-white">{teamShortCode(selectedTeam)}</span> · {teamShortCode(selectedMatch.team1)} vs {teamShortCode(selectedMatch.team2)}
+                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
+                  Backing <span className="text-white">{teamShortCode(selectedTeam)}</span>
+                  <span className="text-[#333]"> · </span>
+                  {teamShortCode(selectedMatch.team1)} vs {teamShortCode(selectedMatch.team2)}
                 </p>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-5">Set your stakes</p>
 
-                <div className="mb-4">
-                  <p className="text-[10px] text-[#525252] uppercase tracking-widest font-bold mb-2">I put in</p>
-                  <div className="flex items-center gap-3 bg-[#0a0a0a] border border-[#1a1a1a] p-3">
-                    <button onClick={() => setChallengerStake((v) => Math.max(10, v - 10))}
-                      className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <div className="flex-1 flex items-center justify-center gap-1.5">
-                      <span className="text-[#f59e0b] text-xl">◈</span>
-                      <span className="font-gaming text-3xl font-black text-white tabular-nums">{challengerStake}</span>
+                {/* Stake row */}
+                {([
+                  { label: "I put in", value: challengerStake, set: setChallengerStake, min: 10, presets: [50, 100, 250, 500] },
+                  { label: "I want to win", value: challengerWants, set: setChallengerWants, min: challengerStake + 10,
+                    presets: [1.5, 2, 3].map(x => Math.round(challengerStake * x / 10) * 10) },
+                ] as const).map(({ label, value, set, min, presets }) => (
+                  <div key={label} className="mb-3">
+                    <div className="flex items-center justify-between bg-[#0a0a0a] border border-[#1a1a1a] px-3 py-2">
+                      <span className="text-[#525252] text-[10px] font-black uppercase tracking-widest">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => set((v: number) => Math.max(min, v - 10))}
+                          className="w-6 h-6 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <div className="flex items-center gap-1 w-20 justify-center">
+                          <span className="text-[#f59e0b] text-sm">◈</span>
+                          <span className="font-gaming text-xl font-black text-white tabular-nums">{value}</span>
+                        </div>
+                        <button onClick={() => set((v: number) => v + 10)}
+                          className="w-6 h-6 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => setChallengerStake((v) => v + 10)}
-                      className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="flex gap-1 mt-1.5">
-                    {[50, 100, 250, 500].map((v) => (
-                      <button key={v} onClick={() => setChallengerStake(v)}
-                        className={`flex-1 text-[10px] font-black py-1 border transition-colors ${
-                          challengerStake === v ? "border-white text-white bg-[#111]" : "border-[#1a1a1a] text-[#525252] hover:text-white hover:border-[#333]"
-                        }`}>◈{v}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-[10px] text-[#525252] uppercase tracking-widest font-bold mb-2">I want to win</p>
-                  <div className="flex items-center gap-3 bg-[#0a0a0a] border border-[#1a1a1a] p-3">
-                    <button onClick={() => setChallengerWants((v) => Math.max(challengerStake + 10, v - 10))}
-                      className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <div className="flex-1 flex items-center justify-center gap-1.5">
-                      <span className="text-[#f59e0b] text-xl">◈</span>
-                      <span className="font-gaming text-3xl font-black text-white tabular-nums">{challengerWants}</span>
+                    <div className="flex gap-1 mt-1">
+                      {presets.map(v => (
+                        <button key={v} onClick={() => set(v as number)}
+                          className={`flex-1 text-[9px] font-black py-1 border transition-colors ${
+                            value === v ? "border-white text-white bg-[#111]" : "border-[#1a1a1a] text-[#525252] hover:text-white"
+                          }`}>◈{v}</button>
+                      ))}
                     </div>
-                    <button onClick={() => setChallengerWants((v) => v + 10)}
-                      className="w-8 h-8 flex items-center justify-center border border-[#262626] hover:bg-[#1a1a1a] text-white transition-colors">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
                   </div>
-                  <div className="flex gap-1 mt-1.5">
-                    {[challengerStake * 1.5, challengerStake * 2, challengerStake * 3].map((v) => {
-                      const rounded = Math.round(v / 10) * 10;
-                      return (
-                        <button key={rounded} onClick={() => setChallengerWants(rounded)}
-                          className={`flex-1 text-[10px] font-black py-1 border transition-colors ${
-                            challengerWants === rounded ? "border-white text-white bg-[#111]" : "border-[#1a1a1a] text-[#525252] hover:text-white hover:border-[#333]"
-                          }`}>◈{rounded}</button>
-                      );
-                    })}
+                ))}
+
+                {/* Compact summary */}
+                <div className="flex items-center justify-between border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2 mb-3">
+                  <div className="text-center">
+                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">You stake</p>
+                    <p className="text-sm font-black text-white">◈{challengerStake}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">They stake</p>
+                    <p className="text-sm font-black text-white">◈{acceptorStake}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[9px] text-[#525252] uppercase tracking-widest">Winner gets</p>
+                    <p className="text-base font-black text-[#f59e0b]">◈{challengerWants}</p>
                   </div>
                 </div>
 
-                <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 mb-4">
-                  <p className="text-[10px] text-[#525252] uppercase tracking-widest font-bold mb-2">Summary</p>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#a3a3a3]">Your stake</span>
-                    <span className="font-bold text-white">◈{challengerStake}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#a3a3a3]">Opponent must stake</span>
-                    <span className="font-bold text-white">◈{acceptorStake}</span>
-                  </div>
-                  <div className="border-t border-[#1a1a1a] mt-2 pt-2 flex justify-between text-sm">
-                    <span className="text-[#a3a3a3]">Winner takes</span>
-                    <span className="font-black text-[#f59e0b]">◈{challengerWants}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setStep("invite")}
-                  disabled={acceptorStake <= 0}
-                  className="w-full py-3 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
+                <button onClick={() => setStep("invite")} disabled={acceptorStake <= 0}
+                  className="w-full py-2.5 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
                   Next: Invite a Friend
                 </button>
               </div>
             )}
 
-            {/* STEP 4: Invite */}
+            {/* ── STEP 4: Invite ── */}
             {step === "invite" && (
               <div>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-1">Optional</p>
-                <p className="text-[#525252] text-xs font-bold uppercase tracking-widest mb-4">Invite a follower to this challenge</p>
+                <p className="text-[#525252] text-[10px] font-black uppercase tracking-widest mb-3">
+                  Invite a follower <span className="text-[#333] normal-case font-normal tracking-normal">— optional</span>
+                </p>
 
                 {invitedUser && (
-                  <div className="flex items-center justify-between border border-[#10b981]/40 bg-[#10b981]/5 px-3 py-2.5 mb-4">
+                  <div className="flex items-center justify-between border border-[#10b981]/40 bg-[#10b981]/5 px-3 py-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-[#10b981]" />
+                      <UserCheck className="w-3.5 h-3.5 text-[#10b981]" />
                       <div>
-                        <p className="text-white font-bold text-sm">{invitedUser.name}</p>
-                        <p className="text-[10px] text-[#525252]">@{invitedUser.username}</p>
+                        <p className="text-white font-bold text-xs">{invitedUser.name}</p>
+                        <p className="text-[9px] text-[#525252]">@{invitedUser.username}</p>
                       </div>
                     </div>
                     <button onClick={() => setInvitedUser(null)}
-                      className="text-[10px] font-black text-[#525252] hover:text-[#ef4444] uppercase tracking-widest transition-colors">
+                      className="text-[9px] font-black text-[#525252] hover:text-[#ef4444] uppercase tracking-widest transition-colors">
                       Remove
                     </button>
                   </div>
                 )}
 
                 {!followingLoaded ? (
-                  <div className="space-y-2 mb-4">
-                    {[1, 2, 3].map((n) => <div key={n} className="h-12 bg-[#111111] border border-[#1a1a1a] animate-pulse" />)}
+                  <div className="space-y-1.5 mb-3">
+                    {[1, 2, 3].map(n => <div key={n} className="h-11 bg-[#111] border border-[#1a1a1a] animate-pulse" />)}
                   </div>
                 ) : following.length === 0 ? (
-                  <p className="text-[#525252] text-xs py-4 text-center mb-4">You&apos;re not following anyone yet.</p>
+                  <p className="text-[#525252] text-xs py-4 text-center mb-3">Not following anyone yet.</p>
                 ) : (
-                  <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
-                    {following.map((f) => {
+                  <div className="space-y-1 mb-3 max-h-52 overflow-y-auto">
+                    {following.map(f => {
                       const selected = invitedUser?.google_id === f.google_id;
                       return (
-                        <button
-                          key={f.google_id}
-                          onClick={() => setInvitedUser(selected ? null : f)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 border transition-all ${
-                            selected
-                              ? "border-[#10b981]/60 bg-[#10b981]/5"
-                              : "border-[#1a1a1a] bg-[#0a0a0a] hover:bg-[#111111] hover:border-[#333]"
-                          }`}
-                        >
+                        <button key={f.google_id} onClick={() => setInvitedUser(selected ? null : f)}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 border transition-all ${
+                            selected ? "border-[#10b981]/50 bg-[#10b981]/5" : "border-[#1a1a1a] bg-[#0a0a0a] hover:bg-[#111]"
+                          }`}>
                           {f.avatar_url ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={f.avatar_url} alt={f.name} width={32} height={32}
-                              referrerPolicy="no-referrer" className="rounded-full shrink-0 opacity-80" />
+                            <img src={f.avatar_url} alt={f.name} width={28} height={28} referrerPolicy="no-referrer"
+                              className="rounded-full shrink-0 opacity-80" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-[#1a1a1a] flex items-center justify-center text-xs font-bold text-white shrink-0">
                               {f.name[0].toUpperCase()}
                             </div>
                           )}
                           <div className="text-left flex-1 min-w-0">
-                            <p className="text-white font-bold text-sm truncate">{f.name}</p>
-                            <p className="text-[10px] text-[#525252]">@{f.username} · {f.streak_tier}</p>
+                            <p className="text-white font-bold text-xs truncate">{f.name}</p>
+                            <p className="text-[9px] text-[#525252]">@{f.username} · {f.streak_tier}</p>
                           </div>
-                          {selected && <UserCheck className="w-4 h-4 text-[#10b981] shrink-0" />}
+                          {selected && <UserCheck className="w-3.5 h-3.5 text-[#10b981] shrink-0" />}
                         </button>
                       );
                     })}
                   </div>
                 )}
 
-                {createError && (
-                  <p className="text-[#ef4444] text-xs font-bold mb-3">{createError}</p>
-                )}
+                {createError && <p className="text-[#ef4444] text-xs font-bold mb-2">{createError}</p>}
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => { setInvitedUser(null); handleCreate(); }}
-                    disabled={creating}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-[#262626] text-[#525252] hover:text-white font-black text-xs uppercase tracking-widest disabled:opacity-40 transition-colors"
-                  >
-                    <SkipForward className="w-3.5 h-3.5" />
-                    Skip
+                  <button onClick={() => { setInvitedUser(null); handleCreate(); }} disabled={creating}
+                    className="flex-1 flex items-center justify-center gap-1 py-2.5 border border-[#262626] text-[#525252] hover:text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-40 transition-colors">
+                    <SkipForward className="w-3 h-3" />Skip
                   </button>
-                  <button
-                    onClick={handleCreate}
-                    disabled={creating}
-                    className="flex-1 py-2.5 bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors"
-                  >
-                    {creating ? "Creating..." : invitedUser ? `Invite ${invitedUser.name.split(" ")[0]}` : "Create"}
+                  <button onClick={handleCreate} disabled={creating}
+                    className="flex-1 py-2.5 bg-white text-black font-black uppercase tracking-widest text-[10px] hover:bg-[#e6e6e6] disabled:opacity-40 transition-colors">
+                    {creating ? "Creating..." : invitedUser ? `Send to ${invitedUser.name.split(" ")[0]}` : "Create"}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 5: Share */}
+            {/* ── STEP 5: Share ── */}
             {step === "share" && createdChallenge && (
               <div>
-                <div className="border border-[#10b981]/40 bg-[#10b981]/5 p-4 mb-4">
-                  <p className="text-[#10b981] font-black text-sm mb-1">
+                <div className="border border-[#10b981]/40 bg-[#10b981]/5 px-3 py-2.5 mb-3">
+                  <p className="text-[#10b981] font-black text-xs mb-0.5">
                     {createdChallenge.invited_user
-                      ? `Challenge sent to ${createdChallenge.invited_user.name.split(" ")[0]}!`
-                      : "Challenge created!"}
+                      ? `Sent to ${createdChallenge.invited_user.name.split(" ")[0]}!`
+                      : "Challenge live!"}
                   </p>
-                  <p className="text-[#a3a3a3] text-xs">
+                  <p className="text-[#525252] text-[10px]">
                     {createdChallenge.invited_user
-                      ? "They'll see a notification on their Challenge page. Share the link too."
-                      : "It's now live in Open Challenges. Share the link for faster responses."}
+                      ? "They'll see a notification. Share the link too."
+                      : "Visible in Open Challenges. Share the link to get faster responses."}
                   </p>
                 </div>
 
-                <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 mb-3">
-                  <p className="text-[10px] text-[#525252] uppercase tracking-widest font-bold mb-1.5">Share Link</p>
-                  <p className="text-white text-xs font-mono break-all mb-3">{shareUrl}</p>
+                <div className="border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2.5 mb-2">
+                  <p className="text-[9px] text-[#525252] uppercase tracking-widest font-bold mb-1.5">Share Link</p>
+                  <p className="text-white text-[10px] font-mono break-all mb-2.5 leading-relaxed">{shareUrl}</p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={handleCopy}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-[#10b981]" /> : <Copy className="w-3.5 h-3.5" />}
+                    <button onClick={handleCopy}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
+                      {copied ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
                       {copied ? "Copied!" : "Copy"}
                     </button>
-                    <button
-                      onClick={handleNativeShare}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      Share
+                    <button onClick={handleNativeShare}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors">
+                      <Share2 className="w-3 h-3" />Share
                     </button>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => { resetFlow(); setTab("open"); loadOpen(); }}
-                    className="flex-1 py-2.5 border border-[#262626] hover:bg-[#1a1a1a] text-xs font-black uppercase tracking-widest text-[#a3a3a3] hover:text-white transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Globe className="w-3.5 h-3.5" /> View Open
+                  <button onClick={() => { resetFlow(); setTab("open"); loadOpen(); }}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 border border-[#262626] hover:bg-[#1a1a1a] text-[10px] font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
+                    <Globe className="w-3 h-3" />View Open
                   </button>
-                  <button
-                    onClick={resetFlow}
-                    className="flex-1 py-2.5 border border-[#1a1a1a] hover:border-[#333] text-xs font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors"
-                  >
+                  <button onClick={resetFlow}
+                    className="flex-1 py-2 border border-[#1a1a1a] hover:border-[#333] text-[10px] font-black uppercase tracking-widest text-[#525252] hover:text-white transition-colors">
                     Create Another
                   </button>
                 </div>
@@ -564,36 +455,34 @@ export default function ChallengePage() {
           </div>
         )}
 
-        {/* ══ TAB: OPEN CHALLENGES ═════════════════════════════ */}
+        {/* ══ OPEN ══════════════════════════════════════════════ */}
         {tab === "open" && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-gaming text-xl text-white tracking-widest">Open Challenges</h2>
+          <div className="px-3 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-gaming text-base text-white tracking-widest">Open Challenges</span>
               <button onClick={loadOpen} disabled={openLoading}
-                className="text-[10px] font-black text-[#525252] hover:text-white uppercase tracking-widest disabled:opacity-40 transition-colors">
-                Refresh
+                className="flex items-center gap-1 text-[#525252] hover:text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-colors">
+                <RefreshCw className={`w-3 h-3 ${openLoading ? "animate-spin" : ""}`} />Refresh
               </button>
             </div>
 
             {openLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((n) => <div key={n} className="h-40 bg-[#111111] border border-[#1a1a1a] animate-pulse" />)}
+              <div className="space-y-2">
+                {[1, 2, 3].map(n => <div key={n} className="h-36 bg-[#111] border border-[#1a1a1a] animate-pulse" />)}
               </div>
             ) : openChallenges.length === 0 ? (
-              <div className="py-16 text-center">
-                <Globe className="w-10 h-10 text-[#262626] mx-auto mb-3" />
-                <p className="text-white font-bold mb-1">No open challenges right now</p>
-                <p className="text-[#525252] text-sm mb-6">Be the first — create one and it shows up here.</p>
-                <button
-                  onClick={() => setTab("new")}
-                  className="px-5 py-2.5 bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-[#e6e6e6] transition-colors"
-                >
+              <div className="py-14 text-center">
+                <Globe className="w-9 h-9 text-[#262626] mx-auto mb-2.5" />
+                <p className="text-white font-bold text-sm mb-1">No open challenges</p>
+                <p className="text-[#525252] text-xs mb-5">Create one and it appears here for anyone to accept.</p>
+                <button onClick={() => setTab("new")}
+                  className="px-5 py-2 bg-white text-black font-black text-[10px] uppercase tracking-widest hover:bg-[#e6e6e6] transition-colors">
                   Create Challenge
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {openChallenges.map((c) => (
+              <div className="space-y-2">
+                {openChallenges.map(c => (
                   <Link key={c.id} href={`/challenge/${c.share_token}`}>
                     <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} />
                   </Link>
@@ -603,18 +492,17 @@ export default function ChallengePage() {
           </div>
         )}
 
-        {/* ══ TAB: MY CHALLENGES ═══════════════════════════════ */}
+        {/* ══ MINE ══════════════════════════════════════════════ */}
         {tab === "mine" && (
-          <div>
-            {/* Invited challenges at top */}
+          <div className="px-3 pt-4">
             {invitedChallenges.length > 0 && (
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <Bell className="w-4 h-4 text-[#f59e0b]" />
-                  <h3 className="font-gaming text-base text-[#f59e0b] tracking-widest uppercase">You&apos;ve been challenged</h3>
+              <div className="mb-5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Bell className="w-3.5 h-3.5 text-[#f59e0b]" />
+                  <span className="font-gaming text-sm text-[#f59e0b] tracking-widest uppercase">You&apos;ve been challenged</span>
                 </div>
-                <div className="space-y-3">
-                  {invitedChallenges.map((c) => (
+                <div className="space-y-2">
+                  {invitedChallenges.map(c => (
                     <Link key={c.id} href={`/challenge/${c.share_token}`}>
                       <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} />
                     </Link>
@@ -625,28 +513,32 @@ export default function ChallengePage() {
 
             {myOtherChallenges.length > 0 ? (
               <div>
-                <h2 className="font-gaming text-xl text-white tracking-widest mb-4">My Challenges</h2>
-                <div className="space-y-3">
-                  {myOtherChallenges.map((c) => (
+                <p className="font-gaming text-base text-white tracking-widest mb-2">My Challenges</p>
+                <div className="space-y-2">
+                  {myOtherChallenges.map(c => (
                     <Link key={c.id} href={`/challenge/${c.share_token}`}>
                       <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} />
                     </Link>
                   ))}
                 </div>
               </div>
-            ) : invitedChallenges.length === 0 ? (
-              <div className="py-16 text-center">
-                <Handshake className="w-10 h-10 text-[#262626] mx-auto mb-3" />
-                <p className="text-white font-bold mb-1">No challenges yet</p>
-                <p className="text-[#525252] text-sm mb-6">Create one or accept from Open Challenges.</p>
-                <button
-                  onClick={() => setTab("new")}
-                  className="px-5 py-2.5 bg-white text-black font-black text-xs uppercase tracking-widest hover:bg-[#e6e6e6] transition-colors"
-                >
-                  Create Challenge
-                </button>
+            ) : invitedChallenges.length === 0 && (
+              <div className="py-14 text-center">
+                <Handshake className="w-9 h-9 text-[#262626] mx-auto mb-2.5" />
+                <p className="text-white font-bold text-sm mb-1">No challenges yet</p>
+                <p className="text-[#525252] text-xs mb-5">Create one or pick up an open challenge.</p>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => setTab("new")}
+                    className="px-4 py-2 bg-white text-black font-black text-[10px] uppercase tracking-widest hover:bg-[#e6e6e6] transition-colors">
+                    Create
+                  </button>
+                  <button onClick={() => setTab("open")}
+                    className="px-4 py-2 border border-[#262626] text-[#a3a3a3] font-black text-[10px] uppercase tracking-widest hover:text-white hover:border-[#333] transition-colors">
+                    Browse Open
+                  </button>
+                </div>
               </div>
-            ) : null}
+            )}
           </div>
         )}
       </main>
