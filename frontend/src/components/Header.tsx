@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, LogIn, Zap, Menu, X } from "lucide-react";
+import { LogOut, LogIn, Zap, Menu, X, Coins } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -123,10 +123,9 @@ export default function Header() {
           {/* RIGHT — coins (mobile) + coins + avatar (desktop) */}
           <div className="flex items-center justify-end gap-2">
             {!loading && user && coins !== null && (
-              <Link href="/profile" className="flex items-center gap-1.5 px-1 group">
-                <span className="inline-block w-3 h-3 rounded-full bg-[#fbbf24] border border-[#92400e] shrink-0" />
-                <span className="inline-block w-3 h-3 rounded-full bg-[#fbbf24] border border-[#92400e] shrink-0 -ml-1.5" />
-                <span className="font-gaming text-base font-black text-[#fbbf24] tabular-nums group-hover:text-[#fde68a] transition-colors ml-1">
+              <Link href="/profile" className="flex items-center gap-2 px-1 group">
+                <Coins className="w-5 h-5 text-[#fbbf24] shrink-0 group-hover:text-[#fde68a] transition-colors" strokeWidth={1.5} />
+                <span className="font-gaming text-base font-black text-[#fbbf24] tabular-nums group-hover:text-[#fde68a] transition-colors">
                   {coins.toLocaleString()}
                 </span>
               </Link>
