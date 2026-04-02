@@ -136,6 +136,45 @@ export interface LeaderboardEntry {
   avatar_url?: string | null;
 }
 
+export type ChallengeStatus =
+  | "open"
+  | "accepted"
+  | "counter_offered"
+  | "declined"
+  | "expired"
+  | "cancelled"
+  | "settled";
+
+export interface ChallengeUser {
+  google_id: string;
+  username: string;
+  name: string;
+  avatar_url?: string | null;
+}
+
+export interface Challenge {
+  id: string;
+  match_id: string;
+  share_token: string;
+  status: ChallengeStatus;
+  challenger_team: string;
+  challenger_stake: number;
+  challenger_wants: number;
+  acceptor_stake: number;
+  challenger: ChallengeUser;
+  acceptor?: ChallengeUser | null;
+  match: Match;
+  counter_challenger_stake?: number | null;
+  counter_challenger_wants?: number | null;
+  created_at?: string | null;
+  expires_at: string;
+}
+
+export interface ChallengeListResponse {
+  challenges: Challenge[];
+  pending_count: number;
+}
+
 export interface FollowUser {
   google_id: string;
   username: string;

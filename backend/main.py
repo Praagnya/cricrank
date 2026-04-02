@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from database import engine, Base
-from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema, ensure_first_innings_schema
+from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema, ensure_first_innings_schema, ensure_challenge_schema
 
 load_dotenv()
 
@@ -18,6 +18,7 @@ async def lifespan(app: FastAPI):
     ensure_match_schema_upgrades(engine)
     ensure_toss_winner_schema(engine)
     ensure_first_innings_schema(engine)
+    ensure_challenge_schema(engine)
     yield
 
 
@@ -86,9 +87,11 @@ from routes.matches import router as matches_router
 from routes.predictions import router as predictions_router
 from routes.leaderboard import router as leaderboard_router
 from routes.squads import router as squads_router
+from routes.challenges import router as challenges_router
 
 app.include_router(users_router, prefix="/users", tags=["users"])
 app.include_router(matches_router, prefix="/matches", tags=["matches"])
 app.include_router(predictions_router, prefix="/predictions", tags=["predictions"])
 app.include_router(leaderboard_router, prefix="/leaderboard", tags=["leaderboard"])
 app.include_router(squads_router, prefix="/squads", tags=["squads"])
+app.include_router(challenges_router, prefix="/challenges", tags=["challenges"])

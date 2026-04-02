@@ -11,6 +11,8 @@ import {
   Prediction,
   Squad,
   FollowUser,
+  Challenge,
+  ChallengeListResponse,
 } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
@@ -119,6 +121,33 @@ export const api = {
       fetch(`${BASE}/squads/${squadId}/leave?google_id=${googleId}`, { method: "DELETE" }),
     leaderboard: (squadId: string) =>
       get<LeaderboardEntry[]>(`/squads/${squadId}/leaderboard`),
+  },
+  challenges: {
+    create: (googleId: string, matchId: string, challengerTeam: string, challengerStake: number, challengerWants: number) =>
+      postNoStore<Challenge>(`/challenges/?google_id=${encodeURIComponent(googleId)}`, {
+        match_id: matchId,
+        challenger_team: challengerTeam,
+        challenger_stake: challengerStake,
+        challenger_wants: challengerWants,
+      }),
+    byToken: (token: string) => getNoStore<Challenge>(`/challenges/token/${token}`),
+    byUser: (googleId: string) =>
+      getNoStore<ChallengeListResponse>(`/challenges/user/${encodeURIComponent(googleId)}`),
+    pendingCount: (googleId: string) =>
+      getNoStore<{ count: number }>(`/challenges/pending-count/${encodeURIComponent(googleId)}`),
+    accept: (challengeId: string, googleId: string) =>
+      postNoStore<Challenge>(`/challenges/${challengeId}/accept?google_id=${encodeURIComponent(googleId)}`, {}),
+    counter: (challengeId: string, googleId: string, challengerStake: number, challengerWants: number) =>
+      postNoStore<Challenge>(`/challenges/${challengeId}/counter?google_id=${encodeURIComponent(googleId)}`, {
+        challenger_stake: challengerStake,
+        challenger_wants: challengerWants,
+      }),
+    acceptCounter: (challengeId: string, googleId: string) =>
+      postNoStore<Challenge>(`/challenges/${challengeId}/accept-counter?google_id=${encodeURIComponent(googleId)}`, {}),
+    decline: (challengeId: string, googleId: string) =>
+      postNoStore<Challenge>(`/challenges/${challengeId}/decline?google_id=${encodeURIComponent(googleId)}`, {}),
+    cancel: (challengeId: string, googleId: string) =>
+      postNoStore<Challenge>(`/challenges/${challengeId}/cancel?google_id=${encodeURIComponent(googleId)}`, {}),
   },
   leaderboard: {
     global: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/global?limit=${limit}`),

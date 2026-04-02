@@ -2,15 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Trophy, Search, User, LogIn } from "lucide-react";
+import { Home, Trophy, Handshake, User, LogIn } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
-import { useState } from "react";
-import FindPlayers from "./FindPlayers";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 export default function BottomNav() {
   const { user, loading, signInWithGoogle } = useUser();
   const pathname = usePathname();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    api.challenges.pendingCount(user.id)
+      .then((r) => setPendingCount(r.count))
+      .catch(() => {});
+  }, [user?.id]);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -33,10 +40,17 @@ export default function BottomNav() {
           <span className="text-[9px] font-black uppercase tracking-widest">Ranks</span>
         </Link>
 
-        <button onClick={() => setSearchOpen(true)} className={tabCls(false)}>
-          <Search className="w-5 h-5" strokeWidth={1.5} />
-          <span className="text-[9px] font-black uppercase tracking-widest">Find</span>
-        </button>
+        <Link href="/challenge" className={tabCls(isActive("/challenge"))}>
+          <div className="relative">
+            <Handshake className="w-5 h-5" strokeWidth={isActive("/challenge") ? 2.5 : 1.5} />
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#ef4444] text-[8px] font-black text-white flex items-center justify-center">
+                {pendingCount > 9 ? "9+" : pendingCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-widest">Challenge</span>
+        </Link>
 
         {!loading && user ? (
           <Link href="/profile" className={tabCls(isActive("/profile"))}>
@@ -67,7 +81,6 @@ export default function BottomNav() {
         )}
       </nav>
 
-      {searchOpen && <FindPlayers onClose={() => setSearchOpen(false)} />}
     </>
   );
 }

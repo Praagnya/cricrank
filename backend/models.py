@@ -1,8 +1,10 @@
 import uuid
+import secrets
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, DateTime, Enum, ForeignKey, UniqueConstraint, Float, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from database import Base
 
 import enum
@@ -242,6 +244,35 @@ class CoinTransaction(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     user = relationship("User", back_populates="coin_transactions")
+
+
+class Challenge(Base):
+    __tablename__ = "challenges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False)
+    challenger_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    challenger_team = Column(String, nullable=False)
+    challenger_stake = Column(Integer, nullable=False)
+    challenger_wants = Column(Integer, nullable=False)
+
+    acceptor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    share_token = Column(String, unique=True, nullable=False, default=lambda: secrets.token_urlsafe(10))
+
+    status = Column(String, nullable=False, default="open")
+    # open | accepted | counter_offered | declined | expired | cancelled | settled
+
+    counter_challenger_stake = Column(Integer, nullable=True)
+    counter_challenger_wants = Column(Integer, nullable=True)
+
+    winner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    settled_at = Column(DateTime(timezone=True), nullable=True)
+
+    challenger = relationship("User", foreign_keys=[challenger_id])
+    acceptor = relationship("User", foreign_keys=[acceptor_id])
+    match = relationship("Match")
 
 
 class ContestEntry(Base):

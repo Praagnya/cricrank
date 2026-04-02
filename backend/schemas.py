@@ -287,6 +287,54 @@ class ContestLeaderboardEntry(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Challenge ────────────────────────────────────────────────────────────────
+
+class ChallengeCreate(BaseModel):
+    match_id: UUID4
+    challenger_team: str
+    challenger_stake: int
+    challenger_wants: int
+
+
+class ChallengeUserPublic(BaseModel):
+    google_id: str
+    username: str
+    name: str
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ChallengePublic(BaseModel):
+    id: UUID4
+    match_id: UUID4
+    share_token: str
+    status: str
+    challenger_team: str
+    challenger_stake: int
+    challenger_wants: int
+    acceptor_stake: int          # derived: challenger_wants - challenger_stake
+    challenger: ChallengeUserPublic
+    acceptor: Optional[ChallengeUserPublic] = None
+    match: MatchPublic
+    counter_challenger_stake: Optional[int] = None
+    counter_challenger_wants: Optional[int] = None
+    created_at: Optional[datetime] = None
+    expires_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ChallengeCounterRequest(BaseModel):
+    challenger_stake: int
+    challenger_wants: int
+
+
+class ChallengeListResponse(BaseModel):
+    challenges: list[ChallengePublic]
+    pending_count: int   # challenges waiting on the user to act (not created by them)
+
+
 # ── AI Engine ────────────────────────────────────────────────────────────────
 
 class AIPredictionResponse(BaseModel):

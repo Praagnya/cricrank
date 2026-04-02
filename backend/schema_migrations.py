@@ -65,6 +65,37 @@ def ensure_first_innings_schema(engine) -> None:
             ))
 
 
+def ensure_challenge_schema(engine) -> None:
+    """Create challenges table if not exists."""
+    inspector = inspect(engine)
+    if "challenges" in inspector.get_table_names():
+        return
+    with engine.begin() as connection:
+        connection.execute(text("""
+            CREATE TABLE challenges (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                match_id UUID NOT NULL REFERENCES matches(id),
+                challenger_id UUID NOT NULL REFERENCES users(id),
+                challenger_team VARCHAR NOT NULL,
+                challenger_stake INTEGER NOT NULL,
+                challenger_wants INTEGER NOT NULL,
+                acceptor_id UUID REFERENCES users(id),
+                share_token VARCHAR NOT NULL UNIQUE,
+                status VARCHAR NOT NULL DEFAULT 'open',
+                counter_challenger_stake INTEGER,
+                counter_challenger_wants INTEGER,
+                winner_id UUID REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                expires_at TIMESTAMPTZ NOT NULL,
+                settled_at TIMESTAMPTZ
+            )
+        """))
+        connection.execute(text("CREATE INDEX ix_challenges_challenger ON challenges (challenger_id)"))
+        connection.execute(text("CREATE INDEX ix_challenges_acceptor ON challenges (acceptor_id)"))
+        connection.execute(text("CREATE INDEX ix_challenges_match ON challenges (match_id)"))
+        connection.execute(text("CREATE UNIQUE INDEX ix_challenges_token ON challenges (share_token)"))
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():
