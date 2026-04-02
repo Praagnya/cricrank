@@ -86,14 +86,25 @@ def job_check_result(match_id: str) -> None:
             except CricAPIError:
                 payload = {}
 
-        # Fallback to match_info for completed matches
-        if not payload.get("matchEnded"):
+        # Fallback to match_info only when match has ended but winner field is still empty
+        if payload.get("matchEnded") and not payload.get("matchWinner"):
             try:
                 info = fetch_match_info(match.cricapi_id) or {}
-                if info.get("matchEnded"):
-                    payload = {**info, **payload}
+                if isinstance(info, dict):
+                    for key in ("matchWinner", "matchEnded", "tossWinner"):
+                        if not payload.get(key) and info.get(key):
+                            payload[key] = info[key]
             except CricAPIError:
                 pass
+
+        # Last resort: parse winner from result status text
+        # e.g. "Sunrisers Hyderabad won by 65 runs" → matchWinner = "Sunrisers Hyderabad"
+        if payload.get("matchEnded") and not payload.get("matchWinner") and payload.get("status"):
+            status_text = payload["status"].lower()
+            for team in (match.team1, match.team2):
+                if team.lower() in status_text and "won" in status_text:
+                    payload["matchWinner"] = team
+                    break
 
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
@@ -255,25 +266,42 @@ def bootstrap_scheduler(db: Session) -> None:
 
     logger.info("poller: bootstrap done — scheduled jobs for %d matches", len(matches))
 
-    # Re-settle any completed matches that have unsettled predictions (recovery from missed settlement)
+    # Recovery: fix completed matches with missing winner or unsettled predictions
     from routes.predictions import _settle_match_internal
+    from cricapi import CricAPIError, fetch_match_info
+    from team_metadata import canonicalize_winner
+
     stuck_matches = (
         db.query(Match)
         .filter(
             Match.status == MatchStatus.completed,
-            Match.winner.isnot(None),
-            Match.start_time >= now - timedelta(days=30),
+            Match.start_time >= now - timedelta(days=7),
         )
         .all()
     )
     for match in stuck_matches:
+        # If winner is missing, try to fetch it from match_info
+        if not match.winner and match.cricapi_id:
+            try:
+                info = fetch_match_info(match.cricapi_id) or {}
+                mw = info.get("matchWinner")
+                if mw:
+                    match.winner = canonicalize_winner(mw)
+                    db.commit()
+                    logger.warning("poller: recovered winner for match %s → %s", match.id, match.winner)
+            except CricAPIError:
+                pass
+
+        if not match.winner:
+            continue
+
         unsettled = (
             db.query(Prediction)
             .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
             .count()
         )
         if unsettled > 0:
-            logger.warning("poller: re-settling %d unsettled predictions for completed match %s", unsettled, match.id)
+            logger.warning("poller: re-settling %d unsettled predictions for match %s", unsettled, match.id)
             _settle_match_internal(db, match)
 
 

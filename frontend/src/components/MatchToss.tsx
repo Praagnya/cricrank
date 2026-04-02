@@ -81,7 +81,7 @@ export default function MatchToss({
     }
     void load();
     return () => { cancelled = true; };
-  }, [googleId, matchId, isLocked]);
+  }, [googleId, matchId]);
 
   const submitPick = async () => {
     if (!googleId || !picked) return;

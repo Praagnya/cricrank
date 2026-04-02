@@ -335,38 +335,9 @@ def sync_series(payload: SeriesSyncRequest, db: Session = Depends(get_db)):
 
 @router.get("/today", response_model=list[MatchPublic])
 def today_matches(db: Session = Depends(get_db)):
+    # Status updates are handled by the background poller — just serve DB state.
     now = datetime.now(timezone.utc)
-    matches = db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time).all()
-
-    changed = False
-    try:
-        current_by_id = {m["id"]: m for m in (fetch_current_matches() or []) if "id" in m}
-    except CricAPIError:
-        current_by_id = {}
-
-    for match in matches:
-        if not match.cricapi_id or match.status != MatchStatus.upcoming or match.start_time > now:
-            continue
-        payload = current_by_id.get(match.cricapi_id)
-        if not payload:
-            try:
-                payload = fetch_match_bbb(match.cricapi_id) or {}
-            except CricAPIError:
-                continue
-        if not payload:
-            continue
-        new_status = _match_status_from_payload(payload)
-        if new_status != match.status:
-            match.status = new_status
-            changed = True
-        if new_status == MatchStatus.completed and payload.get("status") and not match.result_summary:
-            match.result_summary = payload["status"]
-            changed = True
-
-    if changed:
-        db.commit()
-
-    return matches
+    return db.query(Match).filter(func.date(Match.start_time) == func.date(now)).order_by(Match.start_time).all()
 
 
 @router.get("/upcoming", response_model=list[MatchPublic])
