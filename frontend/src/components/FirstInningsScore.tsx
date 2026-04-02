@@ -97,6 +97,7 @@ export default function FirstInningsScore({
 
   async function submit() {
     if (!googleId || !pickedTeam) return;
+    const stakedAmount = nextStake ?? 0;
     setError(null);
     setPhase("submitting");
     try {
@@ -109,6 +110,7 @@ export default function FirstInningsScore({
       setInputVal(String(DEFAULT_SCORE));
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cricrank-coins-refresh"));
+        window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: stakedAmount, type: "debit" } }));
       }
       if (res.next_stake !== null && !isLocked) {
         setPhase("team");

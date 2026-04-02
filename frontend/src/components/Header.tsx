@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CoinRewardToast from "@/components/CoinRewardToast";
+import CoinToast from "@/components/CoinToast";
 import { coinSyncStorageKey, istCalendarDateKey } from "@/lib/utils";
 
 export default function Header() {
@@ -100,6 +101,7 @@ export default function Header() {
       {coinReward !== null && coinReward > 0 && (
         <CoinRewardToast amount={coinReward} onDismiss={dismissReward} />
       )}
+      <CoinToast />
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
 

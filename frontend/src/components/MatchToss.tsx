@@ -99,9 +99,14 @@ export default function MatchToss({
         settled: res.settled ?? false,
       });
       setPhase(res.settled ? "done" : "pending");
-      // Coins were staked — always refresh balance
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cricrank-coins-refresh"));
+        window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: TOSS_COINS, type: "debit" } }));
+        if (res.settled && res.coins_won > 0) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: res.coins_won, type: "credit" } }));
+          }, 900);
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
