@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from coin_ledger import apply_credit, apply_debit
-from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_scorecard, fetch_series_info
+from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_info, fetch_match_scorecard, fetch_series_info
 from database import get_db
 from models import Match, MatchStatus, Prediction, TossPlay, FirstInningsPick, User
 from prediction_agent import get_prediction_safe
@@ -44,7 +44,15 @@ def _merge_toss_sources(match: Match) -> dict:
     if not isinstance(bbb, dict):
         bbb = {}
     merged = {**source, **bbb}
-    # If toss winner still not found, try scorecard (has tossWinner for completed matches)
+    # If toss winner still not found, try match_info (works for completed matches)
+    if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
+        try:
+            info = fetch_match_info(match.cricapi_id) or {}
+            if isinstance(info, dict):
+                merged = {**info, **merged}
+        except CricAPIError:
+            pass
+    # Final fallback: scorecard
     if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
         try:
             sc = fetch_match_scorecard(match.cricapi_id) or {}

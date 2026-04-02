@@ -126,3 +126,13 @@ def fetch_match_scorecard(cricapi_id: str):
         "CRICAPI_MATCH_SCORECARD_CACHE_SECONDS",
         DEFAULT_MATCH_TTL,
     )
+
+
+def fetch_match_info(cricapi_id: str):
+    return _cached_match_request(
+        f"info:{cricapi_id}",
+        "match_info",
+        cricapi_id,
+        "CRICAPI_MATCH_INFO_CACHE_SECONDS",
+        DEFAULT_MATCH_TTL,
+    )
