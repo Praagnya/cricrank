@@ -28,6 +28,7 @@ export default function ChallengePage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
   const [openLoading, setOpenLoading] = useState(false);
+  const [openLoaded, setOpenLoaded] = useState(false);
 
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [followingLoaded, setFollowingLoaded] = useState(false);
@@ -62,14 +63,14 @@ export default function ChallengePage() {
     try {
       setOpenChallenges(await api.challenges.open(googleId ?? undefined));
     } catch { setOpenChallenges([]); }
-    finally { setOpenLoading(false); }
+    finally { setOpenLoading(false); setOpenLoaded(true); }
   }, [googleId]);
 
   useEffect(() => { if (!loading) loadData(); }, [loading, loadData]);
 
   useEffect(() => {
-    if (tab === "open" && openChallenges.length === 0 && !openLoading) loadOpen();
-  }, [tab, openChallenges.length, openLoading, loadOpen]);
+    if (tab === "open" && !openLoaded && !openLoading) loadOpen();
+  }, [tab, openLoaded, openLoading, loadOpen]);
 
   useEffect(() => {
     if (step === "invite" && googleId && !followingLoaded) {
@@ -461,7 +462,7 @@ export default function ChallengePage() {
           <div className="px-4 pt-5">
             <div className="flex items-center justify-between mb-4">
               <span className="font-gaming text-lg text-white tracking-widest">Open Challenges</span>
-              <button onClick={loadOpen} disabled={openLoading}
+              <button onClick={() => { setOpenLoaded(false); loadOpen(); }} disabled={openLoading}
                 className="flex items-center gap-1.5 text-[#525252] hover:text-white text-xs font-black uppercase tracking-widest disabled:opacity-40 transition-colors">
                 <RefreshCw className={`w-3.5 h-3.5 ${openLoading ? "animate-spin" : ""}`} />Refresh
               </button>
