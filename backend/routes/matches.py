@@ -80,10 +80,17 @@ def _extract_toss_winner_name(payload: dict, team1: str, team2: str) -> str | No
 
 
 def _refresh_match_toss_winner(db: Session, match: Match) -> None:
-    """Read toss winner from DB only. The background poller writes it via CricAPI."""
-    # toss_winner is already loaded on the match object by SQLAlchemy.
-    # No CricAPI call here — that is handled by poller.job_check_toss().
-    pass
+    """
+    Update toss_winner from CricAPI if not yet set.
+    The background poller proactively calls this; this function acts as a fallback
+    for cases where the poller hasn't run (e.g. first deploy, server restart).
+    """
+    if match.toss_winner:
+        return
+    merged = _merge_toss_sources(match)
+    tw = _extract_toss_winner_name(merged, match.team1, match.team2)
+    if tw:
+        match.toss_winner = tw
 
 
 def _settle_toss_row(db: Session, row: TossPlay, match: Match) -> None:
@@ -371,6 +378,20 @@ def recent_completed_matches(
         .limit(limit)
         .all()
     )
+
+
+@router.post("/{match_id}/settle-toss")
+def settle_toss(match_id: str, db: Session = Depends(get_db)):
+    """Manually trigger toss settlement for a match. Use when poller missed a job."""
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+    _refresh_match_toss_winner(db, match)
+    if not match.toss_winner:
+        return {"settled": False, "detail": "Toss winner not yet available from CricAPI"}
+    _settle_all_toss_plays_for_match(db, match)
+    db.commit()
+    return {"settled": True, "toss_winner": match.toss_winner}
 
 
 @router.get("/{match_id}", response_model=MatchPublic)
