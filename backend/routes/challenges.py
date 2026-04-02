@@ -240,6 +240,41 @@ def pending_count(google_id: str, db: Session = Depends(get_db)):
     return {"count": count}
 
 
+@router.get("/open", response_model=list[ChallengePublic])
+def list_open_challenges(
+    google_id: Optional[str] = None,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+):
+    """
+    Public feed of open challenges anyone can join.
+    Excludes challenges created by the viewer and expired ones.
+    """
+    now = datetime.now(timezone.utc)
+
+    q = (
+        db.query(Challenge)
+        .options(
+            joinedload(Challenge.challenger),
+            joinedload(Challenge.acceptor),
+            joinedload(Challenge.invited_user),
+            joinedload(Challenge.match),
+        )
+        .filter(
+            Challenge.status == "open",
+            Challenge.expires_at > now,
+        )
+    )
+
+    if google_id:
+        viewer = db.query(User).filter(User.google_id == google_id).first()
+        if viewer:
+            q = q.filter(Challenge.challenger_id != viewer.id)
+
+    challenges = q.order_by(Challenge.created_at.desc()).limit(limit).all()
+    return [_to_public(c) for c in challenges]
+
+
 @router.post("/{challenge_id}/accept", response_model=ChallengePublic)
 def accept_challenge(
     challenge_id: str,

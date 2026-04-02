@@ -138,6 +138,8 @@ export const api = {
       getNoStore<ChallengeListResponse>(`/challenges/user/${encodeURIComponent(googleId)}`),
     pendingCount: (googleId: string) =>
       getNoStore<{ count: number }>(`/challenges/pending-count/${encodeURIComponent(googleId)}`),
+    open: (googleId?: string, limit = 20) =>
+      getNoStore<Challenge[]>(`/challenges/open?limit=${limit}${googleId ? `&google_id=${encodeURIComponent(googleId)}` : ""}`),
     accept: (challengeId: string, googleId: string) =>
       postNoStore<Challenge>(`/challenges/${challengeId}/accept?google_id=${encodeURIComponent(googleId)}`, {}),
     counter: (challengeId: string, googleId: string, challengerStake: number, challengerWants: number) =>
