@@ -126,16 +126,24 @@ export default function Header() {
               <Link href="/profile" className="flex items-center gap-2 px-1 group">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="shrink-0 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)] group-hover:drop-shadow-[0_0_10px_rgba(251,191,36,0.7)] transition-all">
                   <defs>
-                    <radialGradient id="cg" cx="38%" cy="32%" r="68%">
-                      <stop offset="0%" stopColor="#fef3c7" />
-                      <stop offset="45%" stopColor="#fbbf24" />
-                      <stop offset="100%" stopColor="#b45309" />
+                    <radialGradient id="cg" cx="38%" cy="30%" r="70%">
+                      <stop offset="0%" stopColor="#fef9c3" />
+                      <stop offset="38%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#92400e" />
                     </radialGradient>
                   </defs>
+                  {/* Outer dark rim */}
                   <circle cx="14" cy="14" r="13.5" fill="#78350f" />
+                  {/* Coin face */}
                   <circle cx="14" cy="14" r="12" fill="url(#cg)" />
-                  <circle cx="14" cy="14" r="9" fill="none" stroke="#92400e" strokeWidth="1.2" />
-                  <text x="14" y="18.5" textAnchor="middle" fontSize="10" fontWeight="900" fill="#78350f" fontFamily="serif">₡</text>
+                  {/* Outer decorative ring */}
+                  <circle cx="14" cy="14" r="10.2" fill="none" stroke="#92400e" strokeWidth="0.8" opacity="0.7" />
+                  {/* Inner decorative ring */}
+                  <circle cx="14" cy="14" r="7" fill="none" stroke="#92400e" strokeWidth="0.7" opacity="0.5" />
+                  {/* Center dot */}
+                  <circle cx="14" cy="14" r="1.3" fill="#92400e" opacity="0.55" />
+                  {/* Shine arc — top-left highlight for 3D depth */}
+                  <path d="M 7.5 9.5 A 7.8 7.8 0 0 1 19 7.2" stroke="rgba(255,255,255,0.45)" strokeWidth="2" strokeLinecap="round" fill="none" />
                 </svg>
                 <span className="font-gaming text-base font-black text-[#fbbf24] tabular-nums group-hover:text-[#fde68a] transition-colors">
                   {coins.toLocaleString()}
