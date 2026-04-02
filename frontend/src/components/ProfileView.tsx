@@ -532,7 +532,15 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {predictions.map((pred) => {
+            {[...predictions].sort((a, b) => {
+              const aOpen = a.is_correct === null;
+              const bOpen = b.is_correct === null;
+              if (aOpen !== bOpen) return aOpen ? -1 : 1;
+              // Both open: soonest match first
+              // Both settled: most recent match first
+              const dir = aOpen ? 1 : -1;
+              return dir * (new Date(b.match.start_time).getTime() - new Date(a.match.start_time).getTime());
+            }).map((pred) => {
               const isUnlocked = pred.is_correct === null && new Date(pred.match.toss_time) > new Date();
               const isChanging = changingPredId === pred.id;
 
