@@ -49,8 +49,6 @@ export default function MatchToss({
   const [result, setResult] = useState<TossView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const userCoins = user?.coins ?? 0;
-  const canIncrease = stake + TOSS_STEP <= userCoins;
   const canDecrease = stake - TOSS_STEP >= TOSS_MIN;
 
   useEffect(() => {
@@ -258,7 +256,7 @@ export default function MatchToss({
                 </button>
                 <button
                   type="button"
-                  disabled={!canIncrease || phase === "submitting"}
+                  disabled={phase === "submitting"}
                   onClick={() => setStake(s => s + TOSS_STEP)}
                   className="w-8 h-8 border border-[#262626] font-black text-white text-lg flex items-center justify-center hover:border-[#404040] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
