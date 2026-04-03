@@ -2,7 +2,7 @@ import uuid
 import secrets
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, DateTime, Enum, ForeignKey, UniqueConstraint, Float, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -293,3 +293,15 @@ class ContestEntry(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "contest_id", name="uq_user_contest"),
     )
+
+
+class PollerEvent(Base):
+    __tablename__ = "poller_events"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    job_type   = Column(String, nullable=False)          # toss | result | fi | bootstrap
+    match_id   = Column(UUID(as_uuid=True), ForeignKey("matches.id", ondelete="CASCADE"), nullable=True)
+    status     = Column(String, nullable=False)          # settled | no_data | skipped | error | live
+    detail     = Column(String, nullable=True)
+    payload    = Column(JSONB, nullable=True)            # key CricAPI fields for debugging
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

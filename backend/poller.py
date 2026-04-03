@@ -15,11 +15,30 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import Match, MatchStatus, Prediction, FirstInningsPick
+from models import Match, MatchStatus, Prediction, FirstInningsPick, PollerEvent
 
 logger = logging.getLogger(__name__)
 
 _scheduler: AsyncIOScheduler | None = None
+
+
+def _log(db, job_type: str, match_id, status: str, detail: str = None, payload: dict = None):
+    """Write a poller_events row. Never raises — logging must not break jobs."""
+    try:
+        db.add(PollerEvent(
+            job_type=job_type,
+            match_id=match_id,
+            status=status,
+            detail=detail,
+            payload=payload,
+        ))
+        db.commit()
+    except Exception as exc:
+        logger.warning("poller: failed to write log entry: %s", exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
 # How long APScheduler will still execute a job that fired while the server was down.
 TOSS_MISFIRE_GRACE   = 300   # 5 min — toss window is short
@@ -43,21 +62,25 @@ def job_check_toss(match_id: str) -> None:
         if not match or match.toss_winner:
             return
 
-        # Re-use the helpers already written in routes/matches.py
         from routes.matches import _merge_toss_sources, _extract_toss_winner_name, _settle_all_toss_plays_for_match
 
         merged = _merge_toss_sources(match)
         tw = _extract_toss_winner_name(merged, match.team1, match.team2)
         if not tw:
             logger.info("poller/toss: winner not yet known for match %s", match_id)
+            _log(db, "toss", match.id, "no_data",
+                 detail="toss winner not found in CricAPI",
+                 payload={"tossWinner": merged.get("tossWinner"), "status": merged.get("status")})
             return
 
         match.toss_winner = tw
         _settle_all_toss_plays_for_match(db, match)
         db.commit()
         logger.info("poller/toss: settled match %s → toss winner %s", match_id, tw)
+        _log(db, "toss", match.id, "settled", detail=f"toss winner: {tw}")
     except Exception as exc:
         logger.error("poller/toss: job failed for %s: %s", match_id, exc)
+        _log(db, "toss", None, "error", detail=str(exc))
         db.rollback()
     finally:
         db.close()
@@ -88,7 +111,17 @@ def job_check_result(match_id: str) -> None:
             except CricAPIError:
                 payload = {}
 
-        # Fallback to match_info only when match has ended but winner field is still empty
+        # If match is live in DB but no data from either source, the match has likely
+        # ended and dropped off CricAPI's live feed — try match_info directly.
+        if not payload and match.status == MatchStatus.live:
+            try:
+                info = fetch_match_info(match.cricapi_id) or {}
+                if isinstance(info, dict) and info:
+                    payload = info
+            except CricAPIError:
+                pass
+
+        # Fallback to match_info when ended but winner still empty
         if payload.get("matchEnded") and not payload.get("matchWinner"):
             try:
                 info = fetch_match_info(match.cricapi_id) or {}
@@ -108,8 +141,19 @@ def job_check_result(match_id: str) -> None:
                     payload["matchWinner"] = team
                     break
 
+        log_payload = {
+            "matchStarted": payload.get("matchStarted"),
+            "matchEnded": payload.get("matchEnded"),
+            "matchWinner": payload.get("matchWinner"),
+            "tossWinner": payload.get("tossWinner"),
+            "status": payload.get("status"),
+            "score": payload.get("score"),
+        }
+
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
+            _log(db, "result", match.id, "no_data",
+                 detail="all CricAPI sources returned empty (currentMatches, BBB, match_info)")
             return
 
         changed = False
@@ -148,12 +192,15 @@ def job_check_result(match_id: str) -> None:
             db.commit()
 
         # Auto-settle predictions and challenges once match is complete
+        predictions_settled = 0
         if match.status == MatchStatus.completed and match.winner:
             from routes.predictions import _settle_match_internal
-            _settle_match_internal(db, match)
+            result = _settle_match_internal(db, match)
+            predictions_settled = result.get("predictions_updated", 0)
             logger.info("poller/result: auto-settled predictions for match %s", match_id)
 
         # Settle first innings picks whenever match is live or completed
+        fi_settled = 0
         if match.cricapi_id and match.status in (MatchStatus.live, MatchStatus.completed):
             unsettled_fi = (
                 db.query(FirstInningsPick)
@@ -165,12 +212,25 @@ def job_check_result(match_id: str) -> None:
                 _settle_first_innings_picks(db, match)
                 try:
                     db.commit()
+                    fi_settled = unsettled_fi
                 except Exception:
                     db.rollback()
                 logger.info("poller/result: settled %d first innings picks for match %s", unsettled_fi, match_id)
 
+        status_label = (
+            "settled" if (predictions_settled > 0 or fi_settled > 0)
+            else ("live" if match.status == MatchStatus.live else "skipped")
+        )
+        _log(db, "result", match.id, status_label,
+             detail=f"predictions={predictions_settled} fi_picks={fi_settled} winner={match.winner} status={match.status}",
+             payload=log_payload)
+
     except Exception as exc:
         logger.error("poller/result: job failed for %s: %s", match_id, exc)
+        try:
+            _log(db, "result", None, "error", detail=str(exc))
+        except Exception:
+            pass
         db.rollback()
     finally:
         db.close()
@@ -191,13 +251,26 @@ def job_check_first_innings(match_id: str) -> None:
             .count()
         )
         if unsettled == 0:
+            _log(db, "fi", match.id, "skipped", detail="no unsettled picks")
             return
-        from routes.matches import _settle_first_innings_picks
+        from routes.matches import _settle_first_innings_picks, _get_first_innings_result
+        actual_team, actual_score = _get_first_innings_result(match.cricapi_id)
+        if actual_score is None:
+            _log(db, "fi", match.id, "no_data",
+                 detail="first innings not yet complete in CricAPI")
+            return
         _settle_first_innings_picks(db, match)
         db.commit()
         logger.info("poller/fi: settled first innings picks for match %s", match_id)
+        _log(db, "fi", match.id, "settled",
+             detail=f"{actual_team} {actual_score} — settled {unsettled} picks",
+             payload={"actual_team": actual_team, "actual_score": actual_score})
     except Exception as exc:
         logger.error("poller/fi: job failed for %s: %s", match_id, exc)
+        try:
+            _log(db, "fi", None, "error", detail=str(exc))
+        except Exception:
+            pass
         db.rollback()
     finally:
         db.close()
@@ -356,6 +429,8 @@ def bootstrap_scheduler(db: Session) -> None:
         _schedule_first_innings_jobs(scheduler, match)
 
     logger.info("poller: bootstrap done — scheduled jobs for %d matches", len(matches))
+    _log(db, "bootstrap", None, "ok",
+         detail=f"scheduled jobs for {len(matches)} upcoming/live matches")
 
     # Recovery: fix completed matches with missing winner or unsettled predictions
     from routes.predictions import _settle_match_internal

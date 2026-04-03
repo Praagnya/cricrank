@@ -130,6 +130,30 @@ def ensure_toss_stake_schema(engine) -> None:
             ))
 
 
+def ensure_poller_events_schema(engine) -> None:
+    """Create poller_events table for job run logging."""
+    inspector = inspect(engine)
+    if "poller_events" not in inspector.get_table_names():
+        with engine.begin() as connection:
+            connection.execute(text("""
+                CREATE TABLE poller_events (
+                    id         SERIAL PRIMARY KEY,
+                    job_type   VARCHAR NOT NULL,
+                    match_id   UUID REFERENCES matches(id) ON DELETE CASCADE,
+                    status     VARCHAR NOT NULL,
+                    detail     VARCHAR,
+                    payload    JSONB,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+            connection.execute(text(
+                "CREATE INDEX ix_poller_events_created ON poller_events (created_at DESC)"
+            ))
+            connection.execute(text(
+                "CREATE INDEX ix_poller_events_match ON poller_events (match_id)"
+            ))
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():
