@@ -51,7 +51,7 @@ class FirstInningsPickRequest(BaseModel):
 
 
 class FirstInningsPickItem(BaseModel):
-    predicted_team: str
+    predicted_team: Optional[str] = None
     predicted_score: int
     stake: int
     actual_team: Optional[str] = None

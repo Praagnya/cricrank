@@ -31,7 +31,7 @@ export interface CrowdPrediction {
 }
 
 export interface FirstInningsPickItem {
-  predicted_team: string;
+  predicted_team?: string | null;
   predicted_score: number;
   stake: number;
   actual_team?: string | null;

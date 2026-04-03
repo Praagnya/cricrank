@@ -15,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import Match, MatchStatus, Prediction
+from models import Match, MatchStatus, Prediction, FirstInningsPick
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +74,11 @@ def job_check_result(match_id: str) -> None:
     db: Session = SessionLocal()
     try:
         match = db.query(Match).filter(Match.id == match_id).first()
-        if not match or match.status == MatchStatus.completed:
+        if not match or not match.cricapi_id:
             return
-        if not match.cricapi_id:
+        # Skip only if truly done: completed with a winner already set.
+        # If completed but winner is null, fall through to recovery logic below.
+        if match.status == MatchStatus.completed and match.winner:
             return
 
         payload = _find_current_match_payload(match.cricapi_id) or {}
@@ -131,14 +133,71 @@ def job_check_result(match_id: str) -> None:
                 match_id, match.status, match.winner,
             )
 
+        # Settle toss plays if toss winner now known (safety net for missed toss jobs)
+        if not match.toss_winner and payload.get("tossWinner"):
+            from routes.matches import _extract_toss_winner_name, _settle_all_toss_plays_for_match
+            tw = _extract_toss_winner_name(payload, match.team1, match.team2)
+            if tw:
+                match.toss_winner = tw
+                _settle_all_toss_plays_for_match(db, match)
+                db.commit()
+                logger.info("poller/result: settled toss for match %s → %s", match_id, tw)
+        elif match.toss_winner:
+            from routes.matches import _settle_all_toss_plays_for_match
+            _settle_all_toss_plays_for_match(db, match)
+            db.commit()
+
         # Auto-settle predictions and challenges once match is complete
         if match.status == MatchStatus.completed and match.winner:
             from routes.predictions import _settle_match_internal
             _settle_match_internal(db, match)
             logger.info("poller/result: auto-settled predictions for match %s", match_id)
 
+        # Settle first innings picks whenever match is live or completed
+        if match.cricapi_id and match.status in (MatchStatus.live, MatchStatus.completed):
+            unsettled_fi = (
+                db.query(FirstInningsPick)
+                .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
+                .count()
+            )
+            if unsettled_fi > 0:
+                from routes.matches import _settle_first_innings_picks
+                _settle_first_innings_picks(db, match)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+                logger.info("poller/result: settled %d first innings picks for match %s", unsettled_fi, match_id)
+
     except Exception as exc:
         logger.error("poller/result: job failed for %s: %s", match_id, exc)
+        db.rollback()
+    finally:
+        db.close()
+
+
+# ── First innings job ─────────────────────────────────────────────────────────
+
+def job_check_first_innings(match_id: str) -> None:
+    """Settle first innings picks - fires around when 1st innings ends (~T+90-120 min)."""
+    db: Session = SessionLocal()
+    try:
+        match = db.query(Match).filter(Match.id == match_id).first()
+        if not match or not match.cricapi_id:
+            return
+        unsettled = (
+            db.query(FirstInningsPick)
+            .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
+            .count()
+        )
+        if unsettled == 0:
+            return
+        from routes.matches import _settle_first_innings_picks
+        _settle_first_innings_picks(db, match)
+        db.commit()
+        logger.info("poller/fi: settled first innings picks for match %s", match_id)
+    except Exception as exc:
+        logger.error("poller/fi: job failed for %s: %s", match_id, exc)
         db.rollback()
     finally:
         db.close()
@@ -160,9 +219,12 @@ def _schedule_toss_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
     toss_time = _utc(match.toss_time)
     match_id = str(match.id)
 
+    # Fire at toss_time+30, +40, +50 min = match start_time+0, +10, +20 min.
+    # CricAPI only reports the toss winner once matchStarted=true, so we need
+    # to poll after the match has begun, not during the pre-toss window.
     future_fires = [
         toss_time + timedelta(minutes=offset)
-        for offset in (5, 10)
+        for offset in (30, 40, 50)
         if toss_time + timedelta(minutes=offset) > now
     ]
 
@@ -196,6 +258,34 @@ def _schedule_toss_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
             logger.info("poller: toss catchup job %s scheduled immediately", job_id)
 
 
+def _schedule_first_innings_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
+    """Fire at T+90, T+105, T+120 min to catch first innings completion."""
+    now = datetime.now(timezone.utc)
+    start_time = _utc(match.start_time)
+    match_id = str(match.id)
+
+    future_fires = [
+        start_time + timedelta(minutes=offset)
+        for offset in (90, 105, 120)
+        if start_time + timedelta(minutes=offset) > now
+    ]
+
+    for fire_at in future_fires:
+        offset_min = int((fire_at - start_time).total_seconds() // 60)
+        job_id = f"fi_{match_id}_{offset_min}"
+        if not scheduler.get_job(job_id):
+            scheduler.add_job(
+                job_check_first_innings,
+                trigger="date",
+                run_date=fire_at,
+                args=[match_id],
+                id=job_id,
+                replace_existing=True,
+                misfire_grace_time=600,
+            )
+            logger.info("poller: first innings job %s scheduled at %s", job_id, fire_at.isoformat())
+
+
 def _schedule_result_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
     if match.status == MatchStatus.completed:
         return
@@ -206,7 +296,7 @@ def _schedule_result_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
 
     future_fires = [
         start_time + timedelta(minutes=offset)
-        for offset in (180, 210, 240)   # 3h, 3.5h, 4h
+        for offset in (180, 210, 240, 270, 300)   # 3h → 5h, every 30 min
         if start_time + timedelta(minutes=offset) > now
     ]
 
@@ -263,6 +353,7 @@ def bootstrap_scheduler(db: Session) -> None:
     for match in matches:
         _schedule_toss_jobs(scheduler, match)
         _schedule_result_jobs(scheduler, match)
+        _schedule_first_innings_jobs(scheduler, match)
 
     logger.info("poller: bootstrap done — scheduled jobs for %d matches", len(matches))
 
@@ -292,17 +383,48 @@ def bootstrap_scheduler(db: Session) -> None:
             except CricAPIError:
                 pass
 
-        if not match.winner:
-            continue
+        if match.winner:
+            unsettled = (
+                db.query(Prediction)
+                .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
+                .count()
+            )
+            if unsettled > 0:
+                logger.warning("poller: re-settling %d unsettled predictions for match %s", unsettled, match.id)
+                _settle_match_internal(db, match)
 
-        unsettled = (
-            db.query(Prediction)
-            .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
-            .count()
-        )
-        if unsettled > 0:
-            logger.warning("poller: re-settling %d unsettled predictions for match %s", unsettled, match.id)
-            _settle_match_internal(db, match)
+        # Recover unsettled toss plays (toss winner known but plays not settled)
+        if match.toss_winner:
+            from models import TossPlay
+            unsettled_toss = (
+                db.query(TossPlay)
+                .filter(TossPlay.match_id == match.id, TossPlay.winning_team.is_(None))
+                .count()
+            )
+            if unsettled_toss > 0:
+                logger.warning("poller: settling %d unsettled toss plays for match %s", unsettled_toss, match.id)
+                from routes.matches import _settle_all_toss_plays_for_match
+                _settle_all_toss_plays_for_match(db, match)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
+
+        # Recover stuck first innings picks for completed matches
+        if match.cricapi_id:
+            unsettled_fi = (
+                db.query(FirstInningsPick)
+                .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
+                .count()
+            )
+            if unsettled_fi > 0:
+                logger.warning("poller: recovering %d unsettled first innings picks for match %s", unsettled_fi, match.id)
+                from routes.matches import _settle_first_innings_picks
+                _settle_first_innings_picks(db, match)
+                try:
+                    db.commit()
+                except Exception:
+                    db.rollback()
 
 
 def job_daily_bootstrap() -> None:

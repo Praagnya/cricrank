@@ -685,9 +685,20 @@ def calculate_first_innings_reward(predicted_score: int, actual_score: int) -> i
 def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
     """
     Returns (batting_team, runs) when first innings is complete, else (None, None).
-    Tries BBB first (most up-to-date), then currentMatches.
+    Tries BBB → currentMatches → scorecard (scorecard works for completed matches).
     """
-    for fetch_fn in (lambda: fetch_match_bbb(cricapi_id), lambda: _find_current_match_payload(cricapi_id) or {}):
+    def _fetch_scorecard():
+        try:
+            return fetch_match_scorecard(cricapi_id) or {}
+        except CricAPIError:
+            return {}
+
+    sources = [
+        lambda: fetch_match_bbb(cricapi_id),
+        lambda: _find_current_match_payload(cricapi_id) or {},
+        _fetch_scorecard,
+    ]
+    for fetch_fn in sources:
         try:
             data = fetch_fn() or {}
         except CricAPIError:
