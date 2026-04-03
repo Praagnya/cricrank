@@ -206,6 +206,7 @@ class TossPlay(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
     picked_team = Column(String, nullable=False)
+    stake = Column(Integer, nullable=False, default=100)
     winning_team = Column(String, nullable=True)  # set when match toss is known from feed
     coins_won = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

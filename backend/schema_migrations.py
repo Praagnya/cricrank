@@ -109,6 +109,19 @@ def ensure_challenge_schema(engine) -> None:
             ))
 
 
+def ensure_toss_stake_schema(engine) -> None:
+    """Add stake column to toss_plays (variable bidding)."""
+    inspector = inspect(engine)
+    if "toss_plays" not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns("toss_plays")}
+    if "stake" not in cols:
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE toss_plays ADD COLUMN stake INTEGER NOT NULL DEFAULT 100"
+            ))
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():

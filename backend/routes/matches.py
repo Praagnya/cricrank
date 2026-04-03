@@ -29,7 +29,7 @@ from team_metadata import canonicalize_team, canonicalize_winner, league_aliases
 router = APIRouter()
 
 # Toss prediction — win this many coins when feed reports toss and your pick matches.
-TOSS_MATCH_COINS = 100
+TOSS_MIN_COINS = 50
 
 
 def _merge_toss_sources(match: Match) -> dict:
@@ -117,19 +117,18 @@ def _settle_toss_row(db: Session, row: TossPlay, match: Match) -> None:
         return
     row.winning_team = match.toss_winner
     if row.picked_team == match.toss_winner:
-        row.coins_won = TOSS_MATCH_COINS  # net gain (+100)
-        # Return stake + reward (200 total)
+        row.coins_won = row.stake          # net gain
         apply_credit(
             db,
             row.user_id,
-            TOSS_MATCH_COINS * 2,
+            row.stake * 2,                 # return stake + reward
             "toss_match",
             idempotency_key=f"toss_match:{row.user_id}:{row.match_id}",
             ref_type="match",
             ref_id=str(row.match_id),
         )
     else:
-        row.coins_won = -TOSS_MATCH_COINS  # net loss (stake already deducted)
+        row.coins_won = -row.stake         # net loss (stake already deducted)
 
 
 def _settle_all_toss_plays_for_match(db: Session, match: Match) -> None:
@@ -143,6 +142,7 @@ def _toss_pick_response(row: TossPlay, user: User, already_played: bool) -> Toss
     pending = row.picked_team is not None and not settled
     return TossPickResponse(
         picked_team=row.picked_team,
+        stake=row.stake,
         winning_team=row.winning_team,
         coins_won=row.coins_won,
         coins_balance=user.coins,
@@ -457,6 +457,7 @@ def get_toss_status(match_id: str, google_id: str = Query(..., min_length=1), db
     return TossStatusResponse(
         played=True,
         picked_team=row.picked_team,
+        stake=row.stake,
         winning_team=row.winning_team,
         coins_won=row.coins_won,
         pending=not settled,
@@ -511,13 +512,17 @@ def play_toss(
             detail="Toss outcome is already known. You cannot submit a new prediction.",
         )
 
-    if user.coins < TOSS_MATCH_COINS:
+    stake = body.stake
+    if stake < TOSS_MIN_COINS:
+        raise HTTPException(status_code=400, detail=f"minimum stake is {TOSS_MIN_COINS} coins")
+    if user.coins < stake:
         raise HTTPException(status_code=400, detail="insufficient_coins")
 
     row = TossPlay(
         user_id=user.id,
         match_id=match.id,
         picked_team=picked,
+        stake=stake,
         winning_team=None,
         coins_won=0,
     )
@@ -551,7 +556,7 @@ def play_toss(
         apply_debit(
             db,
             user.id,
-            TOSS_MATCH_COINS,
+            stake,
             "toss_stake",
             idempotency_key=f"toss_stake:{user.id}:{match.id}",
             ref_type="match",

@@ -8,7 +8,8 @@ import { teamHex, teamShortCode } from "@/lib/utils";
 
 type Phase = "loading" | "pick" | "submitting" | "pending" | "done";
 
-const TOSS_COINS = 100;
+const TOSS_MIN = 50;
+const TOSS_STEP = 50;
 
 const CoinDot = () => (
   <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#fbbf24] border border-[#92400e] align-middle mb-[1px] shrink-0" />
@@ -16,7 +17,7 @@ const CoinDot = () => (
 
 type TossView = Pick<
   TossPickResponse,
-  "picked_team" | "winning_team" | "coins_won" | "coins_balance" | "already_played" | "pending" | "settled"
+  "picked_team" | "stake" | "winning_team" | "coins_won" | "coins_balance" | "already_played" | "pending" | "settled"
 >;
 
 export default function MatchToss({
@@ -30,7 +31,6 @@ export default function MatchToss({
   team2: string;
   tossTime?: string;
 }) {
-  /** Wall clock for lock (updated on interval so we never call Date.now() during render). */
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const tick = () => setNowMs(Date.now());
@@ -45,8 +45,13 @@ export default function MatchToss({
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [picked, setPicked] = useState<string | null>(null);
+  const [stake, setStake] = useState(100);
   const [result, setResult] = useState<TossView | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const userCoins = user?.coins ?? 0;
+  const canIncrease = stake + TOSS_STEP <= userCoins;
+  const canDecrease = stake - TOSS_STEP >= TOSS_MIN;
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +69,7 @@ export default function MatchToss({
           setPicked(s.picked_team);
           setResult({
             picked_team: s.picked_team,
+            stake: s.stake ?? 100,
             winning_team: s.winning_team ?? undefined,
             coins_won: s.coins_won,
             coins_balance: 0,
@@ -88,9 +94,10 @@ export default function MatchToss({
     setError(null);
     setPhase("submitting");
     try {
-      const res = await api.matches.tossPick(matchId, googleId, picked);
+      const res = await api.matches.tossPick(matchId, googleId, picked, stake);
       setResult({
         picked_team: res.picked_team,
+        stake: res.stake,
         winning_team: res.winning_team ?? undefined,
         coins_won: res.coins_won,
         coins_balance: res.coins_balance,
@@ -101,7 +108,7 @@ export default function MatchToss({
       setPhase(res.settled ? "done" : "pending");
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("cricrank-coins-refresh"));
-        window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: TOSS_COINS, type: "debit" } }));
+        window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: stake, type: "debit" } }));
         if (res.settled && res.coins_won > 0) {
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent("cricrank-coin-toast", { detail: { amount: res.coins_won, type: "credit" } }));
@@ -139,17 +146,20 @@ export default function MatchToss({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#737373] flex items-center gap-1"><CoinDot />{TOSS_COINS}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stake</span>
+        {/* Show stake/win only when user can still pick */}
+        {phase === "pick" && !isLocked && (
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="font-gaming text-sm font-black text-[#737373] flex items-center gap-1"><CoinDot />{stake}</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">stake</span>
+            </div>
+            <div className="w-px h-7 bg-[#262626]" />
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{stake}</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
+            </div>
           </div>
-          <div className="w-px h-7 bg-[#262626]" />
-          <div className="flex flex-col items-start gap-0.5">
-            <span className="font-gaming text-sm font-black text-[#fbbf24] flex items-center gap-1">+<CoinDot />{TOSS_COINS}</span>
-            <span className="text-[8px] font-bold uppercase tracking-wider text-[#525252]">win</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Body */}
@@ -228,6 +238,35 @@ export default function MatchToss({
               })}
             </div>
 
+            {/* Stake stepper */}
+            <div className="flex items-center justify-between border border-[#262626] px-4 py-3">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Stake</p>
+                <p className="font-gaming text-lg font-black text-white flex items-center gap-1 mt-0.5">
+                  <CoinDot />{stake}
+                  <span className="text-[#525252] text-xs ml-2">→ win <span className="text-[#fbbf24]">{stake * 2}</span></span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!canDecrease || phase === "submitting"}
+                  onClick={() => setStake(s => Math.max(TOSS_MIN, s - TOSS_STEP))}
+                  className="w-8 h-8 border border-[#262626] font-black text-white text-lg flex items-center justify-center hover:border-[#404040] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  disabled={!canIncrease || phase === "submitting"}
+                  onClick={() => setStake(s => s + TOSS_STEP)}
+                  className="w-8 h-8 border border-[#262626] font-black text-white text-lg flex items-center justify-center hover:border-[#404040] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
             {error && (
               <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>
             )}
@@ -238,7 +277,7 @@ export default function MatchToss({
               onClick={submitPick}
               className="w-full border border-[#f59e0b] bg-[#f59e0b]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#f59e0b] transition-colors enabled:hover:bg-[#f59e0b]/20 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {phase === "submitting" ? "Locking..." : "Lock Toss Pick"}
+              {phase === "submitting" ? "Locking..." : `Lock ${stake} Coins`}
             </button>
           </div>
         )}
@@ -258,7 +297,7 @@ export default function MatchToss({
             <div className="text-right">
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Awaiting toss result</p>
               <p className="font-gaming text-sm font-black text-[#fbbf24] tracking-wider mt-1 flex items-center gap-1 justify-end">
-                +<CoinDot />{TOSS_COINS} if correct
+                +<CoinDot />{result.stake ?? 100} if correct
               </p>
             </div>
           </div>
@@ -297,7 +336,7 @@ export default function MatchToss({
               ) : (
                 <>
                   <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Lost</p>
-                  <p className="font-gaming text-2xl font-black text-red-500 mt-1 flex items-center gap-1">-<CoinDot />{TOSS_COINS}</p>
+                  <p className="font-gaming text-2xl font-black text-red-500 mt-1 flex items-center gap-1">-<CoinDot />{result.stake ?? 100}</p>
                 </>
               )}
             </div>

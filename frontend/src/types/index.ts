@@ -58,6 +58,7 @@ export interface FirstInningsPickResponse {
 export interface TossStatusResponse {
   played: boolean;
   picked_team?: string;
+  stake?: number;
   winning_team?: string;
   coins_won: number;
   pending?: boolean;
@@ -66,6 +67,7 @@ export interface TossStatusResponse {
 
 export interface TossPickResponse {
   picked_team: string;
+  stake: number;
   winning_team?: string | null;
   coins_won: number;
   coins_balance: number;

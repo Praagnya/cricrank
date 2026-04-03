@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from database import engine, Base
-from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema, ensure_first_innings_schema, ensure_challenge_schema
+from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema, ensure_first_innings_schema, ensure_challenge_schema, ensure_toss_stake_schema
 
 load_dotenv()
 
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
     ensure_toss_winner_schema(engine)
     ensure_first_innings_schema(engine)
     ensure_challenge_schema(engine)
+    ensure_toss_stake_schema(engine)
 
     from poller import get_scheduler, bootstrap_scheduler, schedule_daily_bootstrap
     from database import SessionLocal

@@ -78,10 +78,12 @@ class FirstInningsStatusResponse(BaseModel):
 
 class TossPickRequest(BaseModel):
     picked_team: str
+    stake: int = 100
 
 
 class TossPickResponse(BaseModel):
     picked_team: str
+    stake: int = 100
     winning_team: Optional[str] = None
     coins_won: int = 0
     coins_balance: int
@@ -93,6 +95,7 @@ class TossPickResponse(BaseModel):
 class TossStatusResponse(BaseModel):
     played: bool
     picked_team: Optional[str] = None
+    stake: int = 100
     winning_team: Optional[str] = None
     coins_won: int = 0
     pending: bool = False

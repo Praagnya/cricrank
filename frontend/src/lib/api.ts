@@ -74,10 +74,10 @@ export const api = {
       getNoStore<TossStatusResponse>(
         `/matches/${matchId}/toss-status?google_id=${encodeURIComponent(googleId)}`
       ),
-    tossPick: (matchId: string, googleId: string, pickedTeam: string) =>
+    tossPick: (matchId: string, googleId: string, pickedTeam: string, stake: number) =>
       postNoStore<TossPickResponse>(
         `/matches/${matchId}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
-        { picked_team: pickedTeam }
+        { picked_team: pickedTeam, stake }
       ),
     firstInningsStatus: (matchId: string, googleId: string) =>
       getNoStore<FirstInningsStatusResponse>(
