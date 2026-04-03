@@ -189,7 +189,7 @@ export default function MatchCarousel({ matches }: Props) {
       />
 
       <MatchToss matchId={match.id} team1={match.team1} team2={match.team2} tossTime={match.toss_time} />
-      <FirstInningsScore matchId={match.id} team1={match.team1} team2={match.team2} startTime={match.start_time} />
+      <FirstInningsScore matchId={match.id} startTime={match.start_time} />
 
       {crowd && (
         <div>

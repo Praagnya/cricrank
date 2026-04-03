@@ -222,7 +222,7 @@ class FirstInningsPick(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     match_id = Column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
-    predicted_team = Column(String, nullable=False)
+    predicted_team = Column(String, nullable=True)
     predicted_score = Column(Integer, nullable=False)
     stake = Column(Integer, nullable=False, default=10)
     actual_team = Column(String, nullable=True)

@@ -47,7 +47,6 @@ class UserLoginResponse(UserPublic):
 
 
 class FirstInningsPickRequest(BaseModel):
-    predicted_team: str
     predicted_score: int
 
 

@@ -815,9 +815,6 @@ def play_first_innings(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    picked_team = canonicalize_team(body.predicted_team)
-    if picked_team not in (match.team1, match.team2):
-        raise HTTPException(status_code=400, detail="predicted_team must be one of the two sides")
     if not (50 <= body.predicted_score <= 350):
         raise HTTPException(status_code=400, detail="predicted_score must be between 50 and 350")
 
@@ -856,7 +853,7 @@ def play_first_innings(
     row = FirstInningsPick(
         user_id=user.id,
         match_id=match.id,
-        predicted_team=picked_team,
+        predicted_team=None,
         predicted_score=body.predicted_score,
         stake=stake,
     )

@@ -52,6 +52,10 @@ def ensure_first_innings_schema(engine) -> None:
 
     # Table already exists — check columns before opening transaction to avoid lock contention
     cols = {c["name"] for c in inspector.get_columns("first_innings_picks")}
+    needs_nullable_team = any(
+        c["name"] == "predicted_team" and not c.get("nullable", True)
+        for c in inspector.get_columns("first_innings_picks")
+    )
     needs_stake = "stake" not in cols
 
     with engine.begin() as connection:
@@ -62,6 +66,10 @@ def ensure_first_innings_schema(engine) -> None:
         if needs_stake:
             connection.execute(text(
                 "ALTER TABLE first_innings_picks ADD COLUMN stake INTEGER NOT NULL DEFAULT 10"
+            ))
+        if needs_nullable_team:
+            connection.execute(text(
+                "ALTER TABLE first_innings_picks ALTER COLUMN predicted_team DROP NOT NULL"
             ))
 
 

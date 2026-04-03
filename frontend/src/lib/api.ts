@@ -83,10 +83,10 @@ export const api = {
       getNoStore<FirstInningsStatusResponse>(
         `/matches/${matchId}/first-innings-status?google_id=${encodeURIComponent(googleId)}`
       ),
-    firstInningsPick: (matchId: string, googleId: string, predictedTeam: string, predictedScore: number) =>
+    firstInningsPick: (matchId: string, googleId: string, predictedScore: number) =>
       postNoStore<FirstInningsPickResponse>(
         `/matches/${matchId}/first-innings-pick?google_id=${encodeURIComponent(googleId)}`,
-        { predicted_team: predictedTeam, predicted_score: predictedScore }
+        { predicted_score: predictedScore }
       ),
   },
   users: {

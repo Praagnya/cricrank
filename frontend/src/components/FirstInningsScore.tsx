@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import type { FirstInningsPickItem } from "@/types";
 import { teamHex, teamShortCode } from "@/lib/utils";
 
-type Phase = "loading" | "team" | "score" | "submitting" | "pending" | "done";
+type Phase = "loading" | "score" | "submitting" | "pending" | "done";
 
 const ENTRY_COINS = 100;
 const MAX_REWARD  = 5_000;
@@ -27,13 +27,9 @@ const CoinDot = () => (
 
 export default function FirstInningsScore({
   matchId,
-  team1,
-  team2,
   startTime,
 }: {
   matchId: string;
-  team1: string;
-  team2: string;
   startTime?: string;
 }) {
   const { user, loading: authLoading, signInWithGoogle } = useUser();
@@ -48,7 +44,6 @@ export default function FirstInningsScore({
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [pick, setPick] = useState<FirstInningsPickItem | null>(null);
-  const [pickedTeam, setPickedTeam] = useState<string | null>(null);
   const [score, setScore] = useState(DEFAULT_SCORE);
   const [inputVal, setInputVal] = useState(String(DEFAULT_SCORE));
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +51,7 @@ export default function FirstInningsScore({
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!googleId) { setPhase("team"); return; }
+      if (!googleId) { setPhase("score"); return; }
       setPhase("loading");
       try {
         const s = await api.matches.firstInningsStatus(matchId, googleId);
@@ -64,14 +59,14 @@ export default function FirstInningsScore({
         const p = s.picks[0] ?? null;
         setPick(p);
         if (!p) {
-          setPhase("team");
+          setPhase("score");
         } else if (p.settled) {
           setPhase("done");
         } else {
           setPhase("pending");
         }
       } catch {
-        if (!cancelled) setPhase("team");
+        if (!cancelled) setPhase("score");
       }
     }
     void load();
@@ -96,11 +91,11 @@ export default function FirstInningsScore({
   }
 
   async function submit() {
-    if (!googleId || !pickedTeam) return;
+    if (!googleId) return;
     setError(null);
     setPhase("submitting");
     try {
-      const res = await api.matches.firstInningsPick(matchId, googleId, pickedTeam, score);
+      const res = await api.matches.firstInningsPick(matchId, googleId, score);
       const p = res.picks[0] ?? null;
       setPick(p);
       if (typeof window !== "undefined") {
@@ -124,9 +119,6 @@ export default function FirstInningsScore({
       </div>
     );
   }
-
-  // Live reward preview during score entry
-  const previewReward = pickedTeam ? null : null; // shown in score step below
 
   return (
     <div className="border border-[#262626] bg-[#000000]">
@@ -172,7 +164,7 @@ export default function FirstInningsScore({
         )}
 
         {/* Locked with no pick */}
-        {((!googleId && isLocked) || (googleId && isLocked && !pick && (phase === "team" || phase === "score" || phase === "submitting"))) && (
+        {((!googleId && isLocked) || (googleId && isLocked && !pick && (phase === "score" || phase === "submitting"))) && (
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">Prediction closed</p>
         )}
 
@@ -181,47 +173,11 @@ export default function FirstInningsScore({
           <div className="h-8 w-32 animate-pulse bg-[#111111]" />
         )}
 
-        {/* Step 1: Pick team */}
-        {googleId && phase === "team" && !isLocked && (
-          <div className="flex flex-col gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252]">Who bats first?</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[team1, team2].map((t) => {
-                const hex = teamHex(t);
-                return (
-                  <button key={t} type="button"
-                    onClick={() => { setPickedTeam(t); setPhase("score"); }}
-                    className="border border-[#262626] bg-[#000000] hover:border-[#404040] px-4 py-4 text-left transition-colors">
-                    <p className="font-gaming text-2xl font-black tracking-widest" style={{ color: hex }}>
-                      {teamShortCode(t)}
-                    </p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest mt-1 text-[#525252]">Select</p>
-                    <div className="mt-3 h-[2px] w-full" style={{ backgroundColor: hex, opacity: 0.2 }} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Enter score */}
-        {googleId && (phase === "score" || phase === "submitting") && !isLocked && pickedTeam && (
+        {/* Score entry */}
+        {googleId && (phase === "score" || phase === "submitting") && !isLocked && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Batting first</p>
-                <p className="font-gaming text-sm font-black tracking-widest" style={{ color: teamHex(pickedTeam) }}>
-                  {teamShortCode(pickedTeam)}
-                </p>
-              </div>
-              <button type="button" onClick={() => setPhase("team")} disabled={phase === "submitting"}
-                className="text-[9px] font-bold uppercase tracking-wider text-[#525252] hover:text-white transition-colors disabled:opacity-40">
-                Change
-              </button>
-            </div>
-
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mb-3">Predicted score</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mb-3">Predicted 1st innings score</p>
               <div className="flex items-center gap-0">
                 <button type="button" disabled={phase === "submitting" || score <= MIN_SCORE}
                   onClick={() => adjust(-1)} onContextMenu={(e) => { e.preventDefault(); adjust(-10); }}
@@ -261,7 +217,7 @@ export default function FirstInningsScore({
               className="w-full border border-[#6366f1] bg-[#6366f1]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#6366f1] transition-colors hover:bg-[#6366f1]/20 disabled:cursor-not-allowed disabled:opacity-30">
               {phase === "submitting" ? "Locking..." : (
                 <span className="flex items-center justify-center gap-1.5">
-                  Lock — {teamShortCode(pickedTeam)} {score} · <CoinDot />{ENTRY_COINS}
+                  Lock {score} runs · <CoinDot />{ENTRY_COINS}
                 </span>
               )}
             </button>
@@ -272,10 +228,8 @@ export default function FirstInningsScore({
         {googleId && phase === "pending" && pick && (
           <div className="flex flex-col gap-3">
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252]">Your prediction</p>
-            <p className="font-gaming text-2xl font-black tracking-widest">
-              <span style={{ color: teamHex(pick.predicted_team) }}>{teamShortCode(pick.predicted_team)}</span>
-              <span className="text-[#525252] mx-2 text-xl">·</span>
-              <span className="text-white tabular-nums">{pick.predicted_score}</span>
+            <p className="font-gaming text-2xl font-black text-white tabular-nums tracking-widest">
+              {pick.predicted_score} runs
             </p>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#525252] flex items-center gap-1">
               Win up to +<CoinDot />{MAX_REWARD.toLocaleString()} within {WINDOW} runs
@@ -298,8 +252,8 @@ export default function FirstInningsScore({
             <div className="w-full h-px bg-[#262626]" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <p className="font-gaming text-lg font-black tracking-widest" style={{ color: teamHex(pick.predicted_team) }}>
-                  {teamShortCode(pick.predicted_team)} <span className="text-white">{pick.predicted_score}</span>
+                <p className="font-gaming text-lg font-black text-white tabular-nums">
+                  {pick.predicted_score} <span className="text-[#525252] text-sm">predicted</span>
                 </p>
                 <span className="text-[9px] text-[#525252]">
                   {Math.abs(pick.predicted_score - pick.actual_score)} runs off
