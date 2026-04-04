@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, LogIn, Zap, Menu, X, Coins } from "lucide-react";
+import { LogOut, LogIn, Zap, Menu, X, Coins, Copy, Check, Share2 } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -15,13 +15,37 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [coinReward, setCoinReward] = useState<number | null>(null);
-  const dismissReward = useCallback(() => setCoinReward(null), []);
+  const [showInviteNudge, setShowInviteNudge] = useState(false);
+  const [drawerCopied, setDrawerCopied] = useState(false);
+  const [nudgeCopied, setNudgeCopied] = useState(false);
   const syncBusy = useRef(false);
+
+  const refUrl =
+    referralCode && typeof window !== "undefined"
+      ? `${window.location.origin}/?ref=${referralCode}`
+      : null;
+
+  const handleCopy = async (setter: (v: boolean) => void) => {
+    if (!refUrl) return;
+    try {
+      await navigator.clipboard.writeText(refUrl);
+      setter(true);
+      setTimeout(() => setter(false), 2000);
+    } catch { /* ignore */ }
+  };
+
+  const dismissReward = useCallback(() => {
+    setCoinReward(null);
+    // Show invite nudge after daily bonus — only if we have a referral code
+    setShowInviteNudge(true);
+  }, []);
 
   useEffect(() => {
     if (!user) {
       setCoins(null);
+      setReferralCode(null);
       return;
     }
 
@@ -62,6 +86,7 @@ export default function Header() {
           localStorage.setItem(syncKey, today);
           localStorage.removeItem("cricrank_pending_ref");
           if (typeof data.coins === "number") setCoins(data.coins);
+          if (typeof data.referral_code === "string") setReferralCode(data.referral_code);
           if (data.daily_login_coins_awarded > 0) {
             setCoinReward(data.daily_login_coins_awarded);
           }
@@ -70,6 +95,7 @@ export default function Header() {
           if (res.ok) {
             const data = await res.json();
             if (typeof data.coins === "number") setCoins(data.coins);
+            if (typeof data.referral_code === "string") setReferralCode(data.referral_code);
           }
         }
       } catch {
@@ -91,8 +117,9 @@ export default function Header() {
     const onCoinsRefresh = () => {
       fetch(`${base}/users/${user.id}`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((data: { coins?: number } | null) => {
+        .then((data: { coins?: number; referral_code?: string } | null) => {
           if (data && typeof data.coins === "number") setCoins(data.coins);
+          if (data && typeof data.referral_code === "string") setReferralCode(data.referral_code);
         })
         .catch(() => {});
     };
@@ -112,6 +139,37 @@ export default function Header() {
       {coinReward !== null && coinReward > 0 && (
         <CoinRewardToast amount={coinReward} onDismiss={dismissReward} />
       )}
+
+      {/* Invite nudge — appears after daily bonus toast dismisses */}
+      {showInviteNudge && referralCode && coinReward === null && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-x-4 bottom-24 z-[10001] md:left-auto md:right-6 md:max-w-sm animate-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-center gap-3 border border-[#fbbf24]/30 bg-[#0a0a0a] px-4 py-3 shadow-2xl">
+            <div className="flex-1 min-w-0">
+              <p className="font-gaming text-[10px] font-black tracking-[0.25em] text-[#fbbf24] uppercase mb-0.5">
+                Invite a friend
+              </p>
+              <p className="text-[10px] font-bold tracking-[0.1em] text-[#525252] uppercase">
+                Earn ◈2,000 per friend who signs up
+              </p>
+            </div>
+            <button
+              onClick={() => handleCopy(setNudgeCopied)}
+              className="flex items-center gap-1.5 border border-[#262626] px-2.5 py-1.5 font-gaming text-[9px] font-black uppercase tracking-[0.2em] text-[#a3a3a3] hover:text-white hover:border-[#444] transition-colors shrink-0"
+            >
+              {nudgeCopied ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
+              {nudgeCopied ? "Copied!" : "Copy link"}
+            </button>
+            <button
+              onClick={() => setShowInviteNudge(false)}
+              className="text-[#525252] hover:text-white transition-colors shrink-0 p-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <CoinToast />
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
@@ -136,7 +194,7 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* RIGHT — coins (mobile) + coins + avatar (desktop) */}
+          {/* RIGHT — coins + avatar */}
           <div className="flex items-center justify-end gap-2">
             {!loading && user && coins !== null && (
               <Link href="/profile" className="flex items-center gap-2 px-1 group">
@@ -194,7 +252,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Navigation Drawer — all viewports */}
+      {/* Navigation Drawer */}
       {menuOpen && (
         <div className="fixed inset-0 z-[100] flex">
           <div
@@ -246,7 +304,45 @@ export default function Header() {
                 </Link>
               ))}
 
-              <div className="mt-auto pt-4">
+              <div className="mt-auto pt-4 flex flex-col gap-3">
+                {/* Invite Friends — logged in only */}
+                {!loading && user && referralCode && (
+                  <div className="border border-[#fbbf24]/20 bg-[#fbbf24]/5 px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-gaming text-[10px] font-black uppercase tracking-[0.25em] text-[#fbbf24]">
+                          Invite Friends
+                        </p>
+                        <p className="text-[9px] font-bold tracking-[0.1em] text-[#525252] uppercase mt-0.5">
+                          +◈2,000 per sign-up
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleCopy(setDrawerCopied)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-[#262626] bg-[#000000] font-gaming text-[9px] font-black uppercase tracking-[0.2em] text-[#a3a3a3] hover:text-white hover:border-[#444] transition-colors"
+                      >
+                        {drawerCopied ? <Check className="w-3 h-3 text-[#10b981]" /> : <Copy className="w-3 h-3" />}
+                        {drawerCopied ? "Copied!" : "Copy link"}
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!refUrl) return;
+                          if (navigator.share) {
+                            await navigator.share({ title: "CricRank", text: "Join me on CricRank and predict IPL matches!", url: refUrl });
+                          } else {
+                            handleCopy(setDrawerCopied);
+                          }
+                        }}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 border border-[#262626] bg-[#000000] text-[#a3a3a3] hover:text-white hover:border-[#444] transition-colors"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {!loading && !user ? (
                   <button onClick={() => { setMenuOpen(false); signInWithGoogle(); }} className="w-full flex justify-center items-center gap-3 px-4 py-4 border border-[#262626] bg-white text-black hover:bg-[#e6e6e6] transition-all">
                     <LogIn className="w-4 h-4" />
