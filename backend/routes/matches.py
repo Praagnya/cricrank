@@ -32,34 +32,56 @@ router = APIRouter()
 TOSS_MIN_COINS = 50
 
 
-def _merge_toss_sources(match: Match) -> dict:
+def _merge_toss_sources(match: Match, seed: dict | None = None) -> dict:
+    """
+    Merge CricAPI payloads until we can resolve toss (or exhaust sources).
+    Order minimizes calls: currentMatches + match_info before match_bbb (often empty)
+    and match_scorecard (heavier).
+
+    If ``seed`` is set (e.g. from GET /live), it should already include current + match_info;
+    only match_bbb and match_scorecard are fetched as extras.
+    """
     if not match.cricapi_id:
         return {}
-    source = _find_current_match_payload(match.cricapi_id) or {}
+
+    def _toss_known(m: dict) -> bool:
+        return _extract_toss_winner_name(m, match.team1, match.team2) is not None
+
+    merged: dict = dict(seed) if seed else {}
+
+    if _toss_known(merged):
+        return merged
+
+    if seed is None:
+        cur = _find_current_match_payload(match.cricapi_id) or {}
+        merged = {**cur, **merged}
+        if _toss_known(merged):
+            return merged
+        try:
+            info = fetch_match_info(match.cricapi_id) or {}
+            if isinstance(info, dict):
+                merged = {**merged, **info}
+        except CricAPIError:
+            pass
+        if _toss_known(merged):
+            return merged
+
     bbb: dict = {}
     try:
         bbb = fetch_match_bbb(match.cricapi_id) or {}
     except CricAPIError:
         bbb = {}
-    if not isinstance(bbb, dict):
-        bbb = {}
-    merged = {**source, **bbb}
-    # If toss winner still not found, try match_info (works for completed matches)
-    if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
-        try:
-            info = fetch_match_info(match.cricapi_id) or {}
-            if isinstance(info, dict):
-                merged = {**info, **merged}
-        except CricAPIError:
-            pass
-    # Final fallback: scorecard
-    if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
-        try:
-            sc = fetch_match_scorecard(match.cricapi_id) or {}
-            if isinstance(sc, dict):
-                merged = {**sc, **merged}
-        except CricAPIError:
-            pass
+    if isinstance(bbb, dict) and bbb:
+        merged = {**merged, **bbb}
+    if _toss_known(merged):
+        return merged
+
+    try:
+        sc = fetch_match_scorecard(match.cricapi_id) or {}
+        if isinstance(sc, dict) and sc:
+            merged = {**merged, **sc}
+    except CricAPIError:
+        pass
     return merged
 
 
@@ -96,15 +118,23 @@ def _extract_toss_winner_name(payload: dict, team1: str, team2: str) -> str | No
     return None
 
 
-def _refresh_match_toss_winner(db: Session, match: Match) -> None:
+def _refresh_match_toss_winner(db: Session, match: Match, payload_hint: dict | None = None) -> None:
     """
     Update toss_winner from CricAPI if not yet set.
     The background poller proactively calls this; this function acts as a fallback
     for cases where the poller hasn't run (e.g. first deploy, server restart).
+
+    ``payload_hint`` avoids duplicate match_info/current fetches when the caller
+    already merged them (e.g. GET /live).
     """
     if match.toss_winner:
         return
-    merged = _merge_toss_sources(match)
+    if payload_hint:
+        tw = _extract_toss_winner_name(payload_hint, match.team1, match.team2)
+        if tw:
+            match.toss_winner = tw
+            return
+    merged = _merge_toss_sources(match, seed=payload_hint)
     tw = _extract_toss_winner_name(merged, match.team1, match.team2)
     if tw:
         match.toss_winner = tw
@@ -581,22 +611,15 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
+    # Live score: match_info + currentMatches only (2 cache keys). Skip match_bbb here —
+    # it often errors and duplicates toss-merge work; ball-by-ball is not used by the UI.
+    info: dict = {}
+    try:
+        info = fetch_match_info(match.cricapi_id) or {}
+    except CricAPIError:
+        pass
     current_payload = _find_current_match_payload(match.cricapi_id)
-    bbb_payload: dict = {}
-    if current_payload and (current_payload.get("matchStarted") or current_payload.get("matchEnded")):
-        try:
-            bbb_payload = fetch_match_bbb(match.cricapi_id) or {}
-        except CricAPIError:
-            bbb_payload = {}
-
-    source = bbb_payload or current_payload or {}
-    if not (source.get("score") or []):
-        try:
-            info = fetch_match_info(match.cricapi_id) or {}
-        except CricAPIError:
-            info = {}
-        if info.get("score"):
-            source = {**info, **source}
+    source = {**(current_payload or {}), **info}
     status = (
         _match_status_from_payload(source)
         if source
@@ -611,7 +634,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     )
     result_summary = source.get("status") or match.result_summary or status_text
 
-    _refresh_match_toss_winner(db, match)
+    _refresh_match_toss_winner(db, match, payload_hint=source)
     _settle_all_toss_plays_for_match(db, match)
     try:
         db.commit()
@@ -628,7 +651,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         match_winner=match_winner,
         result_summary=result_summary,
         score=source.get("score") or [],
-        bbb=bbb_payload.get("bbb") or [],
+        bbb=[],
     )
 
 
@@ -646,18 +669,29 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
     except CricAPIError:
         pass
 
-    # Scorecard API may not have data for live matches — fall back to BBB
-    if not payload.get("scorecard") and match.status in (MatchStatus.live, MatchStatus.completed):
+    # Fast path: batting tables or line scores already present (1 CricAPI call).
+    if payload.get("scorecard") or (payload.get("score") or []):
+        return MatchScorecardResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            score=payload.get("score") or [],
+            scorecard=payload.get("scorecard") or [],
+        )
+
+    # Prefer match_info before match_bbb — line scores are cheaper and BBB often fails.
+    if match.status in (MatchStatus.live, MatchStatus.completed):
         try:
-            payload = fetch_match_bbb(match.cricapi_id) or payload
+            inf = fetch_match_info(match.cricapi_id) or {}
+            if isinstance(inf, dict) and inf:
+                payload = {**payload, **inf}
         except CricAPIError:
             pass
 
     if not (payload.get("score") or []) and not (payload.get("scorecard") or []):
         try:
-            inf = fetch_match_info(match.cricapi_id) or {}
-            if inf:
-                payload = {**inf, **payload}
+            bbb = fetch_match_bbb(match.cricapi_id) or {}
+            if isinstance(bbb, dict) and bbb:
+                payload = {**payload, **bbb}
         except CricAPIError:
             pass
 
