@@ -579,6 +579,22 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
+    # Upcoming: no CricAPI — score strip is hidden in the app; poller/toss routes refresh feed data.
+    if match.status == MatchStatus.upcoming:
+        fb = _status_text_fallback(match)
+        return MatchLiveResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            status=MatchStatus.upcoming,
+            match_started=False,
+            match_ended=False,
+            status_text=fb,
+            match_winner=canonicalize_winner(match.winner) if match.winner else None,
+            result_summary=match.result_summary,
+            score=[],
+            bbb=[],
+        )
+
     current_payload = _find_current_match_payload(match.cricapi_id)
     bbb_payload: dict = {}
     if current_payload and (current_payload.get("matchStarted") or current_payload.get("matchEnded")):
@@ -638,6 +654,14 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Match not found")
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
+
+    if match.status == MatchStatus.upcoming:
+        return MatchScorecardResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            score=[],
+            scorecard=[],
+        )
 
     payload: dict = {}
     try:

@@ -180,7 +180,9 @@ export default function MatchCarousel({ matches }: Props) {
         </div>
       </div>
 
-      <MatchScoreboard key={match.id} matchId={match.id} matchStatus={match.status} cricapiId={match.cricapi_id} />
+      {match.status !== "upcoming" && (
+        <MatchScoreboard key={match.id} matchId={match.id} matchStatus={match.status} cricapiId={match.cricapi_id} />
+      )}
 
       <MatchInteraction
         matchId={match.id}
