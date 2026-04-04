@@ -51,11 +51,19 @@ export default function ChallengePage() {
     try {
       const matches = await api.matches.upcoming(20, 14).catch(() => []);
       setUpcomingMatches(matches.filter((m) => m.status === "upcoming"));
-      if (googleId) {
-        const res = await api.challenges.byUser(googleId).catch(() => null);
-        if (res) { setMyChallenges(res.challenges); setPendingCount(res.pending_count); }
-      }
-    } finally { setDataLoading(false); }
+    } finally {
+      setDataLoading(false);
+    }
+    // Load “Mine” / pending banner in the background — don’t block the match picker on this slower call.
+    if (googleId) {
+      api.challenges
+        .byUser(googleId)
+        .then((res) => {
+          setMyChallenges(res.challenges);
+          setPendingCount(res.pending_count);
+        })
+        .catch(() => {});
+    }
   }, [googleId]);
 
   const loadOpen = useCallback(async () => {
