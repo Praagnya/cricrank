@@ -2,10 +2,12 @@
 Background APScheduler jobs for CricAPI polling.
 
 Toss jobs  : fire at toss_time, toss_time+5min, toss_time+10min per match.
-Result jobs: fire at start_time+4h, +4.5h, +5h per match.
+Result jobs: fire at start_time+3h–5h (every 30 min) per match.
 
-All jobs use DateTrigger (fire once) and are run in the default thread executor
-that AsyncIOScheduler provides for synchronous callables.
+Completed matches with a winner but empty result_summary are filled via
+match_info (plus a 30-day scan at bootstrap and again at noon UTC).
+
+All one-shot jobs use DateTrigger and run in the scheduler's thread executor.
 """
 
 import logging
@@ -86,6 +88,52 @@ def job_check_toss(match_id: str) -> None:
         db.close()
 
 
+def _try_backfill_result_summary(db: Session, match: Match) -> bool:
+    """
+    Persist CricAPI status line when a match is completed with a winner but
+    result_summary was never stored (API sometimes lags behind matchWinner).
+    """
+    if match.status != MatchStatus.completed or not match.winner or not match.cricapi_id:
+        return False
+    if match.result_summary and str(match.result_summary).strip():
+        return False
+    from cricapi import CricAPIError, fetch_match_info
+
+    try:
+        info = fetch_match_info(match.cricapi_id) or {}
+    except CricAPIError:
+        return False
+    summary = (info.get("status") or "").strip()
+    if not summary:
+        summary = f"{match.winner} won"
+    match.result_summary = summary
+    return True
+
+
+def _run_backfill_missing_summaries(db: Session, days: int = 30) -> int:
+    """Fill result_summary for recent completed matches; returns how many rows updated."""
+    now = datetime.now(timezone.utc)
+    rows = (
+        db.query(Match)
+        .filter(
+            Match.status == MatchStatus.completed,
+            Match.winner != None,
+            Match.cricapi_id != None,
+            Match.start_time >= now - timedelta(days=days),
+        )
+        .all()
+    )
+    filled = 0
+    for match in rows:
+        if match.result_summary and str(match.result_summary).strip():
+            continue
+        if _try_backfill_result_summary(db, match):
+            db.commit()
+            filled += 1
+            logger.info("poller: backfilled result_summary for match %s", match.id)
+    return filled
+
+
 # ── Result job ───────────────────────────────────────────────────────────────
 
 def job_check_result(match_id: str) -> None:
@@ -99,10 +147,15 @@ def job_check_result(match_id: str) -> None:
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match or not match.cricapi_id:
             return
-        # Skip only if truly done: completed with a winner already set.
-        # If completed but winner is null, fall through to recovery logic below.
+        # Completed + winner: normally nothing to do; still backfill summary if empty.
         if match.status == MatchStatus.completed and match.winner:
+            if _try_backfill_result_summary(db, match):
+                db.commit()
+                logger.info("poller/result: backfilled result_summary for match %s", match_id)
+                _log(db, "result", match.id, "summary_backfill",
+                     detail=f"result_summary from CricAPI or fallback")
             return
+        # If completed but winner is null, fall through to recovery logic below.
 
         payload = _find_current_match_payload(match.cricapi_id) or {}
         if not payload.get("matchStarted"):
@@ -166,9 +219,13 @@ def job_check_result(match_id: str) -> None:
             match.winner = canonicalize_winner(payload["matchWinner"])
             changed = True
 
-        if payload.get("status") and not match.result_summary and new_status == MatchStatus.completed:
-            match.result_summary = payload["status"]
-            changed = True
+        if new_status == MatchStatus.completed and not (match.result_summary and match.result_summary.strip()):
+            summary = (payload.get("status") or "").strip() or None
+            if not summary and match.winner:
+                summary = f"{match.winner} won"
+            if summary:
+                match.result_summary = summary
+                changed = True
 
         if changed:
             db.commit()
@@ -518,6 +575,37 @@ def bootstrap_scheduler(db: Session) -> None:
             except Exception:
                 pass
 
+    try:
+        n = _run_backfill_missing_summaries(db, days=30)
+        if n:
+            _log(db, "summary_backfill", None, "ok", detail=f"filled {n} result_summary rows")
+    except Exception as exc:
+        logger.error("poller: bootstrap summary backfill failed: %s", exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+
+def job_midday_summary_backfill() -> None:
+    """Noon UTC: retry summaries in case CricAPI was slow overnight."""
+    logger.info("poller: midday summary backfill starting")
+    db: Session = SessionLocal()
+    try:
+        n = _run_backfill_missing_summaries(db, days=30)
+        if n:
+            _log(db, "summary_backfill", None, "ok", detail=f"midday filled {n} rows")
+    except Exception as exc:
+        logger.error("poller: midday summary backfill failed: %s", exc)
+        try:
+            _log(db, "summary_backfill", None, "error", detail=str(exc))
+        except Exception:
+            pass
+        db.rollback()
+    finally:
+        db.close()
+    logger.info("poller: midday summary backfill complete")
+
 
 def job_daily_bootstrap() -> None:
     """Runs at midnight UTC every day to pick up matches newly within the 7-day window."""
@@ -545,4 +633,12 @@ def schedule_daily_bootstrap(scheduler: AsyncIOScheduler) -> None:
         id="daily_bootstrap",
         replace_existing=True,
     )
-    logger.info("poller: daily midnight bootstrap job registered")
+    scheduler.add_job(
+        job_midday_summary_backfill,
+        trigger="cron",
+        hour=12,
+        minute=0,
+        id="midday_summary_backfill",
+        replace_existing=True,
+    )
+    logger.info("poller: daily midnight bootstrap + midday summary backfill registered")

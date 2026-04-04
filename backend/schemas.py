@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, UUID4, Field
+from pydantic import BaseModel, EmailStr, UUID4, Field, model_validator
 from datetime import datetime
 from typing import Optional
 from models import MatchStatus, ContestType
@@ -156,6 +156,17 @@ class MatchPublic(BaseModel):
     toss_winner: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def default_result_summary_when_missing(self):
+        """Feed often omits status text; we still have winner after settlement."""
+        if (
+            self.status == MatchStatus.completed
+            and self.winner
+            and not (self.result_summary and self.result_summary.strip())
+        ):
+            return self.model_copy(update={"result_summary": f"{self.winner} won"})
+        return self
 
 
 class SeriesSyncRequest(BaseModel):
