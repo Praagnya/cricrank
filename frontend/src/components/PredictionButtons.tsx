@@ -90,7 +90,11 @@ export default function PredictionButtons({
           </div>
           <div className="flex flex-col">
             <span className="font-gaming text-lg sm:text-xl font-black uppercase tracking-wide text-white">
-              Pick Your Team
+              {selected ? (
+                <>Backing{" "}
+                  <span style={{ color: teamHex(selected) }}>{teamShortCode(selected)}</span>
+                </>
+              ) : "Pick Your Team"}
             </span>
             <span className="text-[10px] text-[#737373] font-black uppercase tracking-[0.2em] mt-0.5">
               {selected ? "Tap to change your prediction" : "Who wins this match?"}
