@@ -162,12 +162,12 @@ export function teamShortCode(team: string): string {
 
 export function streakTierColor(tier: string): string {
   const c: Record<string, string> = {
-    "God Mode": "text-yellow-300",
-    "Immortal": "text-purple-400",
-    "Legend": "text-orange-400",
-    "Veteran": "text-blue-400",
-    "Pro": "text-green-400",
-    "Rookie": "text-[var(--text-muted)]",
+    "God Mode":  "text-yellow-300",
+    "Immortal":  "text-purple-400",
+    "Five-fer":  "text-orange-400",
+    "Hat-trick": "text-blue-400",
+    "In Form":   "text-green-400",
+    "Debutant":  "text-[var(--text-muted)]",
   };
   return c[tier] ?? "text-[var(--text-muted)]";
 }

@@ -30,10 +30,10 @@ class ContestType(str, enum.Enum):
 STREAK_TIERS = [
     (14, "God Mode",     10.0),
     (7,  "Immortal",      5.0),
-    (5,  "Legend",        3.0),
-    (3,  "Veteran",       2.0),
-    (2,  "Pro",  1.5),
-    (0,  "Rookie",        1.0),
+    (5,  "Five-fer",      3.0),
+    (3,  "Hat-trick",     2.0),
+    (2,  "In Form",       1.5),
+    (0,  "Debutant",      1.0),
 ]
 BASE_POINTS = 10
 POST_TOSS_MULTIPLIER = 0.5

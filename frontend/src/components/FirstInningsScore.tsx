@@ -126,7 +126,7 @@ export default function FirstInningsScore({
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#262626]">
         <div className="flex items-center gap-3">
-          <div className="w-[3px] h-5 bg-[#6366f1]" />
+          <div className="w-[3px] h-5 bg-[#f59e0b]" />
           <div>
             <p className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white">
               1st Innings Score
@@ -214,7 +214,7 @@ export default function FirstInningsScore({
             {error && <p className="text-[9px] font-bold uppercase tracking-wider text-red-400">{error}</p>}
 
             <button type="button" disabled={phase === "submitting"} onClick={submit}
-              className="w-full border border-[#6366f1] bg-[#6366f1]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#6366f1] transition-colors hover:bg-[#6366f1]/20 disabled:cursor-not-allowed disabled:opacity-30">
+              className="w-full border border-[#f59e0b] bg-[#f59e0b]/10 py-3 font-gaming text-[10px] font-black uppercase tracking-[0.3em] text-[#f59e0b] transition-colors hover:bg-[#f59e0b]/20 disabled:cursor-not-allowed disabled:opacity-30">
               {phase === "submitting" ? "Locking..." : (
                 <span className="flex items-center justify-center gap-1.5">
                   Lock {score} runs · <CoinDot />{ENTRY_COINS}
