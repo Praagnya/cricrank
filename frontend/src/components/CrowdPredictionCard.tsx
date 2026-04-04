@@ -1,6 +1,6 @@
 import { CrowdPrediction } from "@/types";
 import { Users } from "lucide-react";
-import { teamFullName, teamHex, teamShortCode } from "@/lib/utils";
+import { teamHex, teamShortCode } from "@/lib/utils";
 
 export default function CrowdPredictionCard({
   crowd, team1, team2,
@@ -21,60 +21,55 @@ export default function CrowdPredictionCard({
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#262626] bg-[#0a0a0a]">
         <div className="flex items-center gap-3">
-          <Users className="w-4 h-4" style={{ color: '#a3a3a3' }} />
-          <span className="tracking-[0.2em] text-[#c8c8c8] font-bold text-xs uppercase">
+          <Users className="w-4 h-4 text-[#a3a3a3]" />
+          <span className="font-gaming text-[11px] font-black uppercase tracking-[0.25em] text-white">
             Crowd Vote
           </span>
         </div>
-        <span className="tracking-[0.2em] text-[#737373] font-black text-[10px] uppercase">
+        <span className="font-gaming text-[11px] font-black uppercase tracking-[0.2em] text-[#737373]">
           {totalVotes.toLocaleString()} Votes
         </span>
       </div>
 
-      <div className="px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 sm:gap-5 mb-2 items-start">
-          <div className="text-left min-w-0">
-            <p className="text-base sm:text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team1)}</p>
-            <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase min-h-[2.8rem] sm:min-h-[3.6rem]">{teamFullName(team1)}</p>
-          </div>
-          
-          <div className="flex flex-col items-center justify-start px-1 shrink-0 pt-2">
-            <span className="text-[#525252] font-black italic tracking-tighter text-xl sm:text-2xl lg:text-3xl leading-none">
-              VS
-            </span>
+      <div className="px-4 sm:px-6 py-5">
+        {/* Teams + percentages */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 mb-5">
+          {/* Team 1 */}
+          <div className="flex flex-col gap-1">
+            <p className="tracking-widest leading-none" style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(28px, 5vw, 42px)", color: t1hex }}>
+              {teamShortCode(team1)}
+            </p>
+            <p className="font-gaming text-[32px] sm:text-[40px] font-black tracking-tighter leading-none" style={{ color: t1hex }}>
+              {t1Pct.toFixed(1)}%
+            </p>
           </div>
 
-          <div className="text-right min-w-0">
-            <p className="text-base sm:text-xl text-[#a3a3a3] font-bold tracking-[0.15em] uppercase mb-0" style={{ fontFamily: 'var(--font-heading)' }}>{teamShortCode(team2)}</p>
-            <p className="text-[10px] text-[#737373] font-black tracking-[0.2em] uppercase min-h-[2.8rem] sm:min-h-[3.6rem]">{teamFullName(team2)}</p>
+          {/* VS */}
+          <div className="flex items-center justify-center px-2">
+            <span className="font-gaming text-xl font-black text-[#525252] tracking-[0.3em]">VS</span>
+          </div>
+
+          {/* Team 2 */}
+          <div className="flex flex-col items-end gap-1">
+            <p className="tracking-widest leading-none" style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(28px, 5vw, 42px)", color: t2hex }}>
+              {teamShortCode(team2)}
+            </p>
+            <p className="font-gaming text-[32px] sm:text-[40px] font-black tracking-tighter leading-none" style={{ color: t2hex }}>
+              {t2Pct.toFixed(1)}%
+            </p>
           </div>
         </div>
 
-        <div className="flex items-end justify-between mb-6">
-          <span
-            className="font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px]"
-            style={{ color: t1hex }}
-          >
-            {t1Pct.toFixed(1)}%
-          </span>
-          <span
-            className="font-black tracking-tighter leading-none text-[40px] sm:text-[48px] lg:text-[56px]"
-            style={{ color: t2hex }}
-          >
-            {t2Pct.toFixed(1)}%
-          </span>
-        </div>
-
-        {/* Dual-color block bar */}
-        <div className="flex w-full h-3 mb-6 bg-[#111111]">
+        {/* Dual-color bar */}
+        <div className="flex w-full h-3 mb-4 bg-[#111111]">
           <div className="h-full" style={{ width: `${t1Pct}%`, backgroundColor: t1hex }} />
           <div className="h-full" style={{ width: `${t2Pct}%`, backgroundColor: t2hex }} />
         </div>
 
         {/* Leader line */}
         {totalVotes > 0 && (
-          <div className="pt-2 border-t border-[#262626]">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#a3a3a3] mt-4">
+          <div className="pt-3 border-t border-[#262626]">
+            <p className="font-gaming text-[10px] font-black uppercase tracking-[0.2em] text-[#737373]">
               <span style={{ color: teamHex(leader) }}>{teamShortCode(leader)}</span> leads the crowd
             </p>
           </div>

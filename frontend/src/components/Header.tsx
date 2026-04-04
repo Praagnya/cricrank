@@ -114,7 +114,8 @@ export default function Header() {
 
           {/* CENTER — CricRank */}
           <div className="flex justify-center">
-            <Link href="/" className="group">
+            <Link href="/" className="flex items-center gap-2 group">
+              <Zap className="w-5 h-5 text-white group-hover:text-[#a3a3a3] transition-colors shrink-0" strokeWidth={1.5} />
               <span
                 className="tracking-widest text-white group-hover:text-[#a3a3a3] transition-colors"
                 style={{ fontFamily: "var(--font-heading)", fontSize: "32px", lineHeight: 1 }}
