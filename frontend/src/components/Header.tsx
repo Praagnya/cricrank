@@ -177,38 +177,41 @@ export default function Header() {
       <CoinToast />
       {searchOpen && <FindPlayers onClose={() => setSearchOpen(false)} />}
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] flex items-center gap-2 sm:gap-3">
 
-          {/* LEFT — hamburger */}
-          <div className="flex items-center">
-            <button className={`${btn} w-10 h-10`} onClick={() => setMenuOpen(true)}>
+          {/* LEFT — menu + logo */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+            <button type="button" className={`${btn} w-10 h-10 shrink-0`} onClick={() => setMenuOpen(true)} aria-label="Open menu">
               <Menu className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* CENTER — CricRank */}
-          <div className="flex justify-center">
-            <Link href="/" className="flex items-center gap-2 group">
-              <Zap className="w-5 h-5 text-white group-hover:text-[#a3a3a3] transition-colors shrink-0" strokeWidth={1.5} />
+            <Link href="/" className="flex items-center gap-1.5 sm:gap-2 group min-w-0">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-[#a3a3a3] transition-colors shrink-0" strokeWidth={1.5} />
               <span
-                className="tracking-widest text-white group-hover:text-[#a3a3a3] transition-colors"
-                style={{ fontFamily: "var(--font-heading)", fontSize: "32px", lineHeight: 1 }}
+                className="tracking-widest text-white group-hover:text-[#a3a3a3] transition-colors text-[22px] sm:text-[30px] leading-none truncate"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 CricRank
               </span>
             </Link>
           </div>
 
-          {/* RIGHT — search + coins + avatar */}
-          <div className="flex items-center justify-end gap-2">
+          {/* CENTER — search (wide tap target, capped on large screens) */}
+          <div className="flex-1 min-w-0 flex justify-center">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className={`${btn} w-9 h-9 sm:w-10 sm:h-10`}
+              className={`${btn} w-full max-w-2xl h-10 px-3 sm:px-4 justify-start gap-2 sm:gap-3 rounded-sm`}
               aria-label="Search players"
             >
-              <Search className="w-[18px] h-[18px] sm:w-5 sm:h-5" strokeWidth={1.5} />
+              <Search className="w-5 h-5 text-[#525252] shrink-0" strokeWidth={1.75} />
+              <span className="text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#525252] truncate">
+                Search players
+              </span>
             </button>
+          </div>
+
+          {/* RIGHT — coins + avatar */}
+          <div className="flex items-center justify-end gap-2 shrink-0">
             {!loading && user && coins !== null && (
               <Link href="/profile" className="flex items-center gap-2 px-1 group">
                 <Coins className="w-5 h-5 text-[#fbbf24] shrink-0 group-hover:text-[#fde68a] transition-colors" strokeWidth={1.5} />
