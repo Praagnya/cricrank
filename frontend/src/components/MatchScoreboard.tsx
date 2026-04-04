@@ -38,6 +38,30 @@ function playerName(node: unknown): string {
   return "—";
 }
 
+/** CricAPI may include sr; otherwise (runs/balls)*100 like Cricbuzz. */
+function battingStrikeRate(b: Record<string, unknown>): string {
+  const raw = b.sr;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw.toFixed(1);
+  if (typeof raw === "string" && raw.trim()) {
+    const p = parseFloat(raw);
+    if (Number.isFinite(p)) return p.toFixed(1);
+  }
+  const r = typeof b.r === "number" ? b.r : parseFloat(String(b.r ?? "NaN"));
+  const balls = typeof b.b === "number" ? b.b : parseInt(String(b.b ?? "0"), 10);
+  if (!Number.isFinite(r) || !Number.isFinite(balls) || balls < 0) return "—";
+  if (balls === 0) return "—";
+  return ((r / balls) * 100).toFixed(1);
+}
+
+function dismissalSubline(dismissal: unknown): string | null {
+  const s = String(dismissal ?? "").trim();
+  if (!s) return null;
+  if (/^not out$/i.test(s)) return null;
+  if (/^batting$/i.test(s)) return null;
+  if (s === "—" || s === "-") return null;
+  return s;
+}
+
 export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Props) {
   const [live, setLive] = useState<MatchLiveResponse | null>(null);
   const [liveErr, setLiveErr] = useState(false);
@@ -233,32 +257,38 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
                     <p className="text-[9px] font-bold tracking-[0.22em] text-[#5c5c5c] uppercase font-sans">Innings {idx + 1}</p>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-[12px] border-collapse font-sans min-w-[280px]">
+                    <table className="w-full text-left text-[12px] border-collapse font-sans min-w-[260px]">
                       <thead>
                         <tr className="text-[#525252] border-b border-white/[0.06]">
                           <th className="py-2.5 pl-4 pr-3 font-semibold text-[10px] uppercase tracking-[0.15em]">Batter</th>
-                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-10">R</th>
-                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-10">B</th>
-                          <th className="py-2.5 pr-4 pl-2 font-semibold text-[10px] uppercase tracking-[0.12em]">How out</th>
+                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-11">R</th>
+                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-11">B</th>
+                          <th className="py-2.5 pr-4 pl-2 font-semibold text-[10px] uppercase tracking-wider text-right w-14">SR</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {batting.map((b, j) => (
-                          <tr
-                            key={j}
-                            className="border-b border-white/[0.04] text-[#d4d4d4] hover:bg-white/[0.02] transition-colors"
-                          >
-                            <td className="py-2.5 pl-4 pr-3 text-[13px]">{playerName(b.batsman)}</td>
-                            <td className="py-2.5 px-2 text-right tabular-nums font-medium text-white">{String(b.r ?? "—")}</td>
-                            <td className="py-2.5 px-2 text-right tabular-nums text-[#a3a3a3]">{String(b.b ?? "—")}</td>
-                            <td
-                              className="py-2.5 pr-4 pl-2 text-[11px] text-[#8a8a8a] max-w-[220px]"
-                              title={String(b.dismissal ?? "")}
+                        {batting.map((b, j) => {
+                          const row = b as Record<string, unknown>;
+                          const outLine = dismissalSubline(row.dismissal);
+                          return (
+                            <tr
+                              key={j}
+                              className="border-b border-white/[0.04] text-[#d4d4d4] hover:bg-white/[0.02] transition-colors"
                             >
-                              <span className="line-clamp-2">{String(b.dismissal ?? "—")}</span>
-                            </td>
-                          </tr>
-                        ))}
+                              <td className="py-2.5 pl-4 pr-3 align-top">
+                                <div className="text-[13px] text-white font-medium leading-snug">{playerName(row.batsman)}</div>
+                                {outLine ? (
+                                  <p className="mt-1 text-[10px] leading-relaxed text-[#737373] font-normal max-w-[min(100%,14rem)]">
+                                    {outLine}
+                                  </p>
+                                ) : null}
+                              </td>
+                              <td className="py-2.5 px-2 text-right tabular-nums font-medium text-white align-top">{String(row.r ?? "—")}</td>
+                              <td className="py-2.5 px-2 text-right tabular-nums text-[#a3a3a3] align-top">{String(row.b ?? "—")}</td>
+                              <td className="py-2.5 pr-4 pl-2 text-right tabular-nums text-[#c8c8c8] align-top">{battingStrikeRate(row)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
