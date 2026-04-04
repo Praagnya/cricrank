@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useUser } from "@/hooks/useUser";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -11,10 +11,10 @@ import { getApiBaseUrl } from "@/lib/api-base";
 
 export default function PersonalProfilePage() {
   const { user, loading: authLoading } = useUser();
-  const [synced, setSynced] = useState(false);
 
+  // Same upsert as the header (daily bonus, referral, etc.) — do not block the UI on it;
+  // ProfileView loads via GET immediately so we avoid “LOADING PROFILE” then “LOADING INTELLIGENCE”.
   useEffect(() => {
-    setSynced(false);
     if (!user) return;
     const metadata = user.user_metadata;
     fetch(`${getApiBaseUrl()}/users/`, {
@@ -26,10 +26,10 @@ export default function PersonalProfilePage() {
         email: user.email ?? "unknown@example.com",
         avatar_url: metadata?.avatar_url ?? null,
       }),
-    }).finally(() => setSynced(true));
+    }).catch(() => {});
   }, [user?.id]);
 
-  if (authLoading || (user && !synced)) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center font-gaming text-white">
         <div className="animate-pulse tracking-[0.5em] text-[#525252]">LOADING PROFILE</div>

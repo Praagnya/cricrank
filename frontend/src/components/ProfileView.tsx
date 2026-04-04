@@ -69,13 +69,12 @@ export default function ProfileView({
     let cancelled = false;
 
     async function fetchProfileData() {
-      try {
-        const BASE = getApiBaseUrl();
+      const BASE = getApiBaseUrl();
+      let googleId = userId;
 
-        // Fetch User Stats
+      try {
         const userRes = await fetch(`${BASE}/users/${userId}`);
         if (cancelled) return;
-        let googleId = userId;
         if (userRes.ok) {
           const userData = await userRes.json();
           if (cancelled) return;
@@ -83,9 +82,10 @@ export default function ProfileView({
           googleId = userData.google_id;
         } else if (userRes.status === 404) {
           setDbUser(null);
+          if (!cancelled) setLoading(false);
+          return;
         }
 
-        // Fetch Prediction History
         const predRes = await fetch(`${BASE}/predictions/user/${googleId}`);
         if (cancelled) return;
         if (predRes.ok) {
@@ -94,7 +94,8 @@ export default function ProfileView({
           setPredictions(predData);
         }
 
-        // Fetch all three ranks in parallel
+        if (!cancelled) setLoading(false);
+
         const [globalRes, weeklyRes, monthlyRes] = await Promise.all([
           fetch(`${BASE}/leaderboard/global?limit=100`),
           fetch(`${BASE}/leaderboard/weekly?limit=100`),
@@ -121,12 +122,12 @@ export default function ProfileView({
         }
       } catch (err) {
         if (!cancelled) console.error("Failed to fetch profile data:", err);
-      } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     if (userId) {
+      setLoading(true);
       fetchProfileData();
     }
     return () => {
@@ -309,8 +310,20 @@ export default function ProfileView({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center font-gaming text-white">
-        <div className="animate-pulse tracking-[0.5em] text-[#525252]">LOADING INTELLIGENCE</div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 animate-pulse" aria-busy="true" aria-label="Loading profile">
+        <div className="h-3 w-28 bg-[#1a1a1a] mb-8" />
+        <div className="border border-[#262626] bg-[#000000] p-6 sm:p-10 flex flex-col sm:flex-row gap-6 sm:gap-8">
+          <div className="w-28 h-28 sm:w-40 sm:h-40 bg-[#1a1a1a] border border-[#262626] shrink-0 mx-auto sm:mx-0" />
+          <div className="flex-1 space-y-3 min-w-0 pt-1">
+            <div className="h-10 sm:h-14 w-48 sm:w-64 bg-[#1a1a1a] max-w-full" />
+            <div className="h-3 w-32 bg-[#1a1a1a]" />
+            <div className="flex gap-2">
+              <div className="h-7 w-24 bg-[#1a1a1a]" />
+              <div className="h-7 w-24 bg-[#1a1a1a]" />
+            </div>
+          </div>
+        </div>
+        <div className="mt-8 h-32 border border-[#262626] bg-[#000000]" />
       </div>
     );
   }

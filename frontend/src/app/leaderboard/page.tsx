@@ -175,6 +175,22 @@ export default async function LeaderboardPage({
                     
                     <p className="text-xl sm:text-5xl font-black tracking-tighter text-white mt-2 sm:mt-4 mb-0.5 sm:mb-1">{entry.points}</p>
                     <p className="text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.25em] text-[#525252]">Points</p>
+
+                    <div className="flex flex-col items-center gap-1 sm:gap-1.5 mt-2 sm:mt-3 w-full max-w-[140px] sm:max-w-none px-0.5">
+                      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
+                        <span className={`text-[7px] sm:text-[9px] font-black tracking-[0.12em] sm:tracking-[0.2em] uppercase text-center leading-tight ${streakTierColor(entry.streak_tier)}`}>
+                          {entry.streak_tier}
+                        </span>
+                        <span className="text-[7px] sm:text-[9px] font-bold tracking-[0.12em] sm:tracking-[0.2em] text-[#737373] uppercase">
+                          {entry.correct_predictions}/{entry.settled_predictions} hits
+                        </span>
+                      </div>
+                      <div className="bg-[#111111] border border-[#262626] px-1.5 sm:px-2 py-0.5">
+                        <span className={`font-gaming text-[9px] sm:text-[10px] font-bold tracking-widest uppercase ${getAccuracyColor(entry.accuracy)}`}>
+                          {entry.accuracy != null ? `${Math.round(entry.accuracy)}%` : "—"}
+                        </span>
+                      </div>
+                    </div>
                   </Link>
                 );
               })}

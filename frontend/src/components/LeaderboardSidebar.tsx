@@ -10,6 +10,13 @@ import { createClient } from "@/utils/supabase/client";
 
 const BASE = getApiBaseUrl();
 
+function accuracyTextClass(acc: number | null) {
+  if (acc == null) return "text-[#a3a3a3]";
+  if (acc >= 75) return "text-[#10b981]";
+  if (acc >= 50) return "text-[#f59e0b]";
+  return "text-[#ef4444]";
+}
+
 type Period = "alltime" | "weekly" | "monthly";
 
 async function fetchLeaders(period: Period, limit: number): Promise<LeaderboardEntry[]> {
@@ -141,9 +148,15 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
                   {/* Name + Streak */}
                   <div className="flex-1 min-w-0">
                     <p className="font-gaming text-sm font-bold tracking-wide text-white truncate">{entry.name ?? "Anonymous"}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                       <span className={`text-[10px] uppercase tracking-[0.15em] font-black ${streakTierColor(entry.streak_tier)}`}>
                         {entry.streak_tier}
+                      </span>
+                      <span className="text-[9px] font-bold tracking-[0.12em] text-[#737373] uppercase">
+                        {entry.correct_predictions}/{entry.settled_predictions} hits
+                      </span>
+                      <span className={`text-[9px] font-gaming font-bold tracking-wider uppercase ${accuracyTextClass(entry.accuracy)}`}>
+                        {entry.accuracy != null ? `${Math.round(entry.accuracy)}%` : "—"}
                       </span>
                     </div>
                   </div>
@@ -175,9 +188,15 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
                       <p className="font-gaming text-sm font-bold tracking-wide text-white truncate">{myEntry.name ?? "Anonymous"}</p>
                       <span className="text-[9px] font-black uppercase tracking-[0.15em] bg-white text-black px-1 py-px">YOU</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                       <span className={`text-[10px] uppercase tracking-[0.15em] font-black ${streakTierColor(myEntry.streak_tier)}`}>
                         {myEntry.streak_tier}
+                      </span>
+                      <span className="text-[9px] font-bold tracking-[0.12em] text-[#737373] uppercase">
+                        {myEntry.correct_predictions}/{myEntry.settled_predictions} hits
+                      </span>
+                      <span className={`text-[9px] font-gaming font-bold tracking-wider uppercase ${accuracyTextClass(myEntry.accuracy)}`}>
+                        {myEntry.accuracy != null ? `${Math.round(myEntry.accuracy)}%` : "—"}
                       </span>
                     </div>
                   </div>
