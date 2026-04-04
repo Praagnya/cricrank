@@ -60,7 +60,9 @@ def _merge_toss_sources(match: Match, seed: dict | None = None) -> dict:
         try:
             info = fetch_match_info(match.cricapi_id) or {}
             if isinstance(info, dict):
-                merged = {**merged, **info}
+                # Same relative precedence as before: currentMatches payload wins over match_info
+                # on duplicate keys when BBB is empty; BBB overlays next.
+                merged = {**info, **merged}
         except CricAPIError:
             pass
         if _toss_known(merged):
@@ -79,7 +81,8 @@ def _merge_toss_sources(match: Match, seed: dict | None = None) -> dict:
     try:
         sc = fetch_match_scorecard(match.cricapi_id) or {}
         if isinstance(sc, dict) and sc:
-            merged = {**merged, **sc}
+            # Same as historical behavior: scorecard fills gaps; existing merged wins on key clash.
+            merged = {**sc, **merged}
     except CricAPIError:
         pass
     return merged
@@ -611,15 +614,44 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
-    # Live score: match_info + currentMatches only (2 cache keys). Skip match_bbb here —
-    # it often errors and duplicates toss-merge work; ball-by-ball is not used by the UI.
+    # Live score: match_info + currentMatches (2 cache keys). merge order is {**cur, **info}
+    # so info wins on duplicate keys — but CricAPI often returns score: [] on match_info while
+    # currentMatches has real rows; empty list would wipe the score, so coalesce explicitly.
     info: dict = {}
     try:
         info = fetch_match_info(match.cricapi_id) or {}
     except CricAPIError:
         pass
     current_payload = _find_current_match_payload(match.cricapi_id)
-    source = {**(current_payload or {}), **info}
+    cur = current_payload or {}
+    source = {**cur, **info}
+
+    def _nonempty_score_rows(raw) -> list:
+        if not isinstance(raw, list):
+            return []
+        return [x for x in raw if x]
+
+    inf_rows = _nonempty_score_rows(info.get("score"))
+    cur_rows = _nonempty_score_rows(cur.get("score"))
+    if inf_rows:
+        source["score"] = inf_rows
+    elif cur_rows:
+        source["score"] = cur_rows
+    else:
+        source["score"] = []
+
+    # Last resort for line score only when both feeds lack innings (cached; skips if BBB empty/errors).
+    if not source["score"]:
+        try:
+            bbb = fetch_match_bbb(match.cricapi_id) or {}
+            if isinstance(bbb, dict):
+                bbb_rows = _nonempty_score_rows(bbb.get("score"))
+                if bbb_rows:
+                    source = {**source, **bbb}
+                    source["score"] = bbb_rows
+        except CricAPIError:
+            pass
+
     status = (
         _match_status_from_payload(source)
         if source
