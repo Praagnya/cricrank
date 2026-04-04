@@ -101,9 +101,9 @@ def _settle_match_internal(db: Session, match: Match) -> dict:
     challenges already in a terminal status.
     """
     winner = match.winner
-    match_id = str(match.id)
+    mid = match.id
 
-    predictions = db.query(Prediction).filter(Prediction.match_id == match_id).all()
+    predictions = db.query(Prediction).filter(Prediction.match_id == mid).all()
     updated = 0
     for pred in predictions:
         if pred.is_correct is not None:
@@ -138,7 +138,7 @@ def _settle_match_internal(db: Session, match: Match) -> dict:
 
     accepted_challenges = (
         db.query(Challenge)
-        .filter(Challenge.match_id == match_id, Challenge.status == "accepted")
+        .filter(Challenge.match_id == mid, Challenge.status == "accepted")
         .all()
     )
     for c in accepted_challenges:
@@ -160,7 +160,7 @@ def _settle_match_internal(db: Session, match: Match) -> dict:
     open_challenges = (
         db.query(Challenge)
         .filter(
-            Challenge.match_id == match_id,
+            Challenge.match_id == mid,
             Challenge.status.in_(["open", "counter_offered"]),
         )
         .all()

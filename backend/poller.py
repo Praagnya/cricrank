@@ -17,7 +17,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from models import Match, MatchStatus, Prediction, FirstInningsPick, PollerEvent
+from models import Match, MatchStatus, Prediction, FirstInningsPick, PollerEvent, TossPlay
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,52 @@ TOSS_MISFIRE_GRACE   = 300   # 5 min — toss window is short
 RESULT_MISFIRE_GRACE = 600   # 10 min
 
 
+def _ensure_autosettle_for_match(db: Session, match: Match) -> None:
+    """
+    Idempotent safety net: settle toss plays and predictions when DB says the
+    outcome is known but a prior job failed or returned early (e.g. completed
+    matches skipped the main result-job settlement path).
+    """
+    from routes.matches import _settle_all_toss_plays_for_match
+    from routes.predictions import _settle_match_internal
+
+    try:
+        if match.toss_winner:
+            unsettled_toss = (
+                db.query(TossPlay)
+                .filter(TossPlay.match_id == match.id, TossPlay.winning_team.is_(None))
+                .count()
+            )
+            if unsettled_toss > 0:
+                logger.info(
+                    "poller: autosettle %d toss play(s) for match %s",
+                    unsettled_toss,
+                    match.id,
+                )
+                _settle_all_toss_plays_for_match(db, match)
+                db.commit()
+
+        if match.status == MatchStatus.completed and match.winner:
+            unsettled_pred = (
+                db.query(Prediction)
+                .filter(Prediction.match_id == match.id, Prediction.is_correct.is_(None))
+                .count()
+            )
+            if unsettled_pred > 0:
+                logger.info(
+                    "poller: autosettle %d prediction(s) for match %s",
+                    unsettled_pred,
+                    match.id,
+                )
+                _settle_match_internal(db, match)
+    except Exception as exc:
+        logger.error("poller: autosettle failed for match %s: %s", match.id, exc)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+
 def get_scheduler() -> AsyncIOScheduler:
     global _scheduler
     if _scheduler is None:
@@ -61,10 +107,14 @@ def job_check_toss(match_id: str) -> None:
     db: Session = SessionLocal()
     try:
         match = db.query(Match).filter(Match.id == match_id).first()
-        if not match or match.toss_winner:
+        if not match:
             return
 
         from routes.matches import _merge_toss_sources, _extract_toss_winner_name, _settle_all_toss_plays_for_match
+
+        if match.toss_winner:
+            _ensure_autosettle_for_match(db, match)
+            return
 
         merged = _merge_toss_sources(match)
         tw = _extract_toss_winner_name(merged, match.team1, match.team2)
@@ -154,6 +204,7 @@ def job_check_result(match_id: str) -> None:
                 logger.info("poller/result: backfilled result_summary for match %s", match_id)
                 _log(db, "result", match.id, "summary_backfill",
                      detail=f"result_summary from CricAPI or fallback")
+            _ensure_autosettle_for_match(db, match)
             return
         # If completed but winner is null, fall through to recovery logic below.
 
@@ -529,7 +580,7 @@ def bootstrap_scheduler(db: Session) -> None:
             if match.winner:
                 unsettled = (
                     db.query(Prediction)
-                    .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
+                    .filter(Prediction.match_id == match.id, Prediction.is_correct.is_(None))
                     .count()
                 )
                 if unsettled > 0:
