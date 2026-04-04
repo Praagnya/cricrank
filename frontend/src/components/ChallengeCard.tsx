@@ -35,12 +35,11 @@ export default function ChallengeCard({ challenge, viewerGoogleId, compact = fal
   const viewerTeam = isChallenger ? challenge.challenger_team : opponentTeam;
   const viewerStake = isChallenger ? challenge.challenger_stake : challenge.acceptor_stake;
 
-  // Did the viewer's backed team win? Used for compact outcome display.
   const viewerTeamWon = status === "settled" && match.winner
     ? match.winner === viewerTeam
     : null;
 
-  // ── Compact (ledger) row for terminal statuses ────────────────────────────
+  // ── Compact (ledger) row ──────────────────────────────────────────────────
   if (compact) {
     const outcomeColor =
       status === "settled"
@@ -57,88 +56,85 @@ export default function ChallengeCard({ challenge, viewerGoogleId, compact = fal
           : "—";
 
     return (
-      <div className="flex items-center gap-3 px-3 py-2 border border-[#111] bg-[#080808]">
-        {/* Left accent in viewer's team color */}
+      <div className="flex items-center gap-3 px-3 py-2.5 border border-[#1a1a1a] bg-[#000000]">
         <div className="w-[2px] h-8 shrink-0" style={{ background: teamHex(viewerTeam) }} />
-
-        {/* Match + backed team */}
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-white leading-tight">
+          <p className="font-gaming text-[11px] font-bold text-white leading-tight tracking-wide">
             {teamShortCode(match.team1)} vs {teamShortCode(match.team2)}
           </p>
-          <p className="text-[9px] text-[#525252] mt-0.5">
+          <p className="text-[9px] font-bold tracking-[0.15em] text-[#525252] uppercase mt-0.5">
             Backed <span style={{ color: teamHex(viewerTeam) }}>{teamShortCode(viewerTeam)}</span>
             {" · "}{new Date(match.start_time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
           </p>
         </div>
-
-        {/* Status + outcome */}
         <div className="flex flex-col items-end gap-0.5 shrink-0">
           <div className={`flex items-center gap-1 ${color}`}>
             <Icon className="w-3 h-3" strokeWidth={2} />
-            <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+            <span className="font-gaming text-[9px] font-black uppercase tracking-widest">{label}</span>
           </div>
-          <span className={`text-[11px] font-black tabular-nums ${outcomeColor}`}>{outcomeText}</span>
+          <span className={`font-gaming text-[11px] font-black tabular-nums ${outcomeColor}`}>{outcomeText}</span>
         </div>
       </div>
     );
   }
 
-  // ── Full card (active statuses) ───────────────────────────────────────────
+  // ── Full card ─────────────────────────────────────────────────────────────
   return (
-    <div className="border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden">
+    <div className="border border-[#262626] bg-[#000000] overflow-hidden">
       {/* Top color bar */}
       <div className="h-[2px]" style={{ background: `linear-gradient(to right, ${t1hex}, ${t2hex})` }} />
 
       <div className="px-3 py-2.5">
         {/* Row 1: match info + status */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <TeamCrest team={match.team1} size="sm" />
             <span className="text-[9px] font-black text-[#333]">vs</span>
             <TeamCrest team={match.team2} size="sm" />
             <div className="ml-1 min-w-0">
-              <p className="text-xs font-bold text-white leading-tight truncate">
+              <p className="font-gaming text-xs font-bold tracking-wide text-white leading-tight truncate">
                 {teamShortCode(match.team1)} vs {teamShortCode(match.team2)}
               </p>
-              <p className="text-[10px] text-[#525252]">{formatRelativeDate(match.start_time)}</p>
+              <p className="text-[9px] font-bold tracking-[0.15em] text-[#525252] uppercase mt-0.5">
+                {formatRelativeDate(match.start_time)}
+              </p>
             </div>
           </div>
           <div className={`flex items-center gap-1 shrink-0 ml-2 ${color}`}>
             <Icon className="w-3.5 h-3.5" strokeWidth={2} />
-            <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+            <span className="font-gaming text-[10px] font-black uppercase tracking-widest">{label}</span>
           </div>
         </div>
 
         {/* Row 2: stakes */}
-        <div className="flex items-center justify-between bg-[#111] border border-[#1a1a1a] px-3 py-2">
+        <div className="flex items-center justify-between bg-[#0a0a0a] border border-[#262626] px-3 py-2.5">
           {/* Challenger */}
           <div className="flex flex-col items-center gap-1 flex-1">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-black text-white shrink-0"
+            <div className="w-7 h-7 flex items-center justify-center text-[8px] font-black text-white shrink-0"
               style={{ background: challengerHex }}>
               {teamShortCode(challenge.challenger_team)}
             </div>
-            <p className="text-[10px] text-white font-bold truncate max-w-[64px] text-center">
+            <p className="font-gaming text-[10px] font-bold tracking-wide text-white truncate max-w-[64px] text-center">
               {isChallenger ? "You" : challenger.name.split(" ")[0]}
             </p>
             <div className="flex items-center gap-0.5">
               <span className="text-[10px] text-[#f59e0b]">◈</span>
-              <span className="text-base font-black text-white tabular-nums">{challenge.challenger_stake}</span>
+              <span className="font-gaming text-base font-black text-white tabular-nums">{challenge.challenger_stake}</span>
             </div>
           </div>
 
           {/* Pot */}
           <div className="flex flex-col items-center px-2">
-            <p className="text-[10px] text-[#525252] uppercase tracking-widest mb-0.5">pot</p>
+            <p className="font-gaming text-[9px] font-black text-[#525252] uppercase tracking-[0.2em] mb-0.5">pot</p>
             <div className="flex items-center gap-0.5">
               <span className="text-[#f59e0b] text-sm">◈</span>
-              <span className="text-lg font-black text-white tabular-nums">{challenge.challenger_wants}</span>
+              <span className="font-gaming text-lg font-black text-white tabular-nums">{challenge.challenger_wants}</span>
             </div>
           </div>
 
           {/* Acceptor */}
           <div className="flex flex-col items-center gap-1 flex-1">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-black border shrink-0"
+            <div className="w-7 h-7 flex items-center justify-center text-[8px] font-black border shrink-0"
               style={{
                 background: acceptor ? teamHex(opponentTeam) : "transparent",
                 borderColor: acceptor ? teamHex(opponentTeam) : "#262626",
@@ -146,21 +142,21 @@ export default function ChallengeCard({ challenge, viewerGoogleId, compact = fal
               }}>
               {acceptor ? teamShortCode(opponentTeam) : "?"}
             </div>
-            <p className="text-[10px] text-white font-bold truncate max-w-[64px] text-center">
+            <p className="font-gaming text-[10px] font-bold tracking-wide text-white truncate max-w-[64px] text-center">
               {acceptor ? acceptor.name.split(" ")[0] : "Open"}
             </p>
             <div className="flex items-center gap-0.5">
               <span className="text-[10px] text-[#f59e0b]">◈</span>
-              <span className="text-base font-black text-white tabular-nums">{challenge.acceptor_stake}</span>
+              <span className="font-gaming text-base font-black text-white tabular-nums">{challenge.acceptor_stake}</span>
             </div>
           </div>
         </div>
 
-        {/* Counter offer pill */}
+        {/* Counter offer */}
         {status === "counter_offered" && challenge.counter_challenger_stake != null && (
           <div className="mt-2 flex items-center gap-2 bg-[#1a0a2e] border border-[#3b1f6e] px-2.5 py-1.5">
             <RefreshCw className="w-3 h-3 text-[#8b5cf6] shrink-0" />
-            <p className="text-[9px] text-[#8b5cf6]">
+            <p className="font-gaming text-[9px] text-[#8b5cf6] tracking-wide">
               Counter: ◈{challenge.counter_challenger_stake} stake · ◈{challenge.counter_challenger_wants} pot
             </p>
           </div>
