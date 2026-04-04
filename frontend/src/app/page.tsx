@@ -24,7 +24,7 @@ export default async function HomePage() {
       <>
         <main className="max-w-5xl mx-auto px-6 py-20 flex flex-col items-center gap-3 text-center">
           <CalendarDays className="w-10 h-10 text-[var(--text-dim)]" />
-          <p className="font-semibold">No upcoming matches</p>
+          <p className="font-semibold">No matches scheduled</p>
           <p className="text-sm text-[var(--text-muted)]">Check back soon for the next fixture.</p>
         </main>
       </>
@@ -35,11 +35,11 @@ export default async function HomePage() {
     <>
       <div className="flex items-start">
 
-        {/* ── Left sidebar: Upcoming matches ──────────────── */}
+        {/* ── Left sidebar: this week’s fixtures ──────────────── */}
         {carouselMatches.length > 1 && (
           <aside className="hidden lg:block w-[380px] shrink-0 border-r border-[#262626] sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
             <div className="px-4 py-6">
-              <SectionLabel>UPCOMING THIS WEEK</SectionLabel>
+              <SectionLabel>THIS WEEK</SectionLabel>
               <div className="mt-4 flex flex-col gap-3">
                 {carouselMatches.slice(1).map((m) => (
                   <MatchCard key={m.id} match={m} variant="sidebar" />
@@ -53,7 +53,7 @@ export default async function HomePage() {
         <div className="flex-1 min-w-0 px-6 py-6 pb-14">
           {carouselMatches.length === 0 ? (
             <div className="border border-[#262626] bg-[#000000] px-6 py-12 text-center mb-6">
-              <p className="font-semibold text-white">No upcoming matches right now</p>
+              <p className="font-semibold text-white">No matches right now</p>
               <p className="text-sm text-[var(--text-muted)] mt-2">Predictions open when the next fixture is listed.</p>
             </div>
           ) : (

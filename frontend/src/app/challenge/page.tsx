@@ -251,7 +251,7 @@ export default function ChallengePage() {
                   </div>
                 ) : upcomingMatches.length === 0 ? (
                   <p className="font-gaming text-[10px] font-black uppercase tracking-[0.2em] text-[#525252] py-8 text-center">
-                    No upcoming matches.
+                    No open fixtures.
                   </p>
                 ) : (
                   <div className="space-y-2">

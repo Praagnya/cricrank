@@ -8,6 +8,7 @@ import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import ProfileView from "@/components/ProfileView";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 
 export default function PersonalProfilePage() {
   const { user, loading: authLoading } = useUser();
@@ -17,7 +18,7 @@ export default function PersonalProfilePage() {
   useEffect(() => {
     if (!user) return;
     const metadata = user.user_metadata;
-    fetch(`${getApiBaseUrl()}/users/`, {
+    fetchWithRetry(`${getApiBaseUrl()}/users/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -26,6 +27,7 @@ export default function PersonalProfilePage() {
         email: user.email ?? "unknown@example.com",
         avatar_url: metadata?.avatar_url ?? null,
       }),
+      cache: "no-store",
     }).catch(() => {});
   }, [user?.id]);
 

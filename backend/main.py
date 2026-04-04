@@ -53,6 +53,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://100.70.7.33:3000",
+        # Plain HTTP (some clients / redirects) — prefer HTTPS at the edge.
+        "http://cricrank.com",
+        "http://www.cricrank.com",
         "https://cricrank.com",
         "https://www.cricrank.com",
     ],

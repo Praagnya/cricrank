@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
 import { streakTierColor, teamFullName, teamHex, teamShortCode, teamTextColor } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import CricketAvatar from "./CricketAvatar";
 import CountdownTimer from "./CountdownTimer";
 
@@ -75,7 +76,9 @@ export default function ProfileView({
       let googleId = userId;
 
       try {
-        const userRes = await fetch(`${BASE}/users/${encodeURIComponent(userId)}`);
+        const userRes = await fetchWithRetry(`${BASE}/users/${encodeURIComponent(userId)}`, {
+          cache: "no-store",
+        });
         if (cancelled) return;
         if (userRes.ok) {
           if (!cancelled) setProfileFetchError(null);
@@ -97,7 +100,9 @@ export default function ProfileView({
           return;
         }
 
-        const predRes = await fetch(`${BASE}/predictions/user/${encodeURIComponent(googleId)}`);
+        const predRes = await fetchWithRetry(`${BASE}/predictions/user/${encodeURIComponent(googleId)}`, {
+          cache: "no-store",
+        });
         if (cancelled) return;
         if (predRes.ok) {
           const predData = await predRes.json();
@@ -108,9 +113,9 @@ export default function ProfileView({
         if (!cancelled) setLoading(false);
 
         const [globalRes, weeklyRes, monthlyRes] = await Promise.all([
-          fetch(`${BASE}/leaderboard/global?limit=100`),
-          fetch(`${BASE}/leaderboard/weekly?limit=100`),
-          fetch(`${BASE}/leaderboard/monthly?limit=100`),
+          fetchWithRetry(`${BASE}/leaderboard/global?limit=100`, { cache: "no-store" }),
+          fetchWithRetry(`${BASE}/leaderboard/weekly?limit=100`, { cache: "no-store" }),
+          fetchWithRetry(`${BASE}/leaderboard/monthly?limit=100`, { cache: "no-store" }),
         ]);
         if (cancelled) return;
         if (globalRes.ok) {
@@ -165,7 +170,7 @@ export default function ProfileView({
     const enc = encodeURIComponent(userId);
     const qs = currentUserId ? `?viewer_id=${encodeURIComponent(currentUserId)}` : "";
     setFollowStatsLoading(true);
-    fetch(`${BASE}/users/${enc}/follow-stats${qs}`)
+    fetchWithRetry(`${BASE}/users/${enc}/follow-stats${qs}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((fs) => {
         if (cancelled || !fs) return;
@@ -250,11 +255,15 @@ export default function ProfileView({
     setChangingPredId(pred.id);
     try {
       const BASE = getApiBaseUrl();
-      const res = await fetch(`${BASE}/predictions/?google_id=${userId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ match_id: pred.match_id, selected_team: newTeam }),
-      });
+      const res = await fetchWithRetry(
+        `${BASE}/predictions/?google_id=${encodeURIComponent(userId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ match_id: pred.match_id, selected_team: newTeam }),
+          cache: "no-store",
+        }
+      );
       if (res.ok) {
         setPredictions((prev) =>
           prev.map((p) => p.id === pred.id ? { ...p, selected_team: newTeam } : p)

@@ -17,6 +17,7 @@ import {
   ChallengeListResponse,
 } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 
 const BASE = getApiBaseUrl();
 
@@ -72,7 +73,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -82,13 +83,13 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getNoStore<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  const res = await fetchWithRetry(`${BASE}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
   return res.json();
 }
 
 async function postNoStore<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -119,7 +120,7 @@ export const api = {
       const key = `live:${matchId}`;
       const hit = ttlCacheTake(liveScoreCache, key);
       if (hit) return hit;
-      const data = await getNoStore<MatchLiveResponse>(`/matches/${matchId}/live`);
+      const data = await getNoStore<MatchLiveResponse>(`/matches/${encodeURIComponent(matchId)}/live`);
       ttlCachePut(liveScoreCache, key, data, LIVE_SCORE_TTL_MS);
       return data;
     },
@@ -127,25 +128,25 @@ export const api = {
       const key = `scard:${matchId}`;
       const hit = ttlCacheTake(scorecardDetailCache, key);
       if (hit) return hit;
-      const data = await getNoStore<MatchScorecardResponse>(`/matches/${matchId}/scorecard`);
+      const data = await getNoStore<MatchScorecardResponse>(`/matches/${encodeURIComponent(matchId)}/scorecard`);
       ttlCachePut(scorecardDetailCache, key, data, SCORECARD_DETAIL_TTL_MS);
       return data;
     },
-    aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
-    crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
+    aiPrediction: (id: string) => getNoStore<AIPrediction>(`/matches/${encodeURIComponent(id)}/prediction`),
+    crowd: (id: string) => getNoStore<CrowdPrediction>(`/matches/${encodeURIComponent(id)}/crowd`),
     tossStatus: async (matchId: string, googleId: string) => {
       const key = `toss:${matchId}:${googleId}`;
       const hit = sideCacheTake<TossStatusResponse>(key);
       if (hit) return hit;
-      const data = await get<TossStatusResponse>(
-        `/matches/${matchId}/toss-status?google_id=${encodeURIComponent(googleId)}`
+      const data = await getNoStore<TossStatusResponse>(
+        `/matches/${encodeURIComponent(matchId)}/toss-status?google_id=${encodeURIComponent(googleId)}`
       );
       sideCachePut(key, data);
       return data;
     },
     tossPick: async (matchId: string, googleId: string, pickedTeam: string, stake: number) => {
       const data = await postNoStore<TossPickResponse>(
-        `/matches/${matchId}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
+        `/matches/${encodeURIComponent(matchId)}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
         { picked_team: pickedTeam, stake }
       );
       bustSideGameCache(matchId, googleId, "toss");
@@ -155,15 +156,15 @@ export const api = {
       const key = `fi:${matchId}:${googleId}`;
       const hit = sideCacheTake<FirstInningsStatusResponse>(key);
       if (hit) return hit;
-      const data = await get<FirstInningsStatusResponse>(
-        `/matches/${matchId}/first-innings-status?google_id=${encodeURIComponent(googleId)}`
+      const data = await getNoStore<FirstInningsStatusResponse>(
+        `/matches/${encodeURIComponent(matchId)}/first-innings-status?google_id=${encodeURIComponent(googleId)}`
       );
       sideCachePut(key, data);
       return data;
     },
     firstInningsPick: async (matchId: string, googleId: string, predictedScore: number) => {
       const data = await postNoStore<FirstInningsPickResponse>(
-        `/matches/${matchId}/first-innings-pick?google_id=${encodeURIComponent(googleId)}`,
+        `/matches/${encodeURIComponent(matchId)}/first-innings-pick?google_id=${encodeURIComponent(googleId)}`,
         { predicted_score: predictedScore }
       );
       bustSideGameCache(matchId, googleId, "fi");
@@ -173,11 +174,13 @@ export const api = {
   users: {
     upsert: (data: { google_id: string; name: string; email: string }) =>
       post<User>("/users/", data),
-    get: (identifier: string) => get<User>(`/users/${identifier}`),
-    search: (q: string) => get<FollowUser[]>(`/users/search?q=${encodeURIComponent(q)}`),
+    get: (identifier: string) => get<User>(`/users/${encodeURIComponent(identifier)}`),
+    search: (q: string) => getNoStore<FollowUser[]>(`/users/search?q=${encodeURIComponent(q)}`),
     followStats: (targetId: string, viewerId?: string) =>
-      get<{ follower_count: number; following_count: number; is_following: boolean }>(
-        `/users/${targetId}/follow-stats${viewerId ? `?viewer_id=${viewerId}` : ""}`
+      getNoStore<{ follower_count: number; following_count: number; is_following: boolean }>(
+        `/users/${encodeURIComponent(targetId)}/follow-stats${
+          viewerId ? `?viewer_id=${encodeURIComponent(viewerId)}` : ""
+        }`
       ),
     follow: (targetId: string, followerId: string) =>
       fetch(`${BASE}/users/${targetId}/follow?follower_id=${followerId}`, { method: "POST" }),
@@ -188,14 +191,15 @@ export const api = {
   },
   predictions: {
     submit: (googleId: string, matchId: string, selectedTeam: string) =>
-      post<Prediction>(`/predictions/?google_id=${googleId}`, {
+      postNoStore<Prediction>(`/predictions/?google_id=${encodeURIComponent(googleId)}`, {
         match_id: matchId,
         selected_team: selectedTeam,
       }),
-    byUser: (googleId: string) => get<Prediction[]>(`/predictions/user/${googleId}`),
+    byUser: (googleId: string) =>
+      getNoStore<Prediction[]>(`/predictions/user/${encodeURIComponent(googleId)}`),
   },
   squads: {
-    my: (googleId: string) => get<Squad[]>(`/squads/my/${googleId}`),
+    my: (googleId: string) => getNoStore<Squad[]>(`/squads/my/${encodeURIComponent(googleId)}`),
     create: (googleId: string, name: string) =>
       post<Squad>("/squads/", { google_id: googleId, name }),
     join: (inviteCode: string, googleId: string) =>
@@ -214,7 +218,7 @@ export const api = {
         challenger_wants: challengerWants,
         ...(invitedGoogleId ? { invited_google_id: invitedGoogleId } : {}),
       }),
-    byToken: (token: string) => getNoStore<Challenge>(`/challenges/token/${token}`),
+    byToken: (token: string) => getNoStore<Challenge>(`/challenges/token/${encodeURIComponent(token)}`),
     byUser: (googleId: string) =>
       getNoStore<ChallengeListResponse>(`/challenges/user/${encodeURIComponent(googleId)}`),
     pendingCount: (googleId: string) =>

@@ -41,7 +41,17 @@ export default function PredictionButtons({
       await api.predictions.submit(googleId, matchId, team);
       setSelected(team);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to save prediction");
+      const raw = e instanceof Error ? e.message : String(e);
+      const networkish =
+        /failed to fetch/i.test(raw) ||
+        /load failed/i.test(raw) ||
+        /networkerror/i.test(raw) ||
+        /abort/i.test(raw);
+      setError(
+        networkish
+          ? "Couldn’t reach the server. Check your connection and tap again."
+          : raw || "Failed to save prediction"
+      );
     } finally {
       setLoading(null);
     }
