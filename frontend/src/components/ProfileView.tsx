@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
-import { streakTierColor, teamFullName, teamHex, teamShortCode } from "@/lib/utils";
+import { streakTierColor, teamFullName, teamHex, teamShortCode, teamTextColor } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CricketAvatar from "./CricketAvatar";
 import CountdownTimer from "./CountdownTimer";
@@ -632,11 +632,11 @@ export default function ProfileView({
                 return (
                   <div
                     key={pred.id}
-                    className="bg-[#000000] border border-[#262626] overflow-hidden"
-                    style={{ boxShadow: `0 0 24px ${teamHex(pred.selected_team)}18` }}
+                    className="bg-[#0a0a0a] border border-[#333333] overflow-hidden"
+                    style={{ boxShadow: `0 0 24px ${teamHex(pred.selected_team)}22` }}
                   >
                     {/* Header bar */}
-                    <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#1a1a1a] bg-[#080808] gap-2">
+                    <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-[#262626] bg-[#111111] gap-2">
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                         <span className="text-[9px] font-black tracking-[0.3em] text-amber-400 uppercase">Pre-Toss</span>
@@ -660,38 +660,46 @@ export default function ProfileView({
                             disabled={isChanging || (isActive && !isEditable)}
                             onClick={() => isEditable && !isActive && handleChangePick(pred, team)}
                             className={`relative flex flex-col items-center justify-center gap-2 py-7 transition-all duration-300 overflow-hidden ${
-                              idx === 0 ? "border-r border-[#1a1a1a]" : ""
+                              idx === 0 ? "border-r border-[#262626]" : ""
                             } ${isEditable && !isActive ? "cursor-pointer group" : "cursor-default"}`}
-                            style={{ backgroundColor: isActive ? `${hex}18` : '#080808' }}
+                            style={{ backgroundColor: isActive ? `${hex}28` : "#141414" }}
                           >
                             {/* Active glow */}
                             {isActive && (
-                              <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 0 2px ${hex}50` }} />
+                              <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 0 2px ${hex}80` }} />
                             )}
                             {/* Hover overlay */}
                             {isEditable && !isActive && (
-                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ backgroundColor: `${hex}0a` }} />
+                              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{ backgroundColor: `${hex}14` }} />
                             )}
 
                             <span
-                              className="font-gaming text-4xl sm:text-5xl tracking-widest leading-none transition-all duration-300"
-                              style={{ color: isActive ? hex : '#3a3a3a' }}
+                              className="font-gaming text-4xl sm:text-5xl tracking-widest leading-none transition-all duration-300 drop-shadow-sm"
+                              style={{
+                                color: isActive ? teamTextColor(team) : "#d4d4d4",
+                                textShadow: isActive ? `0 0 24px ${hex}66` : "none",
+                              }}
                             >
                               {isChanging ? "..." : teamShortCode(team)}
                             </span>
-                            <span className="text-[9px] font-black tracking-[0.18em] text-[#737373] uppercase text-center px-3">
+                            <span className="text-[9px] font-black tracking-[0.18em] text-[#b0b0b0] uppercase text-center px-3">
                               {teamFullName(team)}
                             </span>
 
                             {isActive ? (
-                              <div className="flex items-center gap-1.5 px-3 py-1 border" style={{ borderColor: `${hex}50`, backgroundColor: `${hex}20` }}>
-                                <Zap className="w-3 h-3" style={{ color: hex }} fill={hex} />
-                                <span className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: hex }}>{isEditable ? "Your Pick" : "Picked"}</span>
+                              <div
+                                className="flex items-center gap-1.5 px-3 py-1 border"
+                                style={{ borderColor: `${hex}66`, backgroundColor: `${hex}35` }}
+                              >
+                                <Zap className="w-3 h-3" style={{ color: teamTextColor(team) }} fill={teamTextColor(team)} />
+                                <span className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: teamTextColor(team) }}>
+                                  {isEditable ? "Your Pick" : "Picked"}
+                                </span>
                               </div>
                             ) : isEditable ? (
-                              <div className="flex items-center gap-1.5 px-3 py-1 border border-[#222] opacity-0 group-hover:opacity-100 transition-opacity">
-                                <RefreshCw className="w-3 h-3 text-[#666]" />
-                                <span className="text-[9px] font-black tracking-[0.2em] text-[#666] uppercase">Switch</span>
+                              <div className="flex items-center gap-1.5 px-3 py-1 border border-[#3f3f3f] opacity-0 group-hover:opacity-100 transition-opacity">
+                                <RefreshCw className="w-3 h-3 text-[#a3a3a3]" />
+                                <span className="text-[9px] font-black tracking-[0.2em] text-[#a3a3a3] uppercase">Switch</span>
                               </div>
                             ) : (
                               <div className="h-6" />
@@ -702,9 +710,9 @@ export default function ProfileView({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-[#1a1a1a] bg-[#080808]">
-                      <span className="text-[9px] text-[#525252] font-bold tracking-widest uppercase">{pred.match.venue}</span>
-                      <span className="font-gaming text-[#525252] text-sm">— pts</span>
+                    <div className="flex items-center justify-between px-5 py-3 border-t border-[#262626] bg-[#111111]">
+                      <span className="text-[9px] text-[#b8b8b8] font-bold tracking-widest uppercase leading-snug">{pred.match.venue}</span>
+                      <span className="font-gaming text-[#9ca3af] text-sm shrink-0">— pts</span>
                     </div>
                   </div>
                 );
@@ -756,7 +764,7 @@ export default function ProfileView({
                       <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
                         {teamShortCode(pred.match.team1)}
                       </span>
-                      <span className="text-[8px] sm:text-[10px] text-[#333] font-black italic tracking-widest shrink-0">VS</span>
+                      <span className="text-[8px] sm:text-[10px] text-[#737373] font-black italic tracking-widest shrink-0">VS</span>
                       <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
                         {teamShortCode(pred.match.team2)}
                       </span>
