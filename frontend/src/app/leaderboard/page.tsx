@@ -105,45 +105,35 @@ export default async function LeaderboardPage({
             </div>
           </div>
 
-          {/* Scope: global vs people you follow */}
-          <div className="flex flex-col gap-2">
-            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#404040]">View</p>
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Single tab bar — fixed structure so Global / Following doesn’t reflow the header */}
+          <div className="flex flex-col sm:flex-row border border-[#262626] bg-[#111111] divide-y sm:divide-y-0 sm:divide-x divide-[#262626] min-h-[44px]">
+            <div className="flex min-h-[44px] sm:w-[min(100%,280px)] shrink-0">
               <Link
                 href={leaderboardHref(period, "global")}
-                className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
-                  view === "global"
-                    ? "border-white text-white bg-[#1a1a1a]"
-                    : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${
+                  view === "global" ? "bg-white text-black" : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
                 }`}
               >
                 Global
               </Link>
               <Link
                 href={leaderboardHref(period, "following")}
-                className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
-                  view === "following"
-                    ? "border-white text-white bg-[#1a1a1a]"
-                    : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] font-black tracking-[0.2em] uppercase border-l border-[#262626] transition-colors ${
+                  view === "following" ? "bg-white text-black" : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
                 }`}
               >
                 Following
               </Link>
             </div>
-          </div>
-
-          {/* Period tabs */}
-          <div className="flex flex-col gap-2">
-            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#404040]">Period</p>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-1 min-w-0 min-h-[44px] divide-x divide-[#262626]">
               {PERIOD_TABS.map(({ value, label }) => (
                 <Link
                   key={value}
                   href={leaderboardHref(value, view)}
-                  className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
+                  className={`flex-1 flex items-center justify-center py-3 px-1 sm:px-3 text-[10px] font-black tracking-[0.15em] sm:tracking-[0.2em] uppercase transition-colors text-center leading-tight ${
                     period === value
-                      ? "border-white text-white bg-[#1a1a1a]"
-                      : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                      ? "bg-white text-black"
+                      : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
                   }`}
                 >
                   {label}
@@ -153,30 +143,10 @@ export default async function LeaderboardPage({
           </div>
         </div>
 
-        {view === "following" && !providerId ? (
-          <div className="border border-[#262626] bg-[#050505] p-16 flex flex-col items-center gap-4 text-center">
-            <Medal className="w-8 h-8 mb-4 text-[#262626]" />
-            <p className="font-black text-white text-xl uppercase tracking-widest">Sign in</p>
-            <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
-              Log in to see how you rank against people you follow for {periodLabel.toLowerCase()}.
-            </p>
-          </div>
-        ) : allEntries.length === 0 ? (
-          <div className="border border-[#262626] bg-[#050505] p-16 flex flex-col items-center gap-4 text-center">
-            <Medal className="w-8 h-8 mb-4 text-[#262626]" />
-            <p className="font-black text-white text-xl uppercase tracking-widest">
-              {view === "following" ? "No rankings yet" : "No Predictions Yet"}
-            </p>
-            <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
-              {view === "following"
-                ? "Nobody in your network has predictions for this period yet — or follow more players from their profiles."
-                : "Be the first to predict and claim the top spot."}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Top 3 Podium (Always show 3 slots for consistency) */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        {/* One outer shell: podium + list — same borders whether Global or Following */}
+        <div className="border border-[#262626] bg-[#000000] overflow-hidden flex flex-col min-h-[min(88vh,860px)]">
+          {/* Podium — always three slots */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 p-2 sm:p-4 bg-[#000000] shrink-0">
               {[top10[1], top10[0], top10[2]].map((entry, i) => {
                 const rank = i === 0 ? 2 : i === 1 ? 1 : 3;
                 const medalColor = rank === 1 ? "#d4af37" : rank === 2 ? "#a3a3a3" : "#b08d57";
@@ -258,10 +228,32 @@ export default async function LeaderboardPage({
                   </Link>
                 );
               })}
-            </div>
+          </div>
 
-            {/* Full List View (Top 4 to 10) */}
-            <div className="border border-[#262626] bg-[#000000] flex flex-col">
+          {/* List band — same box under podium; empty / sign-in states keep height */}
+          <div className="border-t border-[#262626] bg-[#000000] flex flex-col flex-1 min-h-[200px]">
+            {view === "following" && !providerId ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-14 sm:py-20 px-6 text-center gap-4">
+                <Medal className="w-8 h-8 text-[#262626]" />
+                <p className="font-black text-white text-xl uppercase tracking-widest">Sign in</p>
+                <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
+                  Log in to see how you rank against people you follow for {periodLabel.toLowerCase()}.
+                </p>
+              </div>
+            ) : allEntries.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-14 sm:py-20 px-6 text-center gap-4">
+                <Medal className="w-8 h-8 text-[#262626]" />
+                <p className="font-black text-white text-xl uppercase tracking-widest">
+                  {view === "following" ? "No rankings yet" : "No predictions yet"}
+                </p>
+                <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
+                  {view === "following"
+                    ? "Nobody in your network has predictions for this period yet — or follow more players from their profiles."
+                    : "Be the first to predict and claim the top spot."}
+                </p>
+              </div>
+            ) : (
+              <>
               {top10.slice(3).map((entry, idx) => {
                 const rank = idx + 4;
                 const heatColor = getStreakHeatColor(entry.current_streak);
@@ -358,9 +350,10 @@ export default async function LeaderboardPage({
                   </div>
                 </>
               )}
-            </div>
-          </>
-        )}
+              </>
+            )}
+          </div>
+        </div>
 
         {/* MOBILE ONLY: Rules & Tiers (Desktop handles this in Sidebar) */}
         <div className="flex flex-col gap-4 mt-8 lg:hidden">
