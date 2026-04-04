@@ -3,6 +3,7 @@ import { Medal, Zap } from "lucide-react";
 import { streakTierColor } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
 import CricketAvatar from "@/components/CricketAvatar";
+import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import Link from "next/link";
 
 const PERIOD_TABS = [
@@ -82,9 +83,13 @@ export default async function LeaderboardPage({
 
   const scopeLabel = view === "following" ? "Following" : "Global";
 
+  const sidebarLeaders = await api.leaderboard.global(3).catch(() => []);
+
   return (
     <>
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 min-w-0">
+      <div className="flex items-start">
+      <main className="flex-1 min-w-0 px-4 sm:px-6 lg:pl-10 lg:pr-6 py-6 sm:py-8 flex flex-col gap-4">
+      <div className="max-w-5xl w-full mx-auto flex flex-col gap-4 min-w-0">
 
         {/* Header Block */}
         <div className="border border-[#262626] bg-[#000000] p-5 sm:p-8 flex flex-col gap-4 overflow-hidden">
@@ -105,12 +110,12 @@ export default async function LeaderboardPage({
             </div>
           </div>
 
-          {/* Single tab bar — fixed structure so Global / Following doesn’t reflow the header */}
-          <div className="flex flex-col sm:flex-row border border-[#262626] bg-[#111111] divide-y sm:divide-y-0 sm:divide-x divide-[#262626] min-h-[44px]">
-            <div className="flex min-h-[44px] sm:w-[min(100%,280px)] shrink-0">
+          {/* Tab bar: stacked on mobile; one row from sm; taller + no wrap on lg for desktop */}
+          <div className="flex flex-col sm:flex-row border border-[#262626] bg-[#111111] divide-y sm:divide-y-0 sm:divide-x divide-[#262626] min-h-[44px] lg:min-h-[48px]">
+            <div className="flex min-h-[44px] lg:min-h-[48px] sm:w-[min(100%,280px)] lg:w-auto lg:min-w-[260px] shrink-0">
               <Link
                 href={leaderboardHref(period, "global")}
-                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] font-black tracking-[0.2em] uppercase transition-colors ${
+                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] lg:text-[11px] font-black tracking-[0.2em] uppercase transition-colors whitespace-nowrap ${
                   view === "global" ? "bg-white text-black" : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
                 }`}
               >
@@ -118,19 +123,19 @@ export default async function LeaderboardPage({
               </Link>
               <Link
                 href={leaderboardHref(period, "following")}
-                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] font-black tracking-[0.2em] uppercase border-l border-[#262626] transition-colors ${
+                className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 text-[10px] lg:text-[11px] font-black tracking-[0.2em] uppercase border-l border-[#262626] transition-colors whitespace-nowrap ${
                   view === "following" ? "bg-white text-black" : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
                 }`}
               >
                 Following
               </Link>
             </div>
-            <div className="flex flex-1 min-w-0 min-h-[44px] divide-x divide-[#262626]">
+            <div className="flex flex-1 min-w-0 min-h-[44px] lg:min-h-[48px] divide-x divide-[#262626]">
               {PERIOD_TABS.map(({ value, label }) => (
                 <Link
                   key={value}
                   href={leaderboardHref(value, view)}
-                  className={`flex-1 flex items-center justify-center py-3 px-1 sm:px-3 text-[10px] font-black tracking-[0.15em] sm:tracking-[0.2em] uppercase transition-colors text-center leading-tight ${
+                  className={`flex-1 flex items-center justify-center py-3 px-2 sm:px-4 lg:px-5 text-[10px] lg:text-[11px] font-black tracking-[0.15em] sm:tracking-[0.2em] uppercase transition-colors text-center whitespace-nowrap ${
                     period === value
                       ? "bg-white text-black"
                       : "text-[#525252] hover:text-white hover:bg-[#1a1a1a]"
@@ -143,8 +148,8 @@ export default async function LeaderboardPage({
           </div>
         </div>
 
-        {/* One outer shell: podium + list — same borders whether Global or Following */}
-        <div className="border border-[#262626] bg-[#000000] overflow-hidden flex flex-col min-h-[min(88vh,860px)]">
+        {/* Podium + list: shorter min-height on lg so desktop isn’t mostly empty padding */}
+        <div className="border border-[#262626] bg-[#000000] overflow-hidden flex flex-col min-h-[min(88vh,860px)] lg:min-h-[min(62vh,560px)]">
           {/* Podium — always three slots */}
           <div className="grid grid-cols-3 gap-2 sm:gap-4 p-2 sm:p-4 bg-[#000000] shrink-0">
               {[top10[1], top10[0], top10[2]].map((entry, i) => {
@@ -409,7 +414,11 @@ export default async function LeaderboardPage({
           </div>
         </div>
 
+      </div>
       </main>
+
+      <LeaderboardSidebar initialLeaders={sidebarLeaders} />
+      </div>
     </>
   );
 }
