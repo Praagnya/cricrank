@@ -1,15 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, LogIn, Menu, X, Coins } from "lucide-react";
-
-function FlashIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M13 2 L5 13 L11 13 L9 22 L19 11 L13 11 Z" />
-    </svg>
-  );
-}
+import { LogOut, LogIn, Zap, Menu, X, Coins } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -134,7 +126,7 @@ export default function Header() {
           {/* CENTER — CricRank */}
           <div className="flex justify-center">
             <Link href="/" className="flex items-center gap-2 group">
-              <FlashIcon className="w-5 h-5 text-white group-hover:text-[#a3a3a3] transition-colors shrink-0" />
+              <Zap className="w-5 h-5 text-white group-hover:text-[#a3a3a3] transition-colors shrink-0" strokeWidth={1.5} />
               <span
                 className="tracking-widest text-white group-hover:text-[#a3a3a3] transition-colors"
                 style={{ fontFamily: "var(--font-heading)", fontSize: "32px", lineHeight: 1 }}
@@ -180,7 +172,7 @@ export default function Header() {
                     <div className="fixed right-0 w-44 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[9999]" style={{ top: '56px' }}>
                       <Link href="/profile" onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-widest text-[#a3a3a3] hover:text-white hover:bg-[#1a1a1a] transition-colors">
-                        <FlashIcon className="w-3.5 h-3.5 shrink-0" />My Profile
+                        <Zap className="w-3.5 h-3.5 shrink-0" />My Profile
                       </Link>
                       <div className="border-t border-[#1a1a1a]" />
                       <button onClick={() => { setUserMenuOpen(false); signOut(); }}
