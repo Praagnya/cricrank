@@ -414,6 +414,9 @@ def bootstrap_scheduler(db: Session) -> None:
     scheduler = get_scheduler()
     now = datetime.now(timezone.utc)
 
+    # Log immediately so we know bootstrap ran even if something fails below
+    _log(db, "bootstrap", None, "started", detail=f"bootstrap starting at {now.isoformat()}")
+
     matches = (
         db.query(Match)
         .filter(
@@ -424,9 +427,12 @@ def bootstrap_scheduler(db: Session) -> None:
     )
 
     for match in matches:
-        _schedule_toss_jobs(scheduler, match)
-        _schedule_result_jobs(scheduler, match)
-        _schedule_first_innings_jobs(scheduler, match)
+        try:
+            _schedule_toss_jobs(scheduler, match)
+            _schedule_result_jobs(scheduler, match)
+            _schedule_first_innings_jobs(scheduler, match)
+        except Exception as exc:
+            logger.error("poller: failed to schedule jobs for match %s: %s", match.id, exc)
 
     logger.info("poller: bootstrap done — scheduled jobs for %d matches", len(matches))
     _log(db, "bootstrap", None, "ok",
@@ -437,78 +443,97 @@ def bootstrap_scheduler(db: Session) -> None:
     from cricapi import CricAPIError, fetch_match_info
     from team_metadata import canonicalize_winner
 
+    # Also check live matches that may need recovery (e.g. stuck in live with no winner)
     stuck_matches = (
         db.query(Match)
         .filter(
-            Match.status == MatchStatus.completed,
+            Match.status.in_([MatchStatus.completed, MatchStatus.live]),
             Match.start_time >= now - timedelta(days=7),
+            Match.start_time <= now,  # exclude future matches
         )
         .all()
     )
     for match in stuck_matches:
-        # If winner is missing, try to fetch it from match_info
-        if not match.winner and match.cricapi_id:
+        try:
+            # If winner is missing, try to fetch it from match_info
+            if not match.winner and match.cricapi_id:
+                try:
+                    info = fetch_match_info(match.cricapi_id) or {}
+                    mw = info.get("matchWinner")
+                    if mw:
+                        match.winner = canonicalize_winner(mw)
+                        if info.get("matchEnded") and match.status != MatchStatus.completed:
+                            match.status = MatchStatus.completed
+                        db.commit()
+                        logger.warning("poller: recovered winner for match %s → %s", match.id, match.winner)
+                except CricAPIError:
+                    pass
+
+            if match.winner:
+                unsettled = (
+                    db.query(Prediction)
+                    .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
+                    .count()
+                )
+                if unsettled > 0:
+                    logger.warning("poller: re-settling %d unsettled predictions for match %s", unsettled, match.id)
+                    _settle_match_internal(db, match)
+
+            # Recover unsettled toss plays (toss winner known but plays not settled)
+            if match.toss_winner:
+                from models import TossPlay
+                unsettled_toss = (
+                    db.query(TossPlay)
+                    .filter(TossPlay.match_id == match.id, TossPlay.winning_team.is_(None))
+                    .count()
+                )
+                if unsettled_toss > 0:
+                    logger.warning("poller: settling %d unsettled toss plays for match %s", unsettled_toss, match.id)
+                    from routes.matches import _settle_all_toss_plays_for_match
+                    _settle_all_toss_plays_for_match(db, match)
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+
+            # Recover stuck first innings picks for completed matches
+            if match.cricapi_id:
+                unsettled_fi = (
+                    db.query(FirstInningsPick)
+                    .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
+                    .count()
+                )
+                if unsettled_fi > 0:
+                    logger.warning("poller: recovering %d unsettled first innings picks for match %s", unsettled_fi, match.id)
+                    from routes.matches import _settle_first_innings_picks
+                    _settle_first_innings_picks(db, match)
+                    try:
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+        except Exception as exc:
+            logger.error("poller: bootstrap recovery failed for match %s: %s", match.id, exc)
             try:
-                info = fetch_match_info(match.cricapi_id) or {}
-                mw = info.get("matchWinner")
-                if mw:
-                    match.winner = canonicalize_winner(mw)
-                    db.commit()
-                    logger.warning("poller: recovered winner for match %s → %s", match.id, match.winner)
-            except CricAPIError:
+                db.rollback()
+            except Exception:
                 pass
-
-        if match.winner:
-            unsettled = (
-                db.query(Prediction)
-                .filter(Prediction.match_id == str(match.id), Prediction.is_correct.is_(None))
-                .count()
-            )
-            if unsettled > 0:
-                logger.warning("poller: re-settling %d unsettled predictions for match %s", unsettled, match.id)
-                _settle_match_internal(db, match)
-
-        # Recover unsettled toss plays (toss winner known but plays not settled)
-        if match.toss_winner:
-            from models import TossPlay
-            unsettled_toss = (
-                db.query(TossPlay)
-                .filter(TossPlay.match_id == match.id, TossPlay.winning_team.is_(None))
-                .count()
-            )
-            if unsettled_toss > 0:
-                logger.warning("poller: settling %d unsettled toss plays for match %s", unsettled_toss, match.id)
-                from routes.matches import _settle_all_toss_plays_for_match
-                _settle_all_toss_plays_for_match(db, match)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
-
-        # Recover stuck first innings picks for completed matches
-        if match.cricapi_id:
-            unsettled_fi = (
-                db.query(FirstInningsPick)
-                .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
-                .count()
-            )
-            if unsettled_fi > 0:
-                logger.warning("poller: recovering %d unsettled first innings picks for match %s", unsettled_fi, match.id)
-                from routes.matches import _settle_first_innings_picks
-                _settle_first_innings_picks(db, match)
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
 
 
 def job_daily_bootstrap() -> None:
     """Runs at midnight UTC every day to pick up matches newly within the 7-day window."""
+    logger.info("poller: daily bootstrap starting")
     db: Session = SessionLocal()
     try:
         bootstrap_scheduler(db)
+    except Exception as exc:
+        logger.error("poller: daily bootstrap failed: %s", exc)
+        try:
+            _log(db, "bootstrap", None, "error", detail=f"daily bootstrap failed: {exc}")
+        except Exception:
+            pass
     finally:
         db.close()
+    logger.info("poller: daily bootstrap complete")
 
 
 def schedule_daily_bootstrap(scheduler: AsyncIOScheduler) -> None:

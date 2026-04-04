@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import TeamCrest from "@/components/TeamCrest";
-import ChallengeCard from "@/components/ChallengeCard";
+import ChallengeCard, { TERMINAL_STATUSES } from "@/components/ChallengeCard";
 import { useUser } from "@/hooks/useUser";
 import { api } from "@/lib/api";
 import { Match, Challenge, FollowUser } from "@/types";
@@ -43,6 +43,7 @@ export default function ChallengePage() {
   const [createdChallenge, setCreatedChallenge] = useState<Challenge | null>(null);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const acceptorStake = Math.max(0, challengerWants - challengerStake);
 
@@ -137,6 +138,8 @@ export default function ChallengePage() {
 
   const invitedChallenges = myChallenges.filter(c => c.invited_user?.google_id === googleId && c.status === "open");
   const myOtherChallenges = myChallenges.filter(c => !(c.invited_user?.google_id === googleId && c.status === "open"));
+  const myActiveChallenges = myOtherChallenges.filter(c => !TERMINAL_STATUSES.includes(c.status));
+  const myHistoryChallenges = myOtherChallenges.filter(c => TERMINAL_STATUSES.includes(c.status));
 
   // ── Not logged in ──────────────────────────────────────────────────────────
   if (!loading && !user) {
@@ -514,15 +517,45 @@ export default function ChallengePage() {
             )}
 
             {myOtherChallenges.length > 0 ? (
-              <div>
-                <p className="font-gaming text-base text-white tracking-widest mb-2">My Challenges</p>
-                <div className="space-y-2">
-                  {myOtherChallenges.map(c => (
-                    <Link key={c.id} href={`/challenge/${c.share_token}`}>
-                      <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} />
-                    </Link>
-                  ))}
-                </div>
+              <div className="flex flex-col gap-5">
+                {/* Active challenges — full cards */}
+                {myActiveChallenges.length > 0 && (
+                  <div>
+                    <p className="font-gaming text-base text-white tracking-widest mb-2">Active</p>
+                    <div className="space-y-2">
+                      {myActiveChallenges.map(c => (
+                        <Link key={c.id} href={`/challenge/${c.share_token}`}>
+                          <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} />
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* History — compact ledger rows */}
+                {myHistoryChallenges.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <p className="font-gaming text-sm text-[#525252] tracking-widest uppercase">History</p>
+                      <div className="h-px flex-1 bg-[#1a1a1a]" />
+                    </div>
+                    <div className="space-y-px">
+                      {myHistoryChallenges.slice(0, visibleCount).map(c => (
+                        <Link key={c.id} href={`/challenge/${c.share_token}`}>
+                          <ChallengeCard challenge={c} viewerGoogleId={googleId ?? undefined} compact />
+                        </Link>
+                      ))}
+                    </div>
+                    {myHistoryChallenges.length > visibleCount && (
+                      <button
+                        onClick={() => setVisibleCount(v => v + 10)}
+                        className="w-full mt-2 py-2 border border-[#1a1a1a] text-[#525252] hover:text-white hover:border-[#333] text-xs font-black uppercase tracking-widest transition-colors"
+                      >
+                        Show {Math.min(10, myHistoryChallenges.length - visibleCount)} more
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : invitedChallenges.length === 0 && (
               <div className="py-14 text-center">

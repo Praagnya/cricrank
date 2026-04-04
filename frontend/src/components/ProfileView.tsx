@@ -25,6 +25,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
   const [monthlyRank, setMonthlyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [visiblePredCount, setVisiblePredCount] = useState(10);
 
   // Customization State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -534,7 +535,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
           <div className="flex flex-col gap-3">
             {[...predictions].sort((a, b) =>
               new Date(b.match.start_time).getTime() - new Date(a.match.start_time).getTime()
-            ).map((pred) => {
+            ).slice(0, visiblePredCount).map((pred) => {
               const isUnlocked = pred.is_correct === null && new Date(pred.match.toss_time) > new Date();
               const isChanging = changingPredId === pred.id;
 
@@ -713,6 +714,14 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                 </div>
               );
             })}
+            {predictions.length > visiblePredCount && (
+              <button
+                onClick={() => setVisiblePredCount(v => v + 10)}
+                className="w-full py-2.5 border border-[#262626] text-[#525252] hover:text-white hover:border-[#333] text-xs font-black uppercase tracking-widest transition-colors"
+              >
+                Show {Math.min(10, predictions.length - visiblePredCount)} more
+              </button>
+            )}
           </div>
         )}
       </div>

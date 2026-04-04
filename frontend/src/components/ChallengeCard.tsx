@@ -9,18 +9,21 @@ const STATUS: Record<ChallengeStatus, { label: string; color: string; Icon: Reac
   open:            { label: "Open",          color: "text-[#f59e0b]",  Icon: Clock },
   accepted:        { label: "Accepted",      color: "text-[#10b981]",  Icon: CheckCircle },
   counter_offered: { label: "Counter",       color: "text-[#8b5cf6]",  Icon: RefreshCw },
-  declined:        { label: "Declined",      color: "text-[#ef4444]",  Icon: XCircle },
+  declined:        { label: "Declined",      color: "text-[#525252]",  Icon: XCircle },
   expired:         { label: "Expired",       color: "text-[#525252]",  Icon: Clock },
   cancelled:       { label: "Cancelled",     color: "text-[#525252]",  Icon: XCircle },
   settled:         { label: "Settled",       color: "text-[#10b981]",  Icon: Trophy },
 };
 
+export const TERMINAL_STATUSES: ChallengeStatus[] = ["settled", "expired", "declined", "cancelled"];
+
 interface Props {
   challenge: Challenge;
   viewerGoogleId?: string;
+  compact?: boolean;
 }
 
-export default function ChallengeCard({ challenge, viewerGoogleId }: Props) {
+export default function ChallengeCard({ challenge, viewerGoogleId, compact = false }: Props) {
   const { match, challenger, acceptor, status } = challenge;
   const t1hex = teamHex(match.team1);
   const t2hex = teamHex(match.team2);
@@ -29,7 +32,59 @@ export default function ChallengeCard({ challenge, viewerGoogleId }: Props) {
   const { label, color, Icon } = STATUS[status];
 
   const isChallenger = viewerGoogleId && challenger.google_id === viewerGoogleId;
+  const viewerTeam = isChallenger ? challenge.challenger_team : opponentTeam;
+  const viewerStake = isChallenger ? challenge.challenger_stake : challenge.acceptor_stake;
 
+  // Did the viewer's backed team win? Used for compact outcome display.
+  const viewerTeamWon = status === "settled" && match.winner
+    ? match.winner === viewerTeam
+    : null;
+
+  // ── Compact (ledger) row for terminal statuses ────────────────────────────
+  if (compact) {
+    const outcomeColor =
+      status === "settled"
+        ? viewerTeamWon ? "text-[#10b981]" : "text-[#ef4444]"
+        : "text-[#525252]";
+
+    const outcomeText =
+      status === "settled"
+        ? viewerTeamWon
+          ? `+◈${challenge.challenger_wants}`
+          : `-◈${viewerStake}`
+        : status === "expired" || status === "cancelled" || status === "declined"
+          ? isChallenger ? `◈${challenge.challenger_stake} back` : "—"
+          : "—";
+
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 border border-[#111] bg-[#080808]">
+        {/* Left accent in viewer's team color */}
+        <div className="w-[2px] h-8 shrink-0" style={{ background: teamHex(viewerTeam) }} />
+
+        {/* Match + backed team */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-white leading-tight">
+            {teamShortCode(match.team1)} vs {teamShortCode(match.team2)}
+          </p>
+          <p className="text-[9px] text-[#525252] mt-0.5">
+            Backed <span style={{ color: teamHex(viewerTeam) }}>{teamShortCode(viewerTeam)}</span>
+            {" · "}{new Date(match.start_time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </p>
+        </div>
+
+        {/* Status + outcome */}
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          <div className={`flex items-center gap-1 ${color}`}>
+            <Icon className="w-3 h-3" strokeWidth={2} />
+            <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+          </div>
+          <span className={`text-[11px] font-black tabular-nums ${outcomeColor}`}>{outcomeText}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Full card (active statuses) ───────────────────────────────────────────
   return (
     <div className="border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden">
       {/* Top color bar */}
