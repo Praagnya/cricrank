@@ -7,7 +7,10 @@ import { Squad } from "@/types";
 import { getApiBaseUrl } from "@/lib/api-base";
 
 interface Props {
+  /** Leaderboard period: alltime | weekly | monthly (not "following" — use view below). */
   period: string;
+  /** global | following — matches /leaderboard?view= */
+  view?: "global" | "following";
   squadId: string | null;
   squads: Squad[];
   providerId: string | null;
@@ -15,7 +18,14 @@ interface Props {
 
 const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
 
-export default function LeaderboardDropdown({ period, squadId, squads, providerId }: Props) {
+function leaderboardQuery(period: string, view: "global" | "following") {
+  const q = new URLSearchParams();
+  q.set("period", period === "following" ? "alltime" : period);
+  if (view === "following") q.set("view", "following");
+  return `/leaderboard?${q.toString()}`;
+}
+
+export default function LeaderboardDropdown({ period, view = "global", squadId, squads, providerId }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<"create" | "join" | null>(null);
@@ -27,8 +37,9 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
 
   const activeLabel = squadId
     ? (squads.find((s) => s.id === squadId)?.name ?? "Squad")
-    : period === "following" ? "Following"
-    : "Groups";
+    : view === "following"
+      ? "Following"
+      : "Global";
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -103,12 +114,22 @@ export default function LeaderboardDropdown({ period, squadId, squads, providerI
             <div className="absolute right-0 top-full mt-1 w-52 bg-[#0a0a0a] border border-[#262626] shadow-2xl z-[200]">
               {/* Following */}
               <button
-                onClick={() => navigate(`/leaderboard?period=following`)}
+                type="button"
+                onClick={() => navigate(leaderboardQuery(period, "following"))}
                 className={`w-full text-left px-4 py-2.5 text-[10px] font-black tracking-[0.2em] uppercase transition-colors flex items-center gap-2 ${
-                  !squadId && period === "following" ? "text-white bg-[#1a1a1a]" : "text-[#525252] hover:text-white hover:bg-[#111]"
+                  !squadId && view === "following" ? "text-white bg-[#1a1a1a]" : "text-[#525252] hover:text-white hover:bg-[#111]"
                 }`}
               >
                 <Users className="w-3 h-3 shrink-0" /> Following
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(leaderboardQuery(period, "global"))}
+                className={`w-full text-left px-4 py-2.5 text-[10px] font-black tracking-[0.2em] uppercase transition-colors flex items-center gap-2 ${
+                  !squadId && view === "global" ? "text-white bg-[#1a1a1a]" : "text-[#525252] hover:text-white hover:bg-[#111]"
+                }`}
+              >
+                <Users className="w-3 h-3 shrink-0" /> Global
               </button>
 
               {/* Squads section */}

@@ -202,9 +202,13 @@ export const api = {
     global: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/global?limit=${limit}`),
     weekly: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/weekly?limit=${limit}`),
     monthly: (limit = 50) => get<LeaderboardEntry[]>(`/leaderboard/monthly?limit=${limit}`),
-    myRank: (googleId: string, period = "alltime") =>
-      get<LeaderboardEntry | null>(`/leaderboard/rank/${googleId}?period=${period}`),
-    following: (googleId: string, limit = 100) =>
-      get<LeaderboardEntry[]>(`/leaderboard/following/${googleId}?limit=${limit}`),
+    myRank: (googleId: string, period = "alltime", scope: "global" | "following" = "global") =>
+      get<LeaderboardEntry | null>(
+        `/leaderboard/rank/${encodeURIComponent(googleId)}?period=${period}&scope=${scope}`
+      ),
+    following: (googleId: string, period = "alltime", limit = 100) =>
+      get<LeaderboardEntry[]>(
+        `/leaderboard/following/${encodeURIComponent(googleId)}?period=${period}&limit=${limit}`
+      ),
   },
 };

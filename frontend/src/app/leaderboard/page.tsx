@@ -31,7 +31,13 @@ export default async function LeaderboardPage({
   const providerId = user?.id;
 
   const p = await searchParams;
-  const period = p.period || "alltime";
+  let period = p.period || "alltime";
+  let view: "global" | "following" = p.view === "following" ? "following" : "global";
+  // Legacy links used ?period=following
+  if (period === "following") {
+    view = "following";
+    period = "alltime";
+  }
 
   const getStreakHeatColor = (streak: number) => {
     if (streak >= 6) return "#d71920";
@@ -40,9 +46,20 @@ export default async function LeaderboardPage({
     return "#262626";
   };
 
+  const leaderboardHref = (nextPeriod: string, nextView: "global" | "following") => {
+    const q = new URLSearchParams();
+    q.set("period", nextPeriod);
+    if (nextView === "following") q.set("view", "following");
+    return `/leaderboard?${q.toString()}`;
+  };
+
   // Fetch leaderboard entries
-  let allEntries = [];
-  if (period === "weekly") {
+  let allEntries: Awaited<ReturnType<typeof api.leaderboard.global>> = [];
+  if (view === "following") {
+    if (providerId) {
+      allEntries = await api.leaderboard.following(providerId, period, 100).catch(() => []);
+    }
+  } else if (period === "weekly") {
     allEntries = await api.leaderboard.weekly(100).catch(() => []);
   } else if (period === "monthly") {
     allEntries = await api.leaderboard.monthly(100).catch(() => []);
@@ -52,15 +69,18 @@ export default async function LeaderboardPage({
 
   const top10 = allEntries.slice(0, 10);
 
+  const rankScope = view === "following" ? "following" : "global";
   let myEntry = allEntries.find((e) => e.google_id === providerId) ?? null;
-  if (!myEntry && providerId) {
-    myEntry = await api.leaderboard.myRank(providerId, period).catch(() => null);
+  if (!myEntry && providerId && (view === "global" || view === "following")) {
+    myEntry = await api.leaderboard.myRank(providerId, period, rankScope).catch(() => null);
   }
   const myRank = myEntry?.rank ?? null;
 
   const periodLabel = period === "weekly" ? "Last 7 Days"
     : period === "monthly" ? "Last 30 Days"
     : "All Time";
+
+  const scopeLabel = view === "following" ? "Following" : "Global";
 
   return (
     <>
@@ -79,35 +99,79 @@ export default async function LeaderboardPage({
                   Ranking
                 </h1>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#525252] mt-1 sm:mt-2 truncate">
-                  {periodLabel} · Top {top10.length}
+                  {scopeLabel} · {periodLabel} · Top {top10.length}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Period tabs */}
-          <div className="flex items-center gap-2">
-            {PERIOD_TABS.map(({ value, label }) => (
+          {/* Scope: global vs people you follow */}
+          <div className="flex flex-col gap-2">
+            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#404040]">View</p>
+            <div className="flex flex-wrap items-center gap-2">
               <Link
-                key={value}
-                href={`/leaderboard?period=${value}`}
+                href={leaderboardHref(period, "global")}
                 className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
-                  period === value
+                  view === "global"
                     ? "border-white text-white bg-[#1a1a1a]"
                     : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
                 }`}
               >
-                {label}
+                Global
               </Link>
-            ))}
+              <Link
+                href={leaderboardHref(period, "following")}
+                className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
+                  view === "following"
+                    ? "border-white text-white bg-[#1a1a1a]"
+                    : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                }`}
+              >
+                Following
+              </Link>
+            </div>
+          </div>
+
+          {/* Period tabs */}
+          <div className="flex flex-col gap-2">
+            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-[#404040]">Period</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {PERIOD_TABS.map(({ value, label }) => (
+                <Link
+                  key={value}
+                  href={leaderboardHref(value, view)}
+                  className={`px-4 py-2 text-[10px] font-black tracking-[0.2em] uppercase border transition-colors ${
+                    period === value
+                      ? "border-white text-white bg-[#1a1a1a]"
+                      : "border-[#262626] text-[#525252] hover:text-white hover:bg-[#111]"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
 
-        {allEntries.length === 0 ? (
+        {view === "following" && !providerId ? (
           <div className="border border-[#262626] bg-[#050505] p-16 flex flex-col items-center gap-4 text-center">
             <Medal className="w-8 h-8 mb-4 text-[#262626]" />
-            <p className="font-black text-white text-xl uppercase tracking-widest">No Predictions Yet</p>
-            <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em]">Be the first to predict and claim the top spot.</p>
+            <p className="font-black text-white text-xl uppercase tracking-widest">Sign in</p>
+            <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
+              Log in to see how you rank against people you follow for {periodLabel.toLowerCase()}.
+            </p>
+          </div>
+        ) : allEntries.length === 0 ? (
+          <div className="border border-[#262626] bg-[#050505] p-16 flex flex-col items-center gap-4 text-center">
+            <Medal className="w-8 h-8 mb-4 text-[#262626]" />
+            <p className="font-black text-white text-xl uppercase tracking-widest">
+              {view === "following" ? "No rankings yet" : "No Predictions Yet"}
+            </p>
+            <p className="text-[10px] text-[#525252] font-bold uppercase tracking-[0.2em] max-w-sm">
+              {view === "following"
+                ? "Nobody in your network has predictions for this period yet — or follow more players from their profiles."
+                : "Be the first to predict and claim the top spot."}
+            </p>
           </div>
         ) : (
           <>
