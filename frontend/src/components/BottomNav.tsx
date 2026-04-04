@@ -61,7 +61,8 @@ export default function BottomNav() {
                 alt="Profile"
                 width={24} height={24}
                 referrerPolicy="no-referrer"
-                className={`rounded-full shrink-0 ${isActive("/profile") ? "ring-2 ring-white" : "opacity-60"}`}
+                className={`rounded-full shrink-0 ${isActive("/profile") ? "ring-2 ring-white" : ""}`}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               />
             ) : (
               <User className="w-5 h-5" strokeWidth={isActive("/profile") ? 2.5 : 1.5} />
