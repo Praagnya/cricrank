@@ -42,6 +42,13 @@ export default function Header() {
     setShowInviteNudge(true);
   }, []);
 
+  // Capture ?ref= on mount — must run before auth check so it's stored even for logged-out users
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) localStorage.setItem("cricrank_pending_ref", ref);
+  }, []);
+
   useEffect(() => {
     if (!user) {
       setCoins(null);
@@ -56,12 +63,6 @@ export default function Header() {
       email: user.email ?? "",
       avatar_url: user.user_metadata?.avatar_url ?? null,
     });
-
-    // Capture ?ref= param from URL and persist to localStorage
-    if (typeof window !== "undefined") {
-      const ref = new URLSearchParams(window.location.search).get("ref");
-      if (ref) localStorage.setItem("cricrank_pending_ref", ref);
-    }
 
     const syncCoins = async () => {
       if (syncBusy.current) return;
@@ -275,7 +276,7 @@ export default function Header() {
                 <div className="flex items-center gap-3 p-4 mb-2 border border-[#262626] bg-[#0a0a0a]">
                   {user.user_metadata?.avatar_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-10 h-10 object-cover rounded-full grayscale border border-[#333]" />
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-10 h-10 object-cover rounded-full border border-[#333]" />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-[#1f1f1f] flex items-center justify-center text-lg font-bold text-white border border-[#333]">
                       {user.user_metadata?.full_name?.[0]?.toUpperCase() ?? "U"}
