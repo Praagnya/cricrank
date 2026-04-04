@@ -24,8 +24,19 @@ const gaming = Chakra_Petch({
 });
 
 export const metadata: Metadata = {
-  title: "CricRank — Indian T20 CUP",
-  description: "Predict Indian T20 CUP match results, compete on the leaderboard.",
+  title: "CricRank — Master the Game",
+  description: "The ultimate platform for cricket fans. Prove your expertise, top the leaderboard, and claim your glory. No odds. Just skill.",
+  openGraph: {
+    title: "CricRank — Master the Game",
+    description: "The ultimate platform for cricket fans. Prove your expertise, top the leaderboard, and claim your glory. No odds. Just skill.",
+    siteName: "CricRank",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "CricRank — Master the Game",
+    description: "The ultimate platform for cricket fans. Prove your expertise, top the leaderboard, and claim your glory. No odds. Just skill.",
+  },
 };
 
 export const viewport: import("next").Viewport = {
