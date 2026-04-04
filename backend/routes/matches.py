@@ -603,7 +603,37 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb=[],
         )
 
-    current_payload = _find_current_match_payload(match.cricapi_id)
+    # Finished with a winner: DB-only — avoids currentMatches / match_info / BBB on every poll.
+    if match.status == MatchStatus.completed and match.winner:
+        _settle_all_toss_plays_for_match(db, match)
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+        fb = (match.result_summary and match.result_summary.strip()) or f"{match.winner} won"
+        return MatchLiveResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            status=MatchStatus.completed,
+            match_started=True,
+            match_ended=True,
+            status_text=fb,
+            match_winner=canonicalize_winner(match.winner),
+            result_summary=(match.result_summary and match.result_summary.strip()) or fb,
+            score=[],
+            bbb=[],
+        )
+
+    # currentMatches often omits finished fixtures; after a long "live" window, skip it to save quota.
+    # Also skip when DB says completed but winner missing — recover via match_info / BBB only.
+    start_utc = _match_start_time_utc(match)
+    stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=5)
+    completed_no_winner = match.status == MatchStatus.completed and not match.winner
+    skip_current_matches = stale_live or completed_no_winner
+
+    current_payload = None
+    if not skip_current_matches:
+        current_payload = _find_current_match_payload(match.cricapi_id)
     bbb_payload: dict = {}
     if current_payload and (current_payload.get("matchStarted") or current_payload.get("matchEnded")):
         try:
@@ -612,21 +642,14 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb_payload = {}
 
     source = bbb_payload or current_payload or {}
-    # Fixture often missing from currentMatches — use match_info as primary payload when empty.
-    if not source:
+    # One match_info merge when source is empty or has no score (avoids duplicate API calls).
+    if not source or not (source.get("score") or []):
         try:
             info = fetch_match_info(match.cricapi_id) or {}
+            if isinstance(info, dict) and info:
+                source = {**info, **source}
         except CricAPIError:
-            info = {}
-        if isinstance(info, dict) and info:
-            source = dict(info)
-    elif not (source.get("score") or []):
-        try:
-            info = fetch_match_info(match.cricapi_id) or {}
-        except CricAPIError:
-            info = {}
-        if isinstance(info, dict) and info.get("score"):
-            source = {**info, **source}
+            pass
 
     if source:
         status = _match_status_from_payload(source)
@@ -673,6 +696,27 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
     if match.status == MatchStatus.upcoming and datetime.now(timezone.utc) < _match_start_time_utc(match):
+        return MatchScorecardResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            score=[],
+            scorecard=[],
+        )
+
+    # Settled matches: at most one scorecard API call; no BBB / match_info fan-out.
+    if match.status == MatchStatus.completed and match.winner:
+        payload: dict = {}
+        try:
+            payload = fetch_match_scorecard(match.cricapi_id) or {}
+        except CricAPIError:
+            pass
+        if (payload.get("score") or []) or (payload.get("scorecard") or []):
+            return MatchScorecardResponse(
+                match_id=match.id,
+                cricapi_id=match.cricapi_id,
+                score=payload.get("score") or [],
+                scorecard=payload.get("scorecard") or [],
+            )
         return MatchScorecardResponse(
             match_id=match.id,
             cricapi_id=match.cricapi_id,
