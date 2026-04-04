@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, LogIn, Zap, Menu, X, Coins, Copy, Check, Share2 } from "lucide-react";
+import { LogOut, LogIn, Zap, Menu, X, Coins, Copy, Check, Share2, Search } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getApiBaseUrl } from "@/lib/api-base";
 import CoinRewardToast from "@/components/CoinRewardToast";
 import CoinToast from "@/components/CoinToast";
+import FindPlayers from "@/components/FindPlayers";
 import { coinSyncStorageKey, istCalendarDateKey } from "@/lib/utils";
 
 export default function Header() {
@@ -20,6 +21,7 @@ export default function Header() {
   const [showInviteNudge, setShowInviteNudge] = useState(false);
   const [drawerCopied, setDrawerCopied] = useState(false);
   const [nudgeCopied, setNudgeCopied] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const syncBusy = useRef(false);
 
   const refUrl =
@@ -173,6 +175,7 @@ export default function Header() {
       )}
 
       <CoinToast />
+      {searchOpen && <FindPlayers onClose={() => setSearchOpen(false)} />}
       <header className="sticky top-0 z-50 bg-[#000000] border-b border-[#262626] select-none">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-[56px] grid grid-cols-3 items-center">
 
@@ -196,8 +199,16 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* RIGHT — coins + avatar */}
+          {/* RIGHT — search + coins + avatar */}
           <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className={`${btn} w-9 h-9 sm:w-10 sm:h-10`}
+              aria-label="Search players"
+            >
+              <Search className="w-[18px] h-[18px] sm:w-5 sm:h-5" strokeWidth={1.5} />
+            </button>
             {!loading && user && coins !== null && (
               <Link href="/profile" className="flex items-center gap-2 px-1 group">
                 <Coins className="w-5 h-5 text-[#fbbf24] shrink-0 group-hover:text-[#fde68a] transition-colors" strokeWidth={1.5} />
