@@ -624,18 +624,27 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb=[],
         )
 
-    # currentMatches often omits finished fixtures; after a long "live" window, skip it to save quota.
-    # Also skip when DB says completed but winner missing — recover via match_info / BBB only.
+    # currentMatches often omits finished fixtures; skip it to save quota when:
+    # - kickoff passed but DB still "upcoming" (common; CM/BBB+info sync status)
+    # - DB "live" long after scheduled start (fixture left the live list)
+    # - completed without winner (recover via BBB/match_info only)
     start_utc = _match_start_time_utc(match)
-    stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=5)
+    upcoming_past_kickoff = match.status == MatchStatus.upcoming and now >= start_utc
+    stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=4)
     completed_no_winner = match.status == MatchStatus.completed and not match.winner
-    skip_current_matches = stale_live or completed_no_winner
+    skip_current_matches = upcoming_past_kickoff or stale_live or completed_no_winner
 
     current_payload = None
     if not skip_current_matches:
         current_payload = _find_current_match_payload(match.cricapi_id)
     bbb_payload: dict = {}
     if current_payload and (current_payload.get("matchStarted") or current_payload.get("matchEnded")):
+        try:
+            bbb_payload = fetch_match_bbb(match.cricapi_id) or {}
+        except CricAPIError:
+            bbb_payload = {}
+    elif skip_current_matches:
+        # No row from currentMatches — BBB still tracks many in-progress / just-finished games.
         try:
             bbb_payload = fetch_match_bbb(match.cricapi_id) or {}
         except CricAPIError:
@@ -703,20 +712,8 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
             scorecard=[],
         )
 
-    # Settled matches: at most one scorecard API call; no BBB / match_info fan-out.
+    # Settled: no CricAPI — line score / result already come from GET /live (DB-only there).
     if match.status == MatchStatus.completed and match.winner:
-        payload: dict = {}
-        try:
-            payload = fetch_match_scorecard(match.cricapi_id) or {}
-        except CricAPIError:
-            pass
-        if (payload.get("score") or []) or (payload.get("scorecard") or []):
-            return MatchScorecardResponse(
-                match_id=match.id,
-                cricapi_id=match.cricapi_id,
-                score=payload.get("score") or [],
-                scorecard=payload.get("scorecard") or [],
-            )
         return MatchScorecardResponse(
             match_id=match.id,
             cricapi_id=match.cricapi_id,

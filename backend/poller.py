@@ -218,9 +218,10 @@ def job_check_result(match_id: str) -> None:
 
         now = datetime.now(timezone.utc)
         start_utc = _match_start_time_utc(match)
-        stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=5)
+        upcoming_past_kickoff = match.status == MatchStatus.upcoming and now >= start_utc
+        stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=4)
         completed_no_winner = match.status == MatchStatus.completed and not match.winner
-        skip_cm = stale_live or completed_no_winner
+        skip_cm = upcoming_past_kickoff or stale_live or completed_no_winner
 
         payload = {} if skip_cm else (_find_current_match_payload(match.cricapi_id) or {})
         if not payload.get("matchStarted"):
