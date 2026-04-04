@@ -11,6 +11,14 @@ from coin_ledger import claim_daily_login, apply_credit
 router = APIRouter()
 
 
+def _user_by_identifier(identifier: str, db: Session) -> User | None:
+    """Resolve profile URL segment: username first, then google_id."""
+    u = db.query(User).filter(User.username == identifier).first()
+    if not u:
+        u = db.query(User).filter(User.google_id == identifier).first()
+    return u
+
+
 def _generate_username(name: str, db: Session) -> str:
     slug = re.sub(r'[^a-z0-9]', '_', name.lower())
     slug = re.sub(r'_+', '_', slug).strip('_')[:20]
@@ -108,9 +116,7 @@ def search_users(q: str = Query(..., min_length=1), db: Session = Depends(get_db
 @router.get("/{identifier}", response_model=UserPublic)
 def get_user(identifier: str, db: Session = Depends(get_db)):
     """Resolve by username first, then fall back to google_id for old links."""
-    user = db.query(User).filter(User.username == identifier).first()
-    if not user:
-        user = db.query(User).filter(User.google_id == identifier).first()
+    user = _user_by_identifier(identifier, db)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -211,13 +217,13 @@ def unfollow_user(
     return {"ok": True}
 
 
-@router.get("/{target_google_id}/follow-stats", response_model=FollowStats)
+@router.get("/{target_identifier}/follow-stats", response_model=FollowStats)
 def follow_stats(
-    target_google_id: str,
+    target_identifier: str,
     viewer_id: str = Query(None),
     db: Session = Depends(get_db),
 ):
-    target = db.query(User).filter(User.google_id == target_google_id).first()
+    target = _user_by_identifier(target_identifier, db)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 

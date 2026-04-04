@@ -16,9 +16,16 @@ interface ProfileViewProps {
   userId: string;
   isEditable?: boolean;
   currentUserId?: string | null;
+  /** When true, follow UI waits for session so we do not flash the wrong Follow/Following state. */
+  authLoading?: boolean;
 }
 
-export default function ProfileView({ userId, isEditable = false, currentUserId = null }: ProfileViewProps) {
+export default function ProfileView({
+  userId,
+  isEditable = false,
+  currentUserId = null,
+  authLoading = false,
+}: ProfileViewProps) {
   const [dbUser, setDbUser] = useState<User | null>(null);
   const [predictions, setPredictions] = useState<PredictionWithMatch[]>([]);
   const [rank, setRank] = useState<number | null>(null);
@@ -46,6 +53,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [followListModal, setFollowListModal] = useState<"followers" | "following" | null>(null);
   const [followList, setFollowList] = useState<FollowUser[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
+  const [followStatsLoading, setFollowStatsLoading] = useState(true);
 
   // Squad invite state
   const [inviteModal, setInviteModal] = useState(false);
@@ -126,25 +134,34 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
     };
   }, [userId]);
 
-  // Separate effect for follow stats — re-runs when currentUserId or dbUser loads
+  // Follow stats: same URL identifier as /users/{id} (username or google_id). Waits for auth on
+  // public profiles so the first request includes viewer_id and avoids a wrong "Follow" flash.
   useEffect(() => {
+    if (authLoading) {
+      setFollowStatsLoading(true);
+      return;
+    }
     let cancelled = false;
-    const gid = dbUser?.google_id ?? userId;
-    if (!gid) return;
     const BASE = getApiBaseUrl();
-    fetch(`${BASE}/users/${gid}/follow-stats${currentUserId ? `?viewer_id=${currentUserId}` : ""}`)
-      .then((res) => res.ok ? res.json() : null)
+    const enc = encodeURIComponent(userId);
+    const qs = currentUserId ? `?viewer_id=${encodeURIComponent(currentUserId)}` : "";
+    setFollowStatsLoading(true);
+    fetch(`${BASE}/users/${enc}/follow-stats${qs}`)
+      .then((res) => (res.ok ? res.json() : null))
       .then((fs) => {
         if (cancelled || !fs) return;
         setFollowerCount(fs.follower_count);
         setFollowingCount(fs.following_count);
         setIsFollowing(fs.is_following);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setFollowStatsLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [userId, currentUserId, dbUser]);
+  }, [userId, currentUserId, authLoading]);
 
   const handleFollow = async () => {
     if (!currentUserId || followLoading) return;
@@ -386,42 +403,80 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
                 </div>
               </div>
 
-              {/* Action buttons — always on one line */}
-              {currentUserId && currentUserId !== userId && (
-                <div className="flex items-center gap-2 flex-nowrap">
-                  <button
-                    onClick={handleFollow}
-                    disabled={followLoading}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors disabled:opacity-50 shrink-0 ${
-                      isFollowing
-                        ? "bg-[#052016] border-[#10b981] text-[#10b981] hover:bg-[#111] hover:border-[#525252] hover:text-[#525252]"
-                        : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
-                    }`}
-                  >
-                    {isFollowing && <Check className="w-3 h-3" />}
-                    <span className="text-[10px] font-black uppercase tracking-widest">
-                      {isFollowing ? "Following" : "Follow"}
-                    </span>
-                  </button>
-                  <button
-                    onClick={openInviteModal}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors shrink-0"
-                  >
-                    <Users className="w-3 h-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Invite</span>
-                  </button>
-                </div>
-              )}
+              {/* Action buttons — compare google_id to URL id (username) */}
+              {(() => {
+                const isOtherProfile = Boolean(
+                  currentUserId && dbUser && currentUserId !== dbUser.google_id
+                );
+                if (!isOtherProfile) return null;
+                if (followStatsLoading || authLoading) {
+                  return (
+                    <div className="flex items-center gap-2 flex-nowrap h-8">
+                      <div className="h-8 w-[5.5rem] bg-[#1a1a1a] border border-[#262626] animate-pulse" />
+                      <div className="h-8 w-[4.5rem] bg-[#1a1a1a] border border-[#262626] animate-pulse" />
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2 flex-nowrap">
+                    <button
+                      type="button"
+                      onClick={handleFollow}
+                      disabled={followLoading}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 border transition-colors disabled:opacity-50 shrink-0 ${
+                        isFollowing
+                          ? "bg-[#052016] border-[#10b981] text-[#10b981] hover:bg-[#111] hover:border-[#525252] hover:text-[#525252]"
+                          : "bg-[#111111] border-[#2a2a2a] text-[#737373] hover:text-white hover:border-white hover:bg-[#1a1a1a]"
+                      }`}
+                    >
+                      {isFollowing && <Check className="w-3 h-3" />}
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {isFollowing ? "Following" : "Follow"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openInviteModal}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#111111] border border-[#2a2a2a] text-[#737373] hover:text-white hover:border-[#444] transition-colors shrink-0"
+                    >
+                      <Users className="w-3 h-3" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Invite</span>
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Followers / Following — inline stats */}
               <div className="flex items-center gap-5">
-                <button onClick={() => openFollowList("followers")} className="flex flex-col items-start hover:opacity-70 transition-opacity">
-                  <span className="font-gaming text-2xl text-white leading-none">{followerCount}</span>
+                <button
+                  type="button"
+                  onClick={() => openFollowList("followers")}
+                  className="flex flex-col items-start hover:opacity-70 transition-opacity disabled:opacity-50"
+                  disabled={followStatsLoading || authLoading}
+                >
+                  <span className="font-gaming text-2xl text-white leading-none min-h-8 flex items-center">
+                    {followStatsLoading || authLoading ? (
+                      <span className="inline-block w-10 h-7 bg-[#1a1a1a] animate-pulse" />
+                    ) : (
+                      followerCount
+                    )}
+                  </span>
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-[#525252] mt-0.5">Followers</span>
                 </button>
                 <div className="w-px h-8 bg-[#262626]" />
-                <button onClick={() => openFollowList("following")} className="flex flex-col items-start hover:opacity-70 transition-opacity">
-                  <span className="font-gaming text-2xl text-white leading-none">{followingCount}</span>
+                <button
+                  type="button"
+                  onClick={() => openFollowList("following")}
+                  className="flex flex-col items-start hover:opacity-70 transition-opacity disabled:opacity-50"
+                  disabled={followStatsLoading || authLoading}
+                >
+                  <span className="font-gaming text-2xl text-white leading-none min-h-8 flex items-center">
+                    {followStatsLoading || authLoading ? (
+                      <span className="inline-block w-10 h-7 bg-[#1a1a1a] animate-pulse" />
+                    ) : (
+                      followingCount
+                    )}
+                  </span>
                   <span className="text-[8px] font-black uppercase tracking-[0.25em] text-[#525252] mt-0.5">Following</span>
                 </button>
               </div>

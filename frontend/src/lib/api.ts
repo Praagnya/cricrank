@@ -18,6 +18,32 @@ import { getApiBaseUrl } from "@/lib/api-base";
 
 const BASE = getApiBaseUrl();
 
+/** Short client-side cache for toss / first-innings status (Next fetch cache is weak for cross-origin client calls). */
+const SIDE_GAME_TTL_MS = 30_000;
+const sideGameCache = new Map<string, { expires: number; data: unknown }>();
+
+function sideCacheTake<T>(key: string): T | null {
+  const e = sideGameCache.get(key);
+  if (!e || Date.now() > e.expires) {
+    if (e) sideGameCache.delete(key);
+    return null;
+  }
+  return e.data as T;
+}
+
+function sideCachePut<T>(key: string, data: T) {
+  sideGameCache.set(key, { expires: Date.now() + SIDE_GAME_TTL_MS, data });
+}
+
+function bustSideGameCache(matchId: string, googleId: string, which: "toss" | "fi" | "both") {
+  if (which === "toss" || which === "both") {
+    sideGameCache.delete(`toss:${matchId}:${googleId}`);
+  }
+  if (which === "fi" || which === "both") {
+    sideGameCache.delete(`fi:${matchId}:${googleId}`);
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
@@ -70,24 +96,42 @@ export const api = {
     get: (id: string) => get<Match>(`/matches/${id}`),
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
-    tossStatus: (matchId: string, googleId: string) =>
-      getNoStore<TossStatusResponse>(
+    tossStatus: async (matchId: string, googleId: string) => {
+      const key = `toss:${matchId}:${googleId}`;
+      const hit = sideCacheTake<TossStatusResponse>(key);
+      if (hit) return hit;
+      const data = await get<TossStatusResponse>(
         `/matches/${matchId}/toss-status?google_id=${encodeURIComponent(googleId)}`
-      ),
-    tossPick: (matchId: string, googleId: string, pickedTeam: string, stake: number) =>
-      postNoStore<TossPickResponse>(
+      );
+      sideCachePut(key, data);
+      return data;
+    },
+    tossPick: async (matchId: string, googleId: string, pickedTeam: string, stake: number) => {
+      const data = await postNoStore<TossPickResponse>(
         `/matches/${matchId}/toss-pick?google_id=${encodeURIComponent(googleId)}`,
         { picked_team: pickedTeam, stake }
-      ),
-    firstInningsStatus: (matchId: string, googleId: string) =>
-      getNoStore<FirstInningsStatusResponse>(
+      );
+      bustSideGameCache(matchId, googleId, "toss");
+      return data;
+    },
+    firstInningsStatus: async (matchId: string, googleId: string) => {
+      const key = `fi:${matchId}:${googleId}`;
+      const hit = sideCacheTake<FirstInningsStatusResponse>(key);
+      if (hit) return hit;
+      const data = await get<FirstInningsStatusResponse>(
         `/matches/${matchId}/first-innings-status?google_id=${encodeURIComponent(googleId)}`
-      ),
-    firstInningsPick: (matchId: string, googleId: string, predictedScore: number) =>
-      postNoStore<FirstInningsPickResponse>(
+      );
+      sideCachePut(key, data);
+      return data;
+    },
+    firstInningsPick: async (matchId: string, googleId: string, predictedScore: number) => {
+      const data = await postNoStore<FirstInningsPickResponse>(
         `/matches/${matchId}/first-innings-pick?google_id=${encodeURIComponent(googleId)}`,
         { predicted_score: predictedScore }
-      ),
+      );
+      bustSideGameCache(matchId, googleId, "fi");
+      return data;
+    },
   },
   users: {
     upsert: (data: { google_id: string; name: string; email: string }) =>
