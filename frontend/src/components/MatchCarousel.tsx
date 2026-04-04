@@ -180,7 +180,10 @@ export default function MatchCarousel({ matches }: Props) {
         </div>
       </div>
 
-      {match.status !== "upcoming" && (
+      {(match.status !== "upcoming" ||
+        (typeof match.start_time === "string" &&
+          !Number.isNaN(Date.parse(match.start_time)) &&
+          Date.now() >= Date.parse(match.start_time))) && (
         <MatchScoreboard key={match.id} matchId={match.id} matchStatus={match.status} cricapiId={match.cricapi_id} />
       )}
 

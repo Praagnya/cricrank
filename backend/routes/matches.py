@@ -32,6 +32,13 @@ router = APIRouter()
 TOSS_MIN_COINS = 50
 
 
+def _match_start_time_utc(match: Match) -> datetime:
+    st = match.start_time
+    if st.tzinfo is None:
+        return st.replace(tzinfo=timezone.utc)
+    return st.astimezone(timezone.utc)
+
+
 def _merge_toss_sources(match: Match) -> dict:
     if not match.cricapi_id:
         return {}
@@ -579,8 +586,9 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
-    # Upcoming: no CricAPI — score strip is hidden in the app; poller/toss routes refresh feed data.
-    if match.status == MatchStatus.upcoming:
+    # True pre-start: DB still upcoming and scheduled start not reached — skip CricAPI.
+    now = datetime.now(timezone.utc)
+    if match.status == MatchStatus.upcoming and now < _match_start_time_utc(match):
         fb = _status_text_fallback(match)
         return MatchLiveResponse(
             match_id=match.id,
@@ -604,19 +612,28 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb_payload = {}
 
     source = bbb_payload or current_payload or {}
-    if not (source.get("score") or []):
+    # Fixture often missing from currentMatches — use match_info as primary payload when empty.
+    if not source:
         try:
             info = fetch_match_info(match.cricapi_id) or {}
         except CricAPIError:
             info = {}
-        if info.get("score"):
+        if isinstance(info, dict) and info:
+            source = dict(info)
+    elif not (source.get("score") or []):
+        try:
+            info = fetch_match_info(match.cricapi_id) or {}
+        except CricAPIError:
+            info = {}
+        if isinstance(info, dict) and info.get("score"):
             source = {**info, **source}
 
-    status = (
-        _match_status_from_payload(source)
-        if source
-        else (MatchStatus.live if match.status == MatchStatus.live else match.status)
-    )
+    if source:
+        status = _match_status_from_payload(source)
+        if status != match.status:
+            match.status = status
+    else:
+        status = MatchStatus.live if match.status == MatchStatus.live else match.status
     match_started = bool(source.get("matchStarted")) if source else match.status in (MatchStatus.live, MatchStatus.completed)
     match_ended = bool(source.get("matchEnded")) if source else match.status == MatchStatus.completed
     status_text = source.get("status") or _status_text_fallback(match)
@@ -655,7 +672,7 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
     if not match.cricapi_id:
         raise HTTPException(status_code=400, detail="Match is not linked to CricAPI")
 
-    if match.status == MatchStatus.upcoming:
+    if match.status == MatchStatus.upcoming and datetime.now(timezone.utc) < _match_start_time_utc(match):
         return MatchScorecardResponse(
             match_id=match.id,
             cricapi_id=match.cricapi_id,
