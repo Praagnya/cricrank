@@ -1,7 +1,7 @@
 """
 Background APScheduler jobs for CricAPI polling.
 
-Toss jobs  : fire at toss_time, toss_time+5min, toss_time+10min per match.
+Toss jobs  : fire at toss_time+5, +10, +35, +40 min per match.
 Result jobs: fire at start_time+3h–5h (every 30 min) per match.
 
 Completed matches with a winner but empty result_summary are filled via
@@ -400,12 +400,10 @@ def _schedule_toss_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:
     toss_time = _utc(match.toss_time)
     match_id = str(match.id)
 
-    # Fire at toss_time+30, +40, +50 min = match start_time+0, +10, +20 min.
-    # CricAPI only reports the toss winner once matchStarted=true, so we need
-    # to poll after the match has begun, not during the pre-toss window.
+    # Early checks at +5/+10; later at +35/+40 (~match start +5/+10) when feed has toss.
     future_fires = [
         toss_time + timedelta(minutes=offset)
-        for offset in (30, 40, 50)
+        for offset in (5, 10, 35, 40)
         if toss_time + timedelta(minutes=offset) > now
     ]
 
