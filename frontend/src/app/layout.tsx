@@ -31,6 +31,7 @@ export const metadata: Metadata = {
     description: "The ultimate platform for cricket fans. Prove your expertise, top the leaderboard, and claim your glory. No odds. Just skill.",
     siteName: "CricRank",
     type: "website",
+    url: "https://cricrank.com",
   },
   twitter: {
     card: "summary",
