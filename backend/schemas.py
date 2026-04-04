@@ -11,6 +11,7 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     avatar_url: Optional[str] = None
+    ref_code: Optional[str] = None
 
 class UserIdentityUpdate(BaseModel):
     jersey_number: int
@@ -36,6 +37,7 @@ class UserPublic(BaseModel):
     jersey_number: Optional[int] = None
     jersey_color: Optional[str] = None
     coins: int = 1000
+    referral_code: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -44,6 +46,7 @@ class UserLoginResponse(UserPublic):
     """POST /users/ — includes optional daily coin bonus for this login."""
 
     daily_login_coins_awarded: int = 0
+    referral_coins_awarded: int = 0
 
 
 class FirstInningsPickRequest(BaseModel):

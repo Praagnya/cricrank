@@ -52,6 +52,7 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
   const [mySquads, setMySquads] = useState<Squad[]>([]);
   const [squadsLoading, setSquadsLoading] = useState(false);
   const [squadCopied, setSquadCopied] = useState<string | null>(null);
+  const [refLinkCopied, setRefLinkCopied] = useState(false);
   const [createSquadName, setCreateSquadName] = useState("");
   const [creatingSquad, setCreatingSquad] = useState(false);
   const [createSquadError, setCreateSquadError] = useState("");
@@ -515,6 +516,38 @@ export default function ProfileView({ userId, isEditable = false, currentUserId 
         </div>
 
       </div>
+
+      {/* INVITE FRIENDS — own profile only */}
+      {isEditable && dbUser.referral_code && (() => {
+        const refUrl = `${typeof window !== "undefined" ? window.location.origin : "https://cricrank.app"}/?ref=${dbUser.referral_code}`;
+        const copyRef = async () => {
+          try { await navigator.clipboard.writeText(refUrl); setRefLinkCopied(true); setTimeout(() => setRefLinkCopied(false), 2000); }
+          catch { /* ignore */ }
+        };
+        return (
+          <div className="border border-[#262626] bg-[#000000]">
+            <div className="flex items-center gap-4 px-5 py-4 border-b border-[#262626]">
+              <div className="w-[3px] h-5 bg-[#f59e0b]" />
+              <h2 className="font-gaming text-[13px] uppercase tracking-[0.25em] text-white">Invite Friends</h2>
+              <div className="h-px flex-1 bg-[#262626]" />
+              <span className="font-gaming text-[10px] font-black tracking-[0.2em] text-[#f59e0b] uppercase">+◈2,000</span>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-[9px] font-bold tracking-[0.2em] text-[#525252] uppercase mb-3">
+                Share your link — earn 2,000 coins per friend who signs up
+              </p>
+              <div className="flex items-center gap-2 border border-[#262626] bg-[#0a0a0a] px-3 py-2.5">
+                <span className="font-mono text-[10px] text-[#a3a3a3] flex-1 truncate">{refUrl}</span>
+                <button onClick={copyRef}
+                  className="flex items-center gap-1.5 font-gaming text-[9px] font-black uppercase tracking-[0.2em] text-[#525252] hover:text-white transition-colors shrink-0">
+                  {refLinkCopied ? <Check className="w-3.5 h-3.5 text-[#10b981]" /> : <Copy className="w-3.5 h-3.5" />}
+                  {refLinkCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* PREDICTION LEDGER */}
       <div>

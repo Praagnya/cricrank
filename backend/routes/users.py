@@ -6,7 +6,7 @@ import random
 from database import get_db
 from models import User, Follow, JERSEY_COLORS
 from schemas import UserCreate, UserPublic, UserLoginResponse, UserIdentityUpdate, FollowStats, FollowUserPublic
-from coin_ledger import claim_daily_login
+from coin_ledger import claim_daily_login, apply_credit
 
 router = APIRouter()
 
@@ -44,6 +44,7 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
 
         username = _generate_username(name, db)
 
+        import secrets
         user = User(
             google_id=payload.google_id,
             username=username,
@@ -52,6 +53,7 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
             avatar_url=payload.avatar_url,
             jersey_number=random.randint(1, 99),
             jersey_color=random.choice(JERSEY_COLORS),
+            referral_code=secrets.token_hex(4).upper(),
         )
         db.add(user)
     else:
@@ -62,11 +64,25 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
 
     db.flush()
     daily_awarded = claim_daily_login(db, user)
+
+    # Process referral bonus (only once per user, never self-referral)
+    referral_awarded = 0
+    if payload.ref_code and not user.referred_by_id:
+        referrer = db.query(User).filter(User.referral_code == payload.ref_code.upper()).first()
+        if referrer and referrer.id != user.id:
+            user.referred_by_id = referrer.id
+            db.flush()
+            referral_awarded = apply_credit(
+                db, referrer.id, 2000, "referral_bonus",
+                idempotency_key=f"referral:{user.id}",
+                ref_type="referral", ref_id=str(user.id),
+            )
+
     db.commit()
     db.refresh(user)
 
     base = UserPublic.model_validate(user)
-    return UserLoginResponse(**base.model_dump(), daily_login_coins_awarded=daily_awarded)
+    return UserLoginResponse(**base.model_dump(), daily_login_coins_awarded=daily_awarded, referral_coins_awarded=referral_awarded)
 
 
 # NOTE: /search must be registered BEFORE /{identifier} to avoid route conflict

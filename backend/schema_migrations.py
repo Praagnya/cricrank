@@ -1,6 +1,26 @@
 from sqlalchemy import inspect, text
 
 
+def ensure_referral_schema(engine) -> None:
+    """Add referral_code and referred_by_id to users table."""
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns("users")}
+    with engine.begin() as connection:
+        if "referral_code" not in cols:
+            connection.execute(text("ALTER TABLE users ADD COLUMN referral_code VARCHAR UNIQUE"))
+            # Backfill existing users with a deterministic 8-char code from their UUID
+            connection.execute(text(
+                "UPDATE users SET referral_code = UPPER(SUBSTRING(MD5(id::text), 1, 8)) "
+                "WHERE referral_code IS NULL"
+            ))
+        if "referred_by_id" not in cols:
+            connection.execute(text(
+                "ALTER TABLE users ADD COLUMN referred_by_id UUID REFERENCES users(id)"
+            ))
+
+
 def ensure_toss_winner_schema(engine) -> None:
     """matches.toss_winner column; toss_plays.winning_team nullable for pending predictions."""
     inspector = inspect(engine)

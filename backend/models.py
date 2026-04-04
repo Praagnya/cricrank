@@ -77,6 +77,8 @@ class User(Base):
     jersey_number = Column(Integer, nullable=True)
     jersey_color = Column(String, nullable=True)
     coins = Column(Integer, default=1000, nullable=False)
+    referral_code = Column(String, unique=True, nullable=True, index=True)
+    referred_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     predictions = relationship("Prediction", back_populates="user")
