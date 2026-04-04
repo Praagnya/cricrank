@@ -15,6 +15,7 @@ export default function PersonalProfilePage() {
   const [synced, setSynced] = useState(false);
 
   useEffect(() => {
+    setSynced(false);
     if (!user) return;
     const metadata = user.user_metadata;
     fetch(`${getApiBaseUrl()}/users/`, {
@@ -27,7 +28,7 @@ export default function PersonalProfilePage() {
         avatar_url: metadata?.avatar_url ?? null,
       }),
     }).finally(() => setSynced(true));
-  }, [user]);
+  }, [user?.id]);
 
   if (authLoading || (user && !synced)) {
     return (

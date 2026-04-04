@@ -53,6 +53,7 @@ export default function Header() {
     if (!user) {
       setCoins(null);
       setReferralCode(null);
+      syncBusy.current = false;
       return;
     }
 
