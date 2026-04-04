@@ -1,5 +1,4 @@
 import { api } from "@/lib/api";
-import Header from "@/components/Header";
 import MatchCard from "@/components/MatchCard";
 import { CalendarDays } from "lucide-react";
 import LeaderboardSidebar from "@/components/LeaderboardSidebar";
@@ -23,7 +22,6 @@ export default async function HomePage() {
   if (carouselMatches.length === 0 && recentResults.length === 0) {
     return (
       <>
-        <Header />
         <main className="max-w-5xl mx-auto px-6 py-20 flex flex-col items-center gap-3 text-center">
           <CalendarDays className="w-10 h-10 text-[var(--text-dim)]" />
           <p className="font-semibold">No upcoming matches</p>
@@ -35,8 +33,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <Header />
-
       <div className="flex items-start">
 
         {/* ── Left sidebar: Upcoming matches ──────────────── */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import Header from "@/components/Header";
 import TeamCrest from "@/components/TeamCrest";
 import { useUser } from "@/hooks/useUser";
 import { api } from "@/lib/api";
@@ -164,7 +163,6 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
   if (fetching || loading) {
     return (
       <>
-        <Header />
         <main className="max-w-lg mx-auto px-4 py-16 pb-24">
           <div className="space-y-3">
             {[1, 2, 3].map((n) => (
@@ -179,7 +177,6 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
   if (error || !challenge) {
     return (
       <>
-        <Header />
         <main className="max-w-lg mx-auto px-4 py-16 text-center pb-24">
           <XCircle className="w-12 h-12 text-[#ef4444] mx-auto mb-4" />
           <p className="font-gaming text-xl text-white mb-2">{error ?? "Challenge not found"}</p>
@@ -216,7 +213,6 @@ export default function ChallengeTokenPage({ params }: { params: Promise<{ token
 
   return (
     <>
-      <Header />
       <main className="max-w-lg mx-auto px-4 py-6 pb-24">
 
         {/* Back + title */}

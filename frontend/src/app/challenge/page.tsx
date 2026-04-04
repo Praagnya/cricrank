@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import Header from "@/components/Header";
 import TeamCrest from "@/components/TeamCrest";
 import ChallengeCard, { TERMINAL_STATUSES } from "@/components/ChallengeCard";
 import { useUser } from "@/hooks/useUser";
@@ -145,7 +144,6 @@ export default function ChallengePage() {
   if (!loading && !user) {
     return (
       <>
-        <Header />
         <main className="px-4 py-16 text-center pb-20">
           <Handshake className="w-10 h-10 text-[#262626] mx-auto mb-3" />
           <p className="font-gaming text-xl text-white tracking-widest mb-1">Challenge a Friend</p>
@@ -161,7 +159,6 @@ export default function ChallengePage() {
 
   return (
     <>
-      <Header />
       <main className="pb-24">
         <div className="max-w-2xl mx-auto">
 

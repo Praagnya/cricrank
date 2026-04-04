@@ -1,5 +1,4 @@
 import { api } from "@/lib/api";
-import Header from "@/components/Header";
 import { Medal, Zap } from "lucide-react";
 import { streakTierColor } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
@@ -65,7 +64,6 @@ export default async function LeaderboardPage({
 
   return (
     <>
-      <Header />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-4 min-w-0">
 
         {/* Header Block */}

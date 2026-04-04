@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Bebas_Neue, Inter, Chakra_Petch } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import Header from "@/components/Header";
 import { BugReportFab, BugReportFooterLink } from "@/components/BugReport";
 
 const heading = Bebas_Neue({
@@ -56,6 +57,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`h-full ${heading.variable} ${sans.variable} ${gaming.variable}`}>
       <body className="min-h-full flex flex-col antialiased pb-16 lg:pb-0">
+        <Header />
         {children}
         <footer className="hidden lg:flex border-t border-[#262626] bg-[#000000] py-4 px-6 items-center justify-center gap-6 flex-wrap">
           <p className="text-[10px] text-[#525252] font-bold tracking-widest uppercase">© 2026 CricRank</p>

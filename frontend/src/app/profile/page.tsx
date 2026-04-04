@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/useUser";
-import Header from "@/components/Header";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import ProfileView from "@/components/ProfileView";
@@ -53,7 +52,6 @@ export default function PersonalProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white pb-24">
-      <Header />
       <ProfileView userId={user.id} isEditable={true} />
     </div>
   );
