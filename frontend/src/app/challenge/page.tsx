@@ -46,24 +46,41 @@ export default function ChallengePage() {
 
   const acceptorStake = Math.max(0, challengerWants - challengerStake);
 
-  const loadData = useCallback(async () => {
+  // Upcoming matches are public — fetch on mount so we don’t wait for Supabase `getSession()` (~100–500ms+).
+  useEffect(() => {
+    let cancelled = false;
     setDataLoading(true);
-    try {
-      const matches = await api.matches.upcoming(20, 14).catch(() => []);
-      setUpcomingMatches(matches.filter((m) => m.status === "upcoming"));
-    } finally {
-      setDataLoading(false);
+    api.matches
+      .upcoming(20, 14)
+      .then((matches) => {
+        if (!cancelled) {
+          setUpcomingMatches(matches.filter((m) => m.status === "upcoming"));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUpcomingMatches([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDataLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!googleId) {
+      setMyChallenges([]);
+      setPendingCount(0);
+      return;
     }
-    // Load “Mine” / pending banner in the background — don’t block the match picker on this slower call.
-    if (googleId) {
-      api.challenges
-        .byUser(googleId)
-        .then((res) => {
-          setMyChallenges(res.challenges);
-          setPendingCount(res.pending_count);
-        })
-        .catch(() => {});
-    }
+    api.challenges
+      .byUser(googleId)
+      .then((res) => {
+        setMyChallenges(res.challenges);
+        setPendingCount(res.pending_count);
+      })
+      .catch(() => {});
   }, [googleId]);
 
   const loadOpen = useCallback(async () => {
@@ -73,8 +90,6 @@ export default function ChallengePage() {
     } catch { setOpenChallenges([]); }
     finally { setOpenLoading(false); setOpenLoaded(true); }
   }, [googleId]);
-
-  useEffect(() => { if (!loading) loadData(); }, [loading, loadData]);
 
   useEffect(() => {
     if (tab === "open" && !openLoaded && !openLoading) loadOpen();
