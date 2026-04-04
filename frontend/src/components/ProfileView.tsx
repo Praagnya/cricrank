@@ -32,6 +32,8 @@ export default function ProfileView({
   const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
   const [monthlyRank, setMonthlyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Distinguish real 404 from network / server errors (both left dbUser null before). */
+  const [profileFetchError, setProfileFetchError] = useState<string | null>(null);
   const [visiblePredCount, setVisiblePredCount] = useState(10);
 
   // Customization State
@@ -73,20 +75,29 @@ export default function ProfileView({
       let googleId = userId;
 
       try {
-        const userRes = await fetch(`${BASE}/users/${userId}`);
+        const userRes = await fetch(`${BASE}/users/${encodeURIComponent(userId)}`);
         if (cancelled) return;
         if (userRes.ok) {
+          if (!cancelled) setProfileFetchError(null);
           const userData = await userRes.json();
           if (cancelled) return;
           setDbUser(userData);
           googleId = userData.google_id;
         } else if (userRes.status === 404) {
           setDbUser(null);
+          if (!cancelled) setProfileFetchError(null);
           if (!cancelled) setLoading(false);
+          return;
+        } else {
+          setDbUser(null);
+          if (!cancelled) {
+            setProfileFetchError(`Could not load profile (${userRes.status}). Try again.`);
+            setLoading(false);
+          }
           return;
         }
 
-        const predRes = await fetch(`${BASE}/predictions/user/${googleId}`);
+        const predRes = await fetch(`${BASE}/predictions/user/${encodeURIComponent(googleId)}`);
         if (cancelled) return;
         if (predRes.ok) {
           const predData = await predRes.json();
@@ -122,12 +133,19 @@ export default function ProfileView({
         }
       } catch (err) {
         if (!cancelled) console.error("Failed to fetch profile data:", err);
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setDbUser(null);
+          setProfileFetchError(
+            "Connection problem — check your network or try again in a moment."
+          );
+          setLoading(false);
+        }
       }
     }
 
     if (userId) {
       setLoading(true);
+      setProfileFetchError(null);
       fetchProfileData();
     }
     return () => {
@@ -324,6 +342,29 @@ export default function ProfileView({
           </div>
         </div>
         <div className="mt-8 h-32 border border-[#262626] bg-[#000000]" />
+      </div>
+    );
+  }
+
+  if (profileFetchError) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6">
+        <AlertTriangle className="w-12 h-12 text-[#f59e0b] mb-4" />
+        <h1 className="font-gaming text-2xl tracking-widest text-center mb-2">UNABLE TO LOAD</h1>
+        <p className="text-[#a3a3a3] text-sm text-center max-w-sm mb-2">{profileFetchError}</p>
+        <p className="tracking-widest text-[#525252] text-[10px] uppercase mb-8">
+          Not the same as &quot;user not found&quot; — your link may still be valid.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-8 py-4 bg-white text-black font-gaming font-bold tracking-widest hover:bg-[#c8c8c8] transition-colors mb-4"
+        >
+          RETRY
+        </button>
+        <Link href="/leaderboard" className="text-xs font-bold tracking-widest text-[#737373] hover:text-white uppercase">
+          Back to leaderboard
+        </Link>
       </div>
     );
   }

@@ -12,10 +12,15 @@ router = APIRouter()
 
 
 def _user_by_identifier(identifier: str, db: Session) -> User | None:
-    """Resolve profile URL segment: username first, then google_id."""
-    u = db.query(User).filter(User.username == identifier).first()
+    """Resolve profile URL segment: username first (case-insensitive), then google_id."""
+    key = identifier.strip()
+    if not key:
+        return None
+    u = db.query(User).filter(User.username == key).first()
     if not u:
-        u = db.query(User).filter(User.google_id == identifier).first()
+        u = db.query(User).filter(func.lower(User.username) == key.lower()).first()
+    if not u:
+        u = db.query(User).filter(User.google_id == key).first()
     return u
 
 

@@ -62,6 +62,15 @@ function dismissalSubline(dismissal: unknown): string | null {
   return s;
 }
 
+/** Cricbuzz-style * for batters still in / not out; not for dismissed or DNB. */
+function showNotOutAsterisk(dismissal: unknown): boolean {
+  const s = String(dismissal ?? "").trim();
+  if (/^did not bat$/i.test(s)) return false;
+  if (!s || s === "—" || s === "-") return true;
+  if (/^not out$/i.test(s) || /^batting$/i.test(s)) return true;
+  return false;
+}
+
 export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Props) {
   const [live, setLive] = useState<MatchLiveResponse | null>(null);
   const [liveErr, setLiveErr] = useState(false);
@@ -276,7 +285,14 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
                               className="border-b border-white/[0.04] text-[#d4d4d4] hover:bg-white/[0.02] transition-colors"
                             >
                               <td className="py-2.5 pl-4 pr-3 align-top">
-                                <div className="text-[13px] text-white font-medium leading-snug">{playerName(row.batsman)}</div>
+                                <div className="text-[13px] text-white font-medium leading-snug">
+                                  {playerName(row.batsman)}
+                                  {showNotOutAsterisk(row.dismissal) ? (
+                                    <span className="font-semibold" aria-label="not out">
+                                      *
+                                    </span>
+                                  ) : null}
+                                </div>
                                 {outLine ? (
                                   <p className="mt-1 text-[10px] leading-relaxed text-[#737373] font-normal max-w-[min(100%,14rem)]">
                                     {outLine}
