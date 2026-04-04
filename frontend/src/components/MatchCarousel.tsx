@@ -10,6 +10,7 @@ import CrowdPredictionCard from "@/components/CrowdPredictionCard";
 import MatchToss from "@/components/MatchToss";
 import FirstInningsScore from "@/components/FirstInningsScore";
 import CountdownTimer from "@/components/CountdownTimer";
+import MatchScoreboard from "@/components/MatchScoreboard";
 import { api } from "@/lib/api";
 
 interface MatchData {
@@ -178,6 +179,8 @@ export default function MatchCarousel({ matches }: Props) {
           </div>
         </div>
       </div>
+
+      <MatchScoreboard key={match.id} matchId={match.id} matchStatus={match.status} cricapiId={match.cricapi_id} />
 
       <MatchInteraction
         matchId={match.id}

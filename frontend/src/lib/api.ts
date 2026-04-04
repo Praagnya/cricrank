@@ -6,6 +6,8 @@ import {
   TossStatusResponse,
   FirstInningsPickResponse,
   FirstInningsStatusResponse,
+  MatchLiveResponse,
+  MatchScorecardResponse,
   User,
   LeaderboardEntry,
   Prediction,
@@ -21,6 +23,25 @@ const BASE = getApiBaseUrl();
 /** Short client-side cache for toss / first-innings status (Next fetch cache is weak for cross-origin client calls). */
 const SIDE_GAME_TTL_MS = 30_000;
 const sideGameCache = new Map<string, { expires: number; data: unknown }>();
+
+/** Align with backend CricAPI TTL (~30s) so we do not multiply hits per user. */
+const LIVE_SCORE_TTL_MS = 45_000;
+const SCORECARD_DETAIL_TTL_MS = 60_000;
+const liveScoreCache = new Map<string, { expires: number; data: MatchLiveResponse }>();
+const scorecardDetailCache = new Map<string, { expires: number; data: MatchScorecardResponse }>();
+
+function ttlCacheTake<T>(cache: Map<string, { expires: number; data: T }>, key: string): T | null {
+  const e = cache.get(key);
+  if (!e || Date.now() > e.expires) {
+    if (e) cache.delete(key);
+    return null;
+  }
+  return e.data;
+}
+
+function ttlCachePut<T>(cache: Map<string, { expires: number; data: T }>, key: string, data: T, ttlMs: number) {
+  cache.set(key, { expires: Date.now() + ttlMs, data });
+}
 
 function sideCacheTake<T>(key: string): T | null {
   const e = sideGameCache.get(key);
@@ -94,6 +115,22 @@ export const api = {
     today: () => get<Match[]>("/matches/today"),
     recentCompleted: (limit = 5) => get<Match[]>(`/matches/recent-completed?limit=${limit}`),
     get: (id: string) => get<Match>(`/matches/${id}`),
+    live: async (matchId: string) => {
+      const key = `live:${matchId}`;
+      const hit = ttlCacheTake(liveScoreCache, key);
+      if (hit) return hit;
+      const data = await getNoStore<MatchLiveResponse>(`/matches/${matchId}/live`);
+      ttlCachePut(liveScoreCache, key, data, LIVE_SCORE_TTL_MS);
+      return data;
+    },
+    scorecard: async (matchId: string) => {
+      const key = `scard:${matchId}`;
+      const hit = ttlCacheTake(scorecardDetailCache, key);
+      if (hit) return hit;
+      const data = await getNoStore<MatchScorecardResponse>(`/matches/${matchId}/scorecard`);
+      ttlCachePut(scorecardDetailCache, key, data, SCORECARD_DETAIL_TTL_MS);
+      return data;
+    },
     aiPrediction: (id: string) => get<AIPrediction>(`/matches/${id}/prediction`),
     crowd: (id: string) => get<CrowdPrediction>(`/matches/${id}/crowd`),
     tossStatus: async (matchId: string, googleId: string) => {

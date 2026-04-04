@@ -1,5 +1,27 @@
 export type MatchStatus = "upcoming" | "live" | "completed";
 
+/** Live snapshot from CricAPI (cached server-side + short client TTL). */
+export interface MatchLiveResponse {
+  match_id: string;
+  cricapi_id: string;
+  status: MatchStatus;
+  match_started: boolean;
+  match_ended: boolean;
+  status_text: string | null;
+  match_winner: string | null;
+  result_summary: string | null;
+  score: Record<string, unknown>[];
+  bbb: Record<string, unknown>[];
+}
+
+/** Full scorecard innings (batting/bowling); optional until user expands. */
+export interface MatchScorecardResponse {
+  match_id: string;
+  cricapi_id: string;
+  score: Record<string, unknown>[];
+  scorecard: Record<string, unknown>[];
+}
+
 export interface Match {
   id: string;
   cricapi_id: string | null;

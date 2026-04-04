@@ -590,6 +590,13 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb_payload = {}
 
     source = bbb_payload or current_payload or {}
+    if not (source.get("score") or []):
+        try:
+            info = fetch_match_info(match.cricapi_id) or {}
+        except CricAPIError:
+            info = {}
+        if info.get("score"):
+            source = {**info, **source}
     status = (
         _match_status_from_payload(source)
         if source
@@ -646,7 +653,15 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
         except CricAPIError:
             pass
 
-    if not payload:
+    if not (payload.get("score") or []) and not (payload.get("scorecard") or []):
+        try:
+            inf = fetch_match_info(match.cricapi_id) or {}
+            if inf:
+                payload = {**inf, **payload}
+        except CricAPIError:
+            pass
+
+    if not (payload.get("score") or []) and not (payload.get("scorecard") or []):
         raise HTTPException(status_code=502, detail="Scorecard not available")
 
     return MatchScorecardResponse(
