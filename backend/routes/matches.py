@@ -231,6 +231,50 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
     return None
 
 
+def _line_score_freshness(score: list | None) -> tuple[float, int]:
+    """(max overs across innings rows, sum of runs r) — higher tuple = likelier fresher feed."""
+    m = -1.0
+    runs = 0
+    for row in score or []:
+        if not isinstance(row, dict):
+            continue
+        raw = row.get("o") if row.get("o") is not None else row.get("overs")
+        if raw is not None:
+            try:
+                m = max(m, float(raw))
+            except (TypeError, ValueError):
+                pass
+        for rk in ("r", "runs"):
+            if rk in row:
+                try:
+                    runs += int(row[rk])
+                except (TypeError, ValueError):
+                    pass
+                break
+    return (m, runs)
+
+
+def _merge_cm_bbb_for_live(cm: dict | None, bb: dict | None) -> dict:
+    """
+    Merge currentMatches row with match_bbb. We used to do `bbb or cm`, so a stale BBB
+    score (e.g. 1/1) hid a fresher currentMatches line score (e.g. after 2 overs).
+    """
+    cm = cm or {}
+    bb = bb or {}
+    out = {**bb, **cm}
+    sc_cm = cm.get("score") if isinstance(cm.get("score"), list) else []
+    sc_bb = bb.get("score") if isinstance(bb.get("score"), list) else []
+    if sc_cm and sc_bb:
+        out["score"] = sc_cm if _line_score_freshness(sc_cm) >= _line_score_freshness(sc_bb) else sc_bb
+    elif sc_cm:
+        out["score"] = sc_cm
+    elif sc_bb:
+        out["score"] = sc_bb
+    else:
+        out.setdefault("score", [])
+    return out
+
+
 def _status_text_fallback(match: Match) -> str | None:
     if match.result_summary:
         return match.result_summary
@@ -650,7 +694,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         except CricAPIError:
             bbb_payload = {}
 
-    source = bbb_payload or current_payload or {}
+    source = _merge_cm_bbb_for_live(current_payload, bbb_payload)
     # One match_info merge when source is empty or has no score (avoids duplicate API calls).
     if not source or not (source.get("score") or []):
         try:

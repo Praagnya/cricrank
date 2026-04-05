@@ -18,7 +18,8 @@ _current_matches_expires: float = 0.0
 _match_payload_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 DEFAULT_CM_TTL = "60"
-DEFAULT_MATCH_TTL = "30"
+# BBB / match_info / scorecard — lower = fresher line scores (live UX); raise via env if quota tight.
+DEFAULT_MATCH_TTL = "20"
 
 
 def _cache_ttl(env_name: str, default: str) -> float:
