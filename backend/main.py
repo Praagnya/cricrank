@@ -107,22 +107,36 @@ def poller_health(limit: int = 100, db=None):
 
 @app.get("/health/cricapi", tags=["system"])
 def health_cricapi():
-    """One cached currentMatches call; does not expose CRICAPI_KEY."""
+    """Hit CricAPI with match_info (dummy id) to verify key + reachability; does not expose CRICAPI_KEY."""
     if not os.getenv("CRICAPI_KEY"):
         return JSONResponse(
             status_code=503,
             content={"status": "error", "cricapi": "not_configured"},
         )
-    from cricapi import CricAPIError, fetch_current_matches
+    import httpx
 
     try:
-        matches = fetch_current_matches()
+        r = httpx.get(
+            "https://api.cricapi.com/v1/match_info",
+            params={
+                "apikey": os.environ["CRICAPI_KEY"],
+                "id": "00000000-0000-0000-0000-000000000001",
+            },
+            timeout=15.0,
+        )
+        r.raise_for_status()
+        body = r.json()
+        if not isinstance(body, dict) or "status" not in body:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "error", "cricapi": "invalid_response"},
+            )
         return {
             "status": "ok",
             "cricapi": "ok",
-            "current_matches_count": len(matches),
+            "provider_status": body.get("status"),
         }
-    except CricAPIError as e:
+    except Exception as e:
         return JSONResponse(
             status_code=503,
             content={

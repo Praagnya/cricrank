@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from coin_ledger import apply_credit, apply_debit
-from cricapi import CricAPIError, fetch_current_matches, fetch_match_info, fetch_match_scorecard, fetch_series_info
+from cricapi import CricAPIError, fetch_match_info, fetch_match_scorecard, fetch_series_info
 from database import get_db
 from models import Match, MatchStatus, Prediction, TossPlay, FirstInningsPick, User
 from prediction_agent import get_prediction_safe
@@ -42,15 +42,13 @@ def _match_start_time_utc(match: Match) -> datetime:
 def _merge_toss_sources(match: Match) -> dict:
     if not match.cricapi_id:
         return {}
-    source = _find_current_match_payload(match.cricapi_id) or {}
-    merged = dict(source)
-    if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
-        try:
-            info = fetch_match_info(match.cricapi_id) or {}
-            if isinstance(info, dict):
-                merged = {**info, **merged}
-        except CricAPIError:
-            pass
+    merged: dict = {}
+    try:
+        info = fetch_match_info(match.cricapi_id) or {}
+        if isinstance(info, dict):
+            merged = dict(info)
+    except CricAPIError:
+        pass
     if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
         try:
             sc = fetch_match_scorecard(match.cricapi_id) or {}
@@ -212,72 +210,13 @@ def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequ
     match.result_summary = fixture.get("status") or match.result_summary
 
 
-def _find_current_match_payload(cricapi_id: str) -> dict | None:
-    try:
-        current_matches = fetch_current_matches()
-    except CricAPIError:
-        return None
-
-    for match in current_matches:
-        if match.get("id") == cricapi_id:
-            return match
-    return None
-
-
-def _line_score_richness(score: list | None) -> tuple[float, int]:
-    """Higher tuple ≈ likelier more up-to-date innings lines (max overs, then total runs)."""
-    max_o = -1.0
-    total_r = 0
-    for row in score or []:
-        if not isinstance(row, dict):
-            continue
-        raw_o = row.get("o") if row.get("o") is not None else row.get("overs")
-        if raw_o is not None:
-            try:
-                max_o = max(max_o, float(raw_o))
-            except (TypeError, ValueError):
-                pass
-        for key in ("r", "runs"):
-            if key in row:
-                try:
-                    total_r += int(float(row[key]))
-                except (TypeError, ValueError):
-                    pass
-                break
-    return (max_o, total_r)
-
-
-def _pick_line_score(a: list | None, b: list | None) -> list:
-    """Choose the score[] list that looks fresher; prefer non-empty over empty."""
-    a = a if isinstance(a, list) else []
-    b = b if isinstance(b, list) else []
-    if not b:
-        return a
-    if not a:
-        return b
-    return a if _line_score_richness(a) >= _line_score_richness(b) else b
-
-
 def _cricapi_match_snapshot(cricapi_id: str) -> dict:
-    """
-    Live snapshot: match_info + currentMatches row (same id). Both carry score[] / status;
-    either can lag the other, so we merge top-level fields and take the richer score[].
-    """
-    info: dict = {}
+    """Live snapshot from match_info only (`GET /v1/match_info`)."""
     try:
         raw = fetch_match_info(cricapi_id) or {}
-        if isinstance(raw, dict):
-            info = dict(raw)
+        return dict(raw) if isinstance(raw, dict) else {}
     except CricAPIError:
-        pass
-
-    cm = _find_current_match_payload(cricapi_id) or {}
-    si = info.get("score") if isinstance(info.get("score"), list) else []
-    sm = cm.get("score") if isinstance(cm.get("score"), list) else []
-
-    out = {**info, **cm}
-    out["score"] = _pick_line_score(si, sm)
-    return out
+        return {}
 
 
 def _status_text_fallback(match: Match) -> str | None:
@@ -652,7 +591,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb=[],
         )
 
-    # Finished with a winner: DB-only — avoids currentMatches / match_info / BBB on every poll.
+    # Finished with a winner: DB-only — avoids CricAPI on every poll.
     if match.status == MatchStatus.completed and match.winner:
         _settle_all_toss_plays_for_match(db, match)
         try:
@@ -805,7 +744,7 @@ def calculate_first_innings_reward(predicted_score: int, actual_score: int) -> i
 def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
     """
     Returns (batting_team, runs) when first innings is complete, else (None, None).
-    Tries match_info → currentMatches → scorecard (scorecard works for completed matches).
+    Tries match_info → scorecard (scorecard works for completed matches).
     """
     def _fetch_scorecard():
         try:
@@ -815,7 +754,6 @@ def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
 
     sources = [
         lambda: fetch_match_info(cricapi_id),
-        lambda: _find_current_match_payload(cricapi_id) or {},
         _fetch_scorecard,
     ]
     for fetch_fn in sources:

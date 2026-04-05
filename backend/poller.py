@@ -193,11 +193,7 @@ def _run_backfill_missing_summaries(db: Session, days: int = 30) -> int:
 def job_check_result(match_id: str) -> None:
     """Update match status/winner from CricAPI and auto-settle when match ends."""
     from cricapi import CricAPIError, fetch_match_info
-    from routes.matches import (
-        _find_current_match_payload,
-        _match_start_time_utc,
-        _match_status_from_payload,
-    )
+    from routes.matches import _match_status_from_payload
     from team_metadata import canonicalize_winner
 
     db: Session = SessionLocal()
@@ -216,49 +212,12 @@ def job_check_result(match_id: str) -> None:
             return
         # If completed but winner is null, fall through to recovery logic below.
 
-        now = datetime.now(timezone.utc)
-        start_utc = _match_start_time_utc(match)
-        upcoming_past_kickoff = match.status == MatchStatus.upcoming and now >= start_utc
-        stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=4)
-        completed_no_winner = match.status == MatchStatus.completed and not match.winner
-        skip_cm = upcoming_past_kickoff or stale_live or completed_no_winner
-
-        payload = {} if skip_cm else (_find_current_match_payload(match.cricapi_id) or {})
-        if not payload.get("matchStarted"):
-            try:
-                mi = fetch_match_info(match.cricapi_id) or {}
-                if isinstance(mi, dict) and mi:
-                    payload = mi
-            except CricAPIError:
-                pass
-
-        match_info_cached: dict | None = None
-
-        def _match_info_once() -> dict:
-            nonlocal match_info_cached
-            if match_info_cached is not None:
-                return match_info_cached
-            try:
-                raw = fetch_match_info(match.cricapi_id) or {}
-                match_info_cached = raw if isinstance(raw, dict) else {}
-            except CricAPIError:
-                match_info_cached = {}
-            return match_info_cached
-
-        # If match is live in DB but no data from either source, the match has likely
-        # ended and dropped off CricAPI's live feed — try match_info directly.
-        if not payload and match.status == MatchStatus.live:
-            info = _match_info_once()
-            if info:
-                payload = dict(info)
-
-        # Fallback to match_info when ended but winner still empty (reuses same fetch above).
-        if payload.get("matchEnded") and not payload.get("matchWinner"):
-            info = _match_info_once()
-            if info:
-                for key in ("matchWinner", "matchEnded", "tossWinner"):
-                    if not payload.get(key) and info.get(key):
-                        payload[key] = info[key]
+        try:
+            payload = fetch_match_info(match.cricapi_id) or {}
+            if not isinstance(payload, dict):
+                payload = {}
+        except CricAPIError:
+            payload = {}
 
         # Last resort: parse winner from result status text
         # e.g. "Sunrisers Hyderabad won by 65 runs" → matchWinner = "Sunrisers Hyderabad"
@@ -281,7 +240,7 @@ def job_check_result(match_id: str) -> None:
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
             _log(db, "result", match.id, "no_data",
-                 detail="all CricAPI sources returned empty (currentMatches, match_info)")
+                 detail="match_info returned empty for this cricapi_id")
             return
 
         changed = False

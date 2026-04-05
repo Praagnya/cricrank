@@ -34,56 +34,15 @@ Monitor `hitsToday` / `hitsLimit` to stay within quota.
 
 ## Endpoints this project uses
 
-### 1. Current matches
+> **`currentMatches` is not called.** Fixtures and `cricapi_id` come from our DB (`series_info` import / admin). Live state uses **`match_info`** (and **`match_scorecard`** where noted).
 
-```
-GET /v1/currentMatches?apikey={key}&offset=0
-```
-
-Paginated list of matches the provider considers “current” (live pipeline, offset in steps of 25).
-
-**Typical fields per row** (shape varies by match):
-
-```json
-{
-  "id": "e02475c1-...",
-  "name": "Mumbai Indians vs KKR, 2nd Match",
-  "matchType": "t20",
-  "status": "Mumbai Indians won by 6 wkts",
-  "venue": "Wankhede Stadium, Mumbai",
-  "date": "2026-03-29",
-  "dateTimeGMT": "2026-03-29T14:00:00",
-  "teams": ["Mumbai Indians", "Kolkata Knight Riders"],
-  "teamInfo": [{ "name": "Mumbai Indians", "shortname": "MI", "img": "..." }],
-  "score": [
-    { "r": 220, "w": 4, "o": 20, "inning": "Mumbai Indians Inning 1" },
-    { "r": 224, "w": 4, "o": 19.1, "inning": "KKR Inning 1" }
-  ],
-  "tossWinner": "Mumbai Indians",
-  "tossChoice": "bat",
-  "matchWinner": "Mumbai Indians",
-  "series_id": "87c62aac-...",
-  "matchStarted": true,
-  "matchEnded": true,
-  "fantasyEnabled": true,
-  "bbbEnabled": false,
-  "hasSquad": true
-}
-```
-
-**Use in this repo:** background poller, finding a row by `id` (`cricapi_id`), toss/result discovery. **Do not rely on this list alone for the hero line score** — see *Live matches* below.
-
-**Cache:** `CRICAPI_CURRENT_MATCHES_CACHE_SECONDS` (default `60`) in `backend/cricapi.py`.
-
----
-
-### 2. Match info (primary for line score + status)
+### 1. Match info (single source for live snapshot + toss primary)
 
 ```
 GET /v1/match_info?apikey={key}&id={cricapi_id}
 ```
 
-Single-match snapshot: same broad shape as a `currentMatches` row (not ball-by-ball).
+Single-match snapshot for one `id` (not ball-by-ball).
 
 **Important fields for UI and settlement:**
 
@@ -96,19 +55,78 @@ Single-match snapshot: same broad shape as a `currentMatches` row (not ball-by-b
 | `tossWinner` / `tossChoice` | Toss outcome when known |
 | `teams`, `teamInfo`, `venue`, `date`, `dateTimeGMT` | Metadata |
 
-**Use in this repo:** **`GET /matches/{id}/live`** calls **`match_info`** plus the matching row from **`currentMatches`** when present (`_cricapi_match_snapshot`). Top-level fields merge with the list row winning key clashes; **`score[]`** is taken from whichever source looks **fresher** (higher max overs, then total runs). The JSON field **`bbb`** is always **`[]`**. Toss merging uses the same three sources in order: `currentMatches` → `match_info` → `match_scorecard` (`backend/routes/matches.py`).
+**Example success payload** (`GET /v1/match_info`) — real shape from a live IPL T20; numbers change as the game progresses. The `apikey` in the envelope is echoed by the provider; never log it in production.
+
+> **Quirk:** `status` can stay on an old line (e.g. toss: “X opt to bowl”) while **`score[]` is already updating** for the batting innings. The UI may show both until the provider refreshes `status`.
+
+```json
+{
+  "apikey": "<your-key>",
+  "data": {
+    "id": "e43dd29e-c60e-40c9-a6c4-6c1bd69dd671",
+    "name": "Sunrisers Hyderabad vs Lucknow Super Giants, 10th Match, Indian Premier League 2026",
+    "matchType": "t20",
+    "status": "Lucknow Super Giants opt to bowl",
+    "venue": "Rajiv Gandhi International Stadium, Hyderabad",
+    "date": "2026-04-05",
+    "dateTimeGMT": "2026-04-05T10:00:00",
+    "teams": ["Sunrisers Hyderabad", "Lucknow Super Giants"],
+    "teamInfo": [
+      {
+        "name": "Lucknow Super Giants",
+        "shortname": "LSG",
+        "img": "https://g.cricapi.com/iapi/215-637876059669009476.png?w=48"
+      },
+      {
+        "name": "Sunrisers Hyderabad",
+        "shortname": "SRH",
+        "img": "https://g.cricapi.com/iapi/279-637852957609490368.png?w=48"
+      }
+    ],
+    "score": [
+      {
+        "r": 63,
+        "w": 4,
+        "o": 11.5,
+        "inning": "Sunrisers Hyderabad Inning 1"
+      }
+    ],
+    "tossWinner": "lucknow super giants",
+    "tossChoice": "bowl",
+    "series_id": "87c62aac-bc3c-4738-ab93-19da0690488f",
+    "fantasyEnabled": true,
+    "bbbEnabled": false,
+    "hasSquad": true,
+    "matchStarted": true,
+    "matchEnded": false
+  },
+  "status": "success",
+  "info": {
+    "hitsToday": 966,
+    "hitsUsed": 1,
+    "hitsLimit": 10000,
+    "credits": 0,
+    "server": 12,
+    "queryTime": 24.57,
+    "s": 0,
+    "cache": 0
+  }
+}
+```
+
+**Use in this repo:** **`GET /matches/{id}/live`** = **`fetch_match_info`** only (`_cricapi_match_snapshot`). Response **`bbb`** is always **`[]`**. Toss: **`match_info`** first, then **`match_scorecard`** if `tossWinner` still missing (`_merge_toss_sources`). Poller result job uses **`match_info`** only.
 
 **Cache:** `CRICAPI_MATCH_INFO_CACHE_SECONDS` (default `20`).
 
 ---
 
-### 3. Ball-by-ball (`match_bbb`) — not used
+### 2. Ball-by-ball (`match_bbb`) — not used
 
 CricAPI exposes `GET /v1/match_bbb` for per-ball data. **This app does not call it** (one scoring source is enough: `match_info`). The provider often returns failures for smaller fixtures anyway.
 
 ---
 
-### 4. Match scorecard
+### 3. Match scorecard
 
 ```
 GET /v1/match_scorecard?apikey={key}&id={cricapi_id}
@@ -147,7 +165,7 @@ Before a card exists you may get **failure** (e.g. scorecard not found). **`tota
 
 ---
 
-### 5. Match squad
+### 4. Match squad
 
 ```
 GET /v1/match_squad?apikey={key}&id={cricapi_id}
@@ -157,7 +175,7 @@ Playing XI per team when `hasSquad: true` on the fixture.
 
 ---
 
-### 6. Series info
+### 5. Series info
 
 ```
 GET /v1/series_info?apikey={key}&id={series_id}
@@ -169,22 +187,19 @@ GET /v1/series_info?apikey={key}&id={series_id}
 
 ## Live matches: what you actually get
 
-These behaviours were checked by calling the API for real `cricapi_id` values (see `backend/scripts/probe_cricapi_score.py`).
+These behaviours were checked by calling the API for real `cricapi_id` values.
 
 1. **Toss / not started yet**  
-   `status` often reads like *“Lucknow Super Giants opt to bowl”*. **`score` is usually `[]`** on `match_info`, `currentMatches`, and scorecard until play produces a counted innings. The UI correctly shows narrative only.
+   `status` often reads like *“Lucknow Super Giants opt to bowl”*. **`score` is usually `[]`** on `match_info` and scorecard until play produces a counted innings. The UI correctly shows narrative only.
 
 2. **Line innings `score[]`**  
    Carried on **`match_info`** and on **`match_scorecard`** (root) when present. Each element is typically `{ "r", "w", "o", "inning" }`.
-
-3. **`currentMatches` vs `match_info`**  
-   For the same `id`, either side can **lag** the other on **`score[]`**. **`/live`** merges both and keeps the **richer** innings snapshot so the hero line tracks the feed that has moved forward more.
 
 ---
 
 ## How `/live` gets its payload
 
-`_cricapi_match_snapshot` in `backend/routes/matches.py`: **`fetch_match_info`**, **`fetch_current_matches`** (to find the row by `id`), merge `{**info, **row}`, then **`score[]` = whichever of the two lists scores higher on (max `o`/`overs`, then sum of `r`/`runs`)**. Pre-start and completed DB-only shortcuts on `/live` are unchanged — see route code.
+`_cricapi_match_snapshot` in `backend/routes/matches.py` returns **`fetch_match_info(cricapi_id)`** (or `{}` on failure). Pre-start and completed DB-only shortcuts on `/live` are unchanged — see route code.
 
 ---
 
@@ -192,8 +207,7 @@ These behaviours were checked by calling the API for real `cricapi_id` values (s
 
 | Endpoint | Role in this app | Typical cadence |
 |----------|------------------|-----------------|
-| `currentMatches` | Poller / discovery, **`/live`** row lookup | ~5 min poller; list cached ~60s server-side |
-| `match_info` | **`/live`**, poller when CM thin, first-innings | Per `/live` poll; cached ~20s per match |
+| `match_info` | **`/live`**, poller result job, first-innings primary | Per `/live` poll; cached ~20s per match |
 | `match_scorecard` | `/scorecard` route, toss fallback | On demand |
 | `match_squad` | Once per match | On demand |
 | `series_info` | Imports | Rare |
@@ -210,7 +224,7 @@ Our `Match.cricapi_id` is the CricAPI **`id`** string. Admin paste or series imp
 
 ## Auto-settle (high level)
 
-Poller and routes watch **`matchEnded`**, **`matchWinner`**, toss fields from **`currentMatches`**, **`match_info`**, and sometimes **`match_scorecard`** (see `SETTLEMENT.md`).  
+Poller and routes watch **`matchEnded`**, **`matchWinner`**, toss fields from **`match_info`** and sometimes **`match_scorecard`** (see `SETTLEMENT.md`).  
 `matchWinner` strings are aligned with DB `team1` / `team2` full names.
 
 ---

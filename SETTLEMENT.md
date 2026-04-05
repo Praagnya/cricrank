@@ -18,10 +18,9 @@ CricAPI is checked in order, first field found wins:
 
 | Priority | Source | Field checked |
 |---|---|---|
-| 1 | `currentMatches` | `tossWinner` / `toss_winner_team` |
-| 2 | `match_info` | `tossWinner` (often fills gaps when the live list row is thin) |
-| 3 | `match_scorecard` | `tossWinner` |
-| 4 | any payload | `status` string contains "won the toss" |
+| 1 | `match_info` | `tossWinner` / `toss_winner_team` |
+| 2 | `match_scorecard` | `tossWinner` |
+| 3 | any payload | `status` string contains "won the toss" |
 
 Raw team name → `canonicalize_team()` → matched against `match.team1` / `match.team2`.
 
@@ -66,12 +65,11 @@ Poller's `job_check_result()` in `poller.py`:
 
 | Step | Source | Field |
 |---|---|---|
-| 1 | `currentMatches` | `matchStarted`, `matchEnded`, `matchWinner` |
-| 2 | `match_info` | same when CM row missing `matchStarted` or when winner/ended still missing |
+| 1 | `match_info` | `matchStarted`, `matchEnded`, `matchWinner` |
 
 `matchWinner` raw string → `canonicalize_winner()` → stored as `match.winner`.
 
-> **Important:** `currentMatches` drops completed matches. **`match_info`** is the main follow-up for `matchEnded` / `matchWinner` when the live list no longer includes the fixture.
+> **Note:** Poller uses **`match_info` only** for result detection (fixtures are keyed by DB `cricapi_id`).
 
 ### When it fires (background poller)
 
@@ -147,7 +145,7 @@ else:            reward = 5000 - (5000 / 20) * diff
 
 ### When it fires
 
-Settled on-demand when `GET /{match_id}/first-innings-status` or `POST /{match_id}/first-innings-pick` is called with unsettled rows — checks `score` in **`match_info`**, then **`currentMatches`**, then **`match_scorecard`** for a completed first inning (2 innings present, or 10 wickets, or 20 overs bowled).
+Settled on-demand when `GET /{match_id}/first-innings-status` or `POST /{match_id}/first-innings-pick` is called with unsettled rows — checks `score` in **`match_info`**, then **`match_scorecard`**, for a completed first inning (2 innings present, or 10 wickets, or 20 overs bowled).
 
 There is no background poller job for first innings — settlement happens the next time a user checks their status for that match.
 
@@ -171,7 +169,6 @@ This makes the system self-healing — a server restart after a failed settlemen
 
 | Quirk | Impact | Fix |
 |---|---|---|
-| `currentMatches` drops completed matches | Poller can't find ended match in live feed | Falls back to **`match_info`** (and status-text winner parsing) |
-| `matchEnded: true` but `matchWinner` empty in CM | Winner never set, settlement skipped | Poller merges **`match_info`** when winner/ended still missing |
-| `tossWinner` absent from `currentMatches` for completed matches | Toss never settles | `_merge_toss_sources` falls back to `match_info` then `match_scorecard` |
+| `matchEnded: true` but `matchWinner` empty | Winner never set, settlement skipped | Status-text parsing in poller; ensure **`match_info`** has result line |
+| `tossWinner` missing from `match_info` | Toss never settles | `_merge_toss_sources` falls back to **`match_scorecard`** |
 | CricAPI rate-limited for 15 min after rapid direct calls | All API calls fail | In-memory TTL cache absorbs repeated requests; stale cache returned on error |

@@ -1,4 +1,4 @@
-"""One-off: which CricAPI endpoints expose non-empty score[] for the same match id."""
+"""One-off: compare match_info vs match_scorecard score[] for a cricapi id (optional env CRICAPI_PROBE_MATCH_ID)."""
 import os
 import sys
 from pathlib import Path
@@ -38,61 +38,20 @@ def summarize_score(label: str, data) -> None:
 
 
 def main():
-    data, err = get("currentMatches", offset=0)
-    if err:
-        print("currentMatches failed:", err)
+    mid = os.getenv("CRICAPI_PROBE_MATCH_ID")
+    if not mid:
+        print("Set CRICAPI_PROBE_MATCH_ID to a match UUID to probe.")
         return
-    rows = data if isinstance(data, list) else []
-    print(f"currentMatches: {len(rows)} rows")
 
-    # Pick first row with non-empty CM score, and first with empty CM score
-    ids_nonempty = next((m["id"] for m in rows if isinstance(m.get("score"), list) and len(m["score"]) > 0), None)
-    ids_empty = next((m["id"] for m in rows if isinstance(m.get("score"), list) and len(m["score"]) == 0), None)
-
-    to_probe = []
-    if ids_nonempty:
-        to_probe.append(("CM_nonempty_score", ids_nonempty))
-    if ids_empty:
-        to_probe.append(("CM_empty_score", ids_empty))
-    if not to_probe and rows:
-        to_probe.append(("first_row", rows[0]["id"]))
-
-    for tag, mid in to_probe:
-        print(f"\n=== {tag} id={mid} ===")
-        cm = next((m for m in rows if m.get("id") == mid), {})
-        summarize_score("currentMatches[row]", cm)
-
-        for ep in ("match_info", "match_scorecard"):
-            d, err = get(ep, id=mid)
-            if err:
-                print(f"  {ep}: ERROR {err}")
-            else:
-                summarize_score(ep, d)
-                if isinstance(d, dict) and d.get("scorecard"):
-                    print(f"    scorecard innings={len(d['scorecard'])}")
-                    for i, inn in enumerate(d["scorecard"][:2]):
-                        if isinstance(inn, dict):
-                            print(f"      [{i}] totals={inn.get('totals')!r} inning={inn.get('inning')!r}")
-
-    print("\n=== CM vs match_info score mismatch (scanned pages) ===")
-    seen: list = []
-    for off in (0, 25, 50):
-        data, err = get("currentMatches", offset=off)
-        if err or not isinstance(data, list):
-            break
-        seen.extend(data)
-    mism = 0
-    for m in seen:
-        mid = m["id"]
-        cm_sc = m.get("score") if isinstance(m.get("score"), list) else []
-        inf, err = get("match_info", id=mid)
-        if err or not isinstance(inf, dict):
-            continue
-        in_sc = inf.get("score") if isinstance(inf.get("score"), list) else []
-        if len(cm_sc) != len(in_sc) or cm_sc != in_sc:
-            mism += 1
-            print(f"mismatch {mid[:12]}... CM_len={len(cm_sc)} info_len={len(in_sc)}")
-    print(f"total mismatches: {mism} / {len(seen)}")
+    print(f"=== probe id={mid} ===")
+    for ep in ("match_info", "match_scorecard"):
+        d, err = get(ep, id=mid)
+        if err:
+            print(f"  {ep}: ERROR {err}")
+        else:
+            summarize_score(ep, d)
+            if isinstance(d, dict) and d.get("scorecard"):
+                print(f"    scorecard innings={len(d['scorecard'])}")
 
 
 if __name__ == "__main__":

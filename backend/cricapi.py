@@ -10,14 +10,10 @@ load_dotenv()
 
 BASE_URL = "https://api.cricapi.com/v1"
 
-# In-memory TTL caches to stay under CricAPI per-endpoint hit limits (e.g. currentMatches).
-# Tune via env; on transient failure we return the last good payload when available.
+# In-memory TTL caches for per-match endpoints. On transient failure we return last good payload when available.
 _cache_lock = threading.Lock()
-_current_matches_cache: list[dict[str, Any]] | None = None
-_current_matches_expires: float = 0.0
 _match_payload_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
-DEFAULT_CM_TTL = "60"
 # match_info / scorecard — lower = fresher line scores (live UX); raise via env if quota tight.
 DEFAULT_MATCH_TTL = "20"
 
@@ -54,29 +50,6 @@ def _request(path: str, **params):
 
 def fetch_series_info(series_id: str):
     return _request("series_info", id=series_id)
-
-
-def fetch_current_matches():
-    global _current_matches_cache, _current_matches_expires
-
-    ttl = _cache_ttl("CRICAPI_CURRENT_MATCHES_CACHE_SECONDS", DEFAULT_CM_TTL)
-    now = time.monotonic()
-    with _cache_lock:
-        if _current_matches_cache is not None and now < _current_matches_expires:
-            return list(_current_matches_cache)
-
-    try:
-        data = _request("currentMatches", offset=0)
-        out = data if isinstance(data, list) else []
-        with _cache_lock:
-            _current_matches_cache = out
-            _current_matches_expires = now + ttl
-        return list(out)
-    except CricAPIError:
-        with _cache_lock:
-            if _current_matches_cache is not None:
-                return list(_current_matches_cache)
-        raise
 
 
 def _cached_match_request(
