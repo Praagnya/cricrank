@@ -231,48 +231,26 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
     return None
 
 
-def _line_score_freshness(score: list | None) -> tuple[float, int]:
-    """(max overs across innings rows, sum of runs r) — higher tuple = likelier fresher feed."""
-    m = -1.0
-    runs = 0
-    for row in score or []:
-        if not isinstance(row, dict):
-            continue
-        raw = row.get("o") if row.get("o") is not None else row.get("overs")
-        if raw is not None:
-            try:
-                m = max(m, float(raw))
-            except (TypeError, ValueError):
-                pass
-        for rk in ("r", "runs"):
-            if rk in row:
-                try:
-                    runs += int(row[rk])
-                except (TypeError, ValueError):
-                    pass
-                break
-    return (m, runs)
-
-
-def _merge_cm_bbb_for_live(cm: dict | None, bb: dict | None) -> dict:
+def _cricapi_match_snapshot(cricapi_id: str) -> dict:
     """
-    Merge currentMatches row with match_bbb. We used to do `bbb or cm`, so a stale BBB
-    score (e.g. 1/1) hid a fresher currentMatches line score (e.g. after 2 overs).
+    Live display: merge match_info + match_bbb only (same match id).
+    Keys in match_bbb win on conflict — usually fresher score/overs; match_info fills toss/status when BBB is thin.
     """
-    cm = cm or {}
-    bb = bb or {}
-    out = {**bb, **cm}
-    sc_cm = cm.get("score") if isinstance(cm.get("score"), list) else []
-    sc_bb = bb.get("score") if isinstance(bb.get("score"), list) else []
-    if sc_cm and sc_bb:
-        out["score"] = sc_cm if _line_score_freshness(sc_cm) >= _line_score_freshness(sc_bb) else sc_bb
-    elif sc_cm:
-        out["score"] = sc_cm
-    elif sc_bb:
-        out["score"] = sc_bb
-    else:
-        out.setdefault("score", [])
-    return out
+    info: dict = {}
+    bbb: dict = {}
+    try:
+        raw = fetch_match_info(cricapi_id) or {}
+        if isinstance(raw, dict):
+            info = raw
+    except CricAPIError:
+        pass
+    try:
+        raw = fetch_match_bbb(cricapi_id) or {}
+        if isinstance(raw, dict):
+            bbb = raw
+    except CricAPIError:
+        pass
+    return {**info, **bbb}
 
 
 def _status_text_fallback(match: Match) -> str | None:
@@ -668,41 +646,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb=[],
         )
 
-    # currentMatches often omits finished fixtures; skip it to save quota when:
-    # - kickoff passed but DB still "upcoming" (common; CM/BBB+info sync status)
-    # - DB "live" long after scheduled start (fixture left the live list)
-    # - completed without winner (recover via BBB/match_info only)
-    start_utc = _match_start_time_utc(match)
-    upcoming_past_kickoff = match.status == MatchStatus.upcoming and now >= start_utc
-    stale_live = match.status == MatchStatus.live and now >= start_utc + timedelta(hours=4)
-    completed_no_winner = match.status == MatchStatus.completed and not match.winner
-    skip_current_matches = upcoming_past_kickoff or stale_live or completed_no_winner
-
-    current_payload = None
-    if not skip_current_matches:
-        current_payload = _find_current_match_payload(match.cricapi_id)
-    bbb_payload: dict = {}
-    if current_payload and (current_payload.get("matchStarted") or current_payload.get("matchEnded")):
-        try:
-            bbb_payload = fetch_match_bbb(match.cricapi_id) or {}
-        except CricAPIError:
-            bbb_payload = {}
-    elif skip_current_matches:
-        # No row from currentMatches — BBB still tracks many in-progress / just-finished games.
-        try:
-            bbb_payload = fetch_match_bbb(match.cricapi_id) or {}
-        except CricAPIError:
-            bbb_payload = {}
-
-    source = _merge_cm_bbb_for_live(current_payload, bbb_payload)
-    # One match_info merge when source is empty or has no score (avoids duplicate API calls).
-    if not source or not (source.get("score") or []):
-        try:
-            info = fetch_match_info(match.cricapi_id) or {}
-            if isinstance(info, dict) and info:
-                source = {**info, **source}
-        except CricAPIError:
-            pass
+    source = _cricapi_match_snapshot(match.cricapi_id)
 
     if source:
         status = _match_status_from_payload(source)
@@ -736,7 +680,7 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         match_winner=match_winner,
         result_summary=result_summary,
         score=source.get("score") or [],
-        bbb=bbb_payload.get("bbb") or [],
+        bbb=source.get("bbb") or [],
     )
 
 

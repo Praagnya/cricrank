@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { MatchLiveResponse, MatchScorecardResponse, MatchStatus } from "@/types";
+import type { MatchLiveResponse, MatchStatus } from "@/types";
 
 type Props = {
   matchId: string;
@@ -17,7 +17,6 @@ function formatOvers(o: unknown): string {
   return `${n}`;
 }
 
-/** Split API row into label + emphasized figures (sports-app style). */
 function partsFromScoreRow(row: Record<string, unknown>): {
   label: string;
   runs: string;
@@ -31,53 +30,9 @@ function partsFromScoreRow(row: Record<string, unknown>): {
   return { label, runs, wickets, overs };
 }
 
-function playerName(node: unknown): string {
-  if (node && typeof node === "object" && "name" in node && typeof (node as { name: unknown }).name === "string") {
-    return (node as { name: string }).name;
-  }
-  return "—";
-}
-
-/** CricAPI may include sr; otherwise (runs/balls)*100 like Cricbuzz. */
-function battingStrikeRate(b: Record<string, unknown>): string {
-  const raw = b.sr;
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw.toFixed(1);
-  if (typeof raw === "string" && raw.trim()) {
-    const p = parseFloat(raw);
-    if (Number.isFinite(p)) return p.toFixed(1);
-  }
-  const r = typeof b.r === "number" ? b.r : parseFloat(String(b.r ?? "NaN"));
-  const balls = typeof b.b === "number" ? b.b : parseInt(String(b.b ?? "0"), 10);
-  if (!Number.isFinite(r) || !Number.isFinite(balls) || balls < 0) return "—";
-  if (balls === 0) return "—";
-  return ((r / balls) * 100).toFixed(1);
-}
-
-function dismissalSubline(dismissal: unknown): string | null {
-  const s = String(dismissal ?? "").trim();
-  if (!s) return null;
-  if (/^not out$/i.test(s)) return null;
-  if (/^batting$/i.test(s)) return null;
-  if (s === "—" || s === "-") return null;
-  return s;
-}
-
-/** Cricbuzz-style * for batters still in / not out; not for dismissed or DNB. */
-function showNotOutAsterisk(dismissal: unknown): boolean {
-  const s = String(dismissal ?? "").trim();
-  if (/^did not bat$/i.test(s)) return false;
-  if (!s || s === "—" || s === "-") return true;
-  if (/^not out$/i.test(s) || /^batting$/i.test(s)) return true;
-  return false;
-}
-
 export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Props) {
   const [live, setLive] = useState<MatchLiveResponse | null>(null);
   const [liveErr, setLiveErr] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [detail, setDetail] = useState<MatchScorecardResponse | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailErr, setDetailErr] = useState(false);
 
   const loadLive = useCallback(() => {
     if (!cricapiId) return;
@@ -97,34 +52,13 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
 
   useEffect(() => {
     if (!cricapiId) return;
-    // Poll fast while the feed is live. Use API `status` once we have it so a stale list `upcoming` doesn’t stick on 120s.
     const feedLive =
       (live?.status === "live" && !live.match_ended) || (!live && matchStatus === "live");
     const intervalMs = feedLive ? 25_000 : matchStatus === "upcoming" ? 120_000 : 0;
     if (!intervalMs) return;
     const id = setInterval(loadLive, intervalMs);
     return () => clearInterval(id);
-    // Only re-arm when live/completed flips — not on every score payload (avoid resetting the timer each poll).
   }, [matchId, matchStatus, cricapiId, loadLive, live?.status, live?.match_ended]);
-
-  const loadDetail = useCallback(() => {
-    if (!cricapiId) return;
-    setDetailLoading(true);
-    setDetailErr(false);
-    api.matches
-      .scorecard(matchId)
-      .then((d) => {
-        setDetail(d);
-      })
-      .catch(() => setDetailErr(true))
-      .finally(() => setDetailLoading(false));
-  }, [matchId, cricapiId]);
-
-  useEffect(() => {
-    if (!expanded || detail || detailLoading) return;
-    if (detailErr) return;
-    loadDetail();
-  }, [expanded, detail, detailLoading, detailErr, loadDetail]);
 
   if (!cricapiId) return null;
 
@@ -157,19 +91,11 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
     return null;
   }
 
-  const scorecardRows = detail?.scorecard ?? [];
-  const hasBattingTables = scorecardRows.some((inn) => {
-    const batting = (inn as { batting?: unknown[] }).batting;
-    return Array.isArray(batting) && batting.length > 0;
-  });
-
   return (
     <div className="relative overflow-hidden border border-[#1a1a1a] bg-black shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)]">
-      {/* Hairline top highlight */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent pointer-events-none" />
 
       <div className="px-8 py-7 flex flex-col gap-6">
-        {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-6 w-px bg-white shrink-0" aria-hidden />
@@ -186,14 +112,12 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
           )}
         </div>
 
-        {/* Narrative status (toss / state) */}
         {statusLine ? (
           <p className="text-[15px] sm:text-base leading-relaxed text-[#c8c8c8] font-sans font-normal tracking-tight -mt-2">
             {statusLine}
           </p>
         ) : null}
 
-        {/* Innings blocks — big figures like broadcast graphics */}
         {scores.length > 0 ? (
           <div className="flex flex-col gap-5">
             {scores.map((row, i) => {
@@ -224,105 +148,6 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
             })}
           </div>
         ) : null}
-
-        {/* Full scorecard toggle — reference: muted chevron + caps */}
-        <button
-          type="button"
-          onClick={() => {
-            setExpanded((prev) => {
-              const next = !prev;
-              if (next && detailErr) {
-                setDetailErr(false);
-                setDetail(null);
-              }
-              return next;
-            });
-          }}
-          className="group flex items-center gap-2.5 text-left -mx-1 px-1 py-1.5 rounded-sm hover:bg-white/[0.03] transition-colors cursor-pointer w-fit"
-        >
-          <span className="text-[#525252] group-hover:text-[#737373] font-sans text-xs transition-colors" aria-hidden>
-            {expanded ? "⌄" : "›"}
-          </span>
-          <span className="text-[10px] font-semibold tracking-[0.28em] uppercase text-[#5c5c5c] group-hover:text-[#8a8a8a] font-sans transition-colors">
-            {expanded ? "Hide scorecard" : "Full scorecard"}
-          </span>
-        </button>
-
-        {expanded && (
-          <div className="pt-2 space-y-5 border-t border-white/[0.06]">
-            {detailLoading && (
-              <p className="text-[10px] font-semibold tracking-[0.2em] text-[#525252] uppercase font-sans animate-pulse">
-                Loading…
-              </p>
-            )}
-            {detailErr && (
-              <p className="text-[13px] text-[#737373] font-sans leading-relaxed">
-                Batting details are not available for this match yet.
-              </p>
-            )}
-            {!detailLoading && !detailErr && !hasBattingTables && (
-              <p className="text-[13px] text-[#737373] font-sans leading-relaxed">
-                {isLivePulse
-                  ? "Full batting lines usually appear after a few overs — the summary above updates from the live feed."
-                  : "No detailed batting card yet — line scores above follow the live feed."}
-              </p>
-            )}
-            {scorecardRows.map((inn, idx) => {
-              const batting = (inn as { batting?: Record<string, unknown>[] }).batting ?? [];
-              if (!batting.length) return null;
-              return (
-                <div key={idx} className="rounded-sm bg-[#050505] border border-white/[0.04] overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
-                    <p className="text-[9px] font-bold tracking-[0.22em] text-[#5c5c5c] uppercase font-sans">Innings {idx + 1}</p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-[12px] border-collapse font-sans min-w-[260px]">
-                      <thead>
-                        <tr className="text-[#525252] border-b border-white/[0.06]">
-                          <th className="py-2.5 pl-4 pr-3 font-semibold text-[10px] uppercase tracking-[0.15em]">Batter</th>
-                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-11">R</th>
-                          <th className="py-2.5 px-2 font-semibold text-[10px] uppercase tracking-wider text-right w-11">B</th>
-                          <th className="py-2.5 pr-4 pl-2 font-semibold text-[10px] uppercase tracking-wider text-right w-14">SR</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {batting.map((b, j) => {
-                          const row = b as Record<string, unknown>;
-                          const outLine = dismissalSubline(row.dismissal);
-                          return (
-                            <tr
-                              key={j}
-                              className="border-b border-white/[0.04] text-[#d4d4d4] hover:bg-white/[0.02] transition-colors"
-                            >
-                              <td className="py-2.5 pl-4 pr-3 align-top">
-                                <div className="text-[13px] text-white font-medium leading-snug">
-                                  {playerName(row.batsman)}
-                                  {showNotOutAsterisk(row.dismissal) ? (
-                                    <span className="font-semibold" aria-label="not out">
-                                      *
-                                    </span>
-                                  ) : null}
-                                </div>
-                                {outLine ? (
-                                  <p className="mt-1 text-[10px] leading-relaxed text-[#737373] font-normal max-w-[min(100%,14rem)]">
-                                    {outLine}
-                                  </p>
-                                ) : null}
-                              </td>
-                              <td className="py-2.5 px-2 text-right tabular-nums font-medium text-white align-top">{String(row.r ?? "—")}</td>
-                              <td className="py-2.5 px-2 text-right tabular-nums text-[#a3a3a3] align-top">{String(row.b ?? "—")}</td>
-                              <td className="py-2.5 pr-4 pl-2 text-right tabular-nums text-[#c8c8c8] align-top">{battingStrikeRate(row)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
