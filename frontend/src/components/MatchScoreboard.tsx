@@ -93,11 +93,19 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
   useEffect(() => {
     if (!cricapiId) return;
     loadLive();
-    const intervalMs = matchStatus === "live" ? 60_000 : matchStatus === "upcoming" ? 120_000 : 0;
+  }, [matchId, cricapiId, loadLive, matchStatus]);
+
+  useEffect(() => {
+    if (!cricapiId) return;
+    // Poll fast while the feed is live. Use API `status` once we have it so a stale list `upcoming` doesn’t stick on 120s.
+    const feedLive =
+      (live?.status === "live" && !live.match_ended) || (!live && matchStatus === "live");
+    const intervalMs = feedLive ? 25_000 : matchStatus === "upcoming" ? 120_000 : 0;
     if (!intervalMs) return;
     const id = setInterval(loadLive, intervalMs);
     return () => clearInterval(id);
-  }, [matchId, matchStatus, cricapiId, loadLive]);
+    // Only re-arm when live/completed flips — not on every score payload (avoid resetting the timer each poll).
+  }, [matchId, matchStatus, cricapiId, loadLive, live?.status, live?.match_ended]);
 
   const loadDetail = useCallback(() => {
     if (!cricapiId) return;

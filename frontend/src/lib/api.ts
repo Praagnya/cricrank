@@ -25,10 +25,7 @@ const BASE = getApiBaseUrl();
 const SIDE_GAME_TTL_MS = 30_000;
 const sideGameCache = new Map<string, { expires: number; data: unknown }>();
 
-/** Align with backend CricAPI TTL (~30s) so we do not multiply hits per user. */
-const LIVE_SCORE_TTL_MS = 45_000;
 const SCORECARD_DETAIL_TTL_MS = 60_000;
-const liveScoreCache = new Map<string, { expires: number; data: MatchLiveResponse }>();
 const scorecardDetailCache = new Map<string, { expires: number; data: MatchScorecardResponse }>();
 
 function ttlCacheTake<T>(cache: Map<string, { expires: number; data: T }>, key: string): T | null {
@@ -116,14 +113,9 @@ export const api = {
     today: () => get<Match[]>("/matches/today"),
     recentCompleted: (limit = 5) => get<Match[]>(`/matches/recent-completed?limit=${limit}`),
     get: (id: string) => get<Match>(`/matches/${id}`),
-    live: async (matchId: string) => {
-      const key = `live:${matchId}`;
-      const hit = ttlCacheTake(liveScoreCache, key);
-      if (hit) return hit;
-      const data = await getNoStore<MatchLiveResponse>(`/matches/${encodeURIComponent(matchId)}/live`);
-      ttlCachePut(liveScoreCache, key, data, LIVE_SCORE_TTL_MS);
-      return data;
-    },
+    /** No client TTL — stale line scores felt "stuck"; backend still dedupes CricAPI (~30–60s). */
+    live: (matchId: string) =>
+      getNoStore<MatchLiveResponse>(`/matches/${encodeURIComponent(matchId)}/live`),
     scorecard: async (matchId: string) => {
       const key = `scard:${matchId}`;
       const hit = ttlCacheTake(scorecardDetailCache, key);
