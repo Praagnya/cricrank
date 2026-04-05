@@ -2,7 +2,10 @@
 Background APScheduler jobs for CricAPI polling.
 
 Toss jobs  : fire at toss_time+5, +10, +35, +40 min per match.
-Result jobs: fire at start_time+3h–5h (every 30 min) per match.
+First-innings jobs: start_time+90, +105, +120 min (catchup if those passed).
+Result jobs: fire at start_time+3h–5h (every 30 min) per match; each run also
+tries first-innings settlement while live/completed. Completed matches use
+autosettle (toss, predictions, first innings) on every result job tick.
 
 Completed matches with a winner but empty result_summary are filled via
 match_info (plus a 30-day scan at bootstrap and again at noon UTC).
@@ -49,11 +52,11 @@ RESULT_MISFIRE_GRACE = 600   # 10 min
 
 def _ensure_autosettle_for_match(db: Session, match: Match) -> None:
     """
-    Idempotent safety net: settle toss plays and predictions when DB says the
-    outcome is known but a prior job failed or returned early (e.g. completed
-    matches skipped the main result-job settlement path).
+    Idempotent safety net: settle toss plays, predictions, and first-innings picks
+    when DB/API state allows but a prior job failed or returned early (e.g. result
+    job short-circuits on completed+winner before the main FI block runs).
     """
-    from routes.matches import _settle_all_toss_plays_for_match
+    from routes.matches import _settle_all_toss_plays_for_match, _settle_first_innings_picks
     from routes.predictions import _settle_match_internal
 
     try:
@@ -85,6 +88,21 @@ def _ensure_autosettle_for_match(db: Session, match: Match) -> None:
                     match.id,
                 )
                 _settle_match_internal(db, match)
+
+        if match.cricapi_id and match.status in (MatchStatus.live, MatchStatus.completed):
+            unsettled_fi = (
+                db.query(FirstInningsPick)
+                .filter(FirstInningsPick.match_id == match.id, FirstInningsPick.actual_score.is_(None))
+                .count()
+            )
+            if unsettled_fi > 0:
+                logger.info(
+                    "poller: autosettle %d first innings pick(s) for match %s",
+                    unsettled_fi,
+                    match.id,
+                )
+                _settle_first_innings_picks(db, match)
+                db.commit()
     except Exception as exc:
         logger.error("poller: autosettle failed for match %s: %s", match.id, exc)
         try:
@@ -432,20 +450,34 @@ def _schedule_first_innings_jobs(scheduler: AsyncIOScheduler, match: Match) -> N
         if start_time + timedelta(minutes=offset) > now
     ]
 
-    for fire_at in future_fires:
-        offset_min = int((fire_at - start_time).total_seconds() // 60)
-        job_id = f"fi_{match_id}_{offset_min}"
+    if future_fires:
+        for fire_at in future_fires:
+            offset_min = int((fire_at - start_time).total_seconds() // 60)
+            job_id = f"fi_{match_id}_{offset_min}"
+            if not scheduler.get_job(job_id):
+                scheduler.add_job(
+                    job_check_first_innings,
+                    trigger="date",
+                    run_date=fire_at,
+                    args=[match_id],
+                    id=job_id,
+                    replace_existing=True,
+                    misfire_grace_time=600,
+                )
+                logger.info("poller: first innings job %s scheduled at %s", job_id, fire_at.isoformat())
+    else:
+        job_id = f"fi_{match_id}_catchup"
         if not scheduler.get_job(job_id):
             scheduler.add_job(
                 job_check_first_innings,
                 trigger="date",
-                run_date=fire_at,
+                run_date=now + timedelta(seconds=15),
                 args=[match_id],
                 id=job_id,
                 replace_existing=True,
                 misfire_grace_time=600,
             )
-            logger.info("poller: first innings job %s scheduled at %s", job_id, fire_at.isoformat())
+            logger.info("poller: first innings catchup job %s scheduled immediately", job_id)
 
 
 def _schedule_result_jobs(scheduler: AsyncIOScheduler, match: Match) -> None:

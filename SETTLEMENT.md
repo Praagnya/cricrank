@@ -145,9 +145,16 @@ else:            reward = 5000 - (5000 / 20) * diff
 
 ### When it fires
 
-Settled on-demand when `GET /{match_id}/first-innings-status` or `POST /{match_id}/first-innings-pick` is called with unsettled rows — checks `score` in **`match_info`**, then **`match_scorecard`**, for a completed first inning (2 innings present, or 10 wickets, or 20 overs bowled).
+Detection uses `score` on **`match_info`**, then **`match_scorecard`**, for a completed first inning (2 innings present, or 10 wickets, or 20 overs bowled).
 
-There is no background poller job for first innings — settlement happens the next time a user checks their status for that match.
+**Automatic (primary):**
+
+1. **Dedicated poller jobs** at **start_time + 90, +105, +120 min** (`job_check_first_innings` in `poller.py`), plus an immediate **catchup** job when the server schedules after those times have already passed (mirrors result-job catchup).
+2. **Every result poller tick** (`job_check_result`, start +3h through +5h and catchup): for **live** or **completed** matches with `cricapi_id`, calls `_settle_first_innings_picks` if any row still has `actual_score` unset.
+3. **Autosettle:** When the result job returns early because the match is already **completed** with a **winner**, it still runs `_ensure_autosettle_for_match`, which settles any remaining first-innings picks (so they are not skipped after that short-circuit).
+4. **Bootstrap** (startup + daily UTC): recovers unsettled first-innings picks for recent **live** / **completed** matches in the same 7-day window as prediction recovery.
+
+**On demand:** `GET /{match_id}/first-innings-status` and `POST /{match_id}/first-innings-pick` still call `_settle_first_innings_picks` so the UI reflects settlement immediately when a user opens or submits, without waiting for the next job.
 
 ---
 
