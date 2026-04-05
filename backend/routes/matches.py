@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from coin_ledger import apply_credit, apply_debit
-from cricapi import CricAPIError, fetch_current_matches, fetch_match_bbb, fetch_match_info, fetch_match_scorecard, fetch_series_info
+from cricapi import CricAPIError, fetch_current_matches, fetch_match_info, fetch_match_scorecard, fetch_series_info
 from database import get_db
 from models import Match, MatchStatus, Prediction, TossPlay, FirstInningsPick, User
 from prediction_agent import get_prediction_safe
@@ -43,14 +43,7 @@ def _merge_toss_sources(match: Match) -> dict:
     if not match.cricapi_id:
         return {}
     source = _find_current_match_payload(match.cricapi_id) or {}
-    bbb: dict = {}
-    try:
-        bbb = fetch_match_bbb(match.cricapi_id) or {}
-    except CricAPIError:
-        bbb = {}
-    if not isinstance(bbb, dict):
-        bbb = {}
-    merged = {**source, **bbb}
+    merged = dict(source)
     if not merged.get("tossWinner") and not merged.get("toss_winner_team"):
         try:
             info = fetch_match_info(match.cricapi_id) or {}
@@ -233,24 +226,13 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
 
 def _cricapi_match_snapshot(cricapi_id: str) -> dict:
     """
-    Live display: merge match_info + match_bbb only (same match id).
-    Keys in match_bbb win on conflict — usually fresher score/overs; match_info fills toss/status when BBB is thin.
+    Live line score from match_info only (see CRICAPI.md). Same id as Match.cricapi_id.
     """
-    info: dict = {}
-    bbb: dict = {}
     try:
         raw = fetch_match_info(cricapi_id) or {}
-        if isinstance(raw, dict):
-            info = raw
+        return dict(raw) if isinstance(raw, dict) else {}
     except CricAPIError:
-        pass
-    try:
-        raw = fetch_match_bbb(cricapi_id) or {}
-        if isinstance(raw, dict):
-            bbb = raw
-    except CricAPIError:
-        pass
-    return {**info, **bbb}
+        return {}
 
 
 def _status_text_fallback(match: Match) -> str | None:
@@ -717,7 +699,9 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
 
     if not payload.get("scorecard") and match.status in (MatchStatus.live, MatchStatus.completed):
         try:
-            payload = fetch_match_bbb(match.cricapi_id) or payload
+            alt = fetch_match_info(match.cricapi_id) or {}
+            if isinstance(alt, dict) and alt:
+                payload = alt
         except CricAPIError:
             pass
 
@@ -776,7 +760,7 @@ def calculate_first_innings_reward(predicted_score: int, actual_score: int) -> i
 def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
     """
     Returns (batting_team, runs) when first innings is complete, else (None, None).
-    Tries BBB → currentMatches → scorecard (scorecard works for completed matches).
+    Tries match_info → currentMatches → scorecard (scorecard works for completed matches).
     """
     def _fetch_scorecard():
         try:
@@ -785,7 +769,7 @@ def _get_first_innings_result(cricapi_id: str) -> tuple[str | None, int | None]:
             return {}
 
     sources = [
-        lambda: fetch_match_bbb(cricapi_id),
+        lambda: fetch_match_info(cricapi_id),
         lambda: _find_current_match_payload(cricapi_id) or {},
         _fetch_scorecard,
     ]

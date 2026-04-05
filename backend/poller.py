@@ -192,7 +192,7 @@ def _run_backfill_missing_summaries(db: Session, days: int = 30) -> int:
 
 def job_check_result(match_id: str) -> None:
     """Update match status/winner from CricAPI and auto-settle when match ends."""
-    from cricapi import CricAPIError, fetch_match_bbb, fetch_match_info
+    from cricapi import CricAPIError, fetch_match_info
     from routes.matches import (
         _find_current_match_payload,
         _match_start_time_utc,
@@ -226,9 +226,11 @@ def job_check_result(match_id: str) -> None:
         payload = {} if skip_cm else (_find_current_match_payload(match.cricapi_id) or {})
         if not payload.get("matchStarted"):
             try:
-                payload = fetch_match_bbb(match.cricapi_id) or {}
+                mi = fetch_match_info(match.cricapi_id) or {}
+                if isinstance(mi, dict) and mi:
+                    payload = mi
             except CricAPIError:
-                payload = {}
+                pass
 
         match_info_cached: dict | None = None
 
@@ -279,7 +281,7 @@ def job_check_result(match_id: str) -> None:
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
             _log(db, "result", match.id, "no_data",
-                 detail="all CricAPI sources returned empty (currentMatches, BBB, match_info)")
+                 detail="all CricAPI sources returned empty (currentMatches, match_info)")
             return
 
         changed = False

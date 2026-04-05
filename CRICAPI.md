@@ -1,189 +1,19 @@
 # CricAPI Integration Reference
 
-API provider: [cricketdata.org](https://cricketdata.org)
-Base URL: `https://api.cricapi.com/v1/`
-Auth: `apikey` query param (GUID format) on every request
-Plan: M ($12.99/mo) — 10,000 hits/day
+API provider: [cricketdata.org](https://cricketdata.org)  
+Base URL: `https://api.cricapi.com/v1/`  
+Auth: `apikey` query param (GUID) on every request  
+
+Configure the key only in **`backend/.env`** as `CRICAPI_KEY` (never commit real keys).
 
 ---
 
-## API Key
-
-```
-8a4ebd2d-3d6f-488e-a3e0-c898019efb1b
-```
-
-Store in backend `.env` as `CRICAPI_KEY`.
-
----
-
-## Endpoints Used in This Project
-
-### 1. Current Matches
-```
-GET /v1/currentMatches?apikey={key}&offset=0
-```
-Returns matches that have a toss winner but no match winner yet (i.e. live or recently finished).
-
-**Key response fields per match:**
-```json
-{
-  "id": "e02475c1-...",               // cricapi_id — store on our Match model
-  "name": "Mumbai Indians vs KKR, 2nd Match",
-  "matchType": "t20",
-  "status": "Mumbai Indians won by 6 wkts",  // human-readable result
-  "venue": "Wankhede Stadium, Mumbai",
-  "date": "2026-03-29",
-  "dateTimeGMT": "2026-03-29T14:00:00",      // UTC
-  "teams": ["Mumbai Indians", "Kolkata Knight Riders"],
-  "teamInfo": [
-    { "name": "Mumbai Indians", "shortname": "MI", "img": "..." }
-  ],
-  "score": [
-    { "r": 220, "w": 4,  "o": 20,   "inning": "Mumbai Indians Inning 1" },
-    { "r": 224, "w": 4,  "o": 19.1, "inning": "KKR Inning 1" }
-  ],
-  "tossWinner": "Mumbai Indians",
-  "tossChoice": "bat",
-  "matchWinner": "Mumbai Indians",   // null if match not finished
-  "series_id": "87c62aac-...",
-  "matchStarted": true,
-  "matchEnded": true,
-  "fantasyEnabled": true,
-  "bbbEnabled": false,
-  "hasSquad": true
-}
-```
-
-**Use for:**
-- Detecting when a match goes live (`matchStarted: true, matchEnded: false`)
-- Auto-settling matches (`matchEnded: true` + `matchWinner`)
-- Showing current score per innings (`score[]`)
-
----
-
-### 2. Ball-by-Ball
-```
-GET /v1/match_bbb?apikey={key}&id={cricapi_id}
-```
-Returns cumulative ball-by-ball data for a match. Poll every 30s during live matches.
-
-**Key response fields:**
-```json
-{
-  "id": "ea479cff-...",
-  "name": "...",
-  "matchWinner": "Team Name",   // null if not finished
-  "matchStarted": true,
-  "matchEnded": false,
-  "score": [
-    { "r": 92, "w": 10, "o": 17.4, "inning": "Team A Inning 1" }
-  ],
-  "bbb": [
-    {
-      "n": 1,           // sequential ball number
-      "inning": 0,      // 0 = 1st innings, 1 = 2nd innings
-      "over": 0,        // over number (0-indexed)
-      "ball": 1,        // ball within over (1-6)
-      "batsman": { "id": "...", "name": "Player Name" },
-      "bowler":  { "id": "...", "name": "Player Name" },
-      "runs": 4,
-      "penalty": null,  // "wide" | "noball" | "bye" | "legbye" | null
-      "extras": 0
-    }
-  ]
-}
-```
-
-**Use for:**
-- Live ball-by-ball commentary feed
-- Auto-settle: check `matchEnded` + `matchWinner` on each poll
-
----
-
-### 3. Match Scorecard
-```
-GET /v1/match_scorecard?apikey={key}&id={cricapi_id}
-```
-Full batting/bowling scorecard per innings.
-
-**Key response fields:**
-```json
-{
-  "scorecard": [
-    {
-      "batting": [
-        {
-          "batsman": { "id": "...", "name": "Rohit Sharma" },
-          "dismissal": "c Gill b Varun",
-          "r": 56, "b": 32, "4s": 6, "6s": 2, "sr": 175.0
-        }
-      ],
-      "bowling": [
-        {
-          "bowler": { "id": "...", "name": "Varun Chakravarthy" },
-          "o": 4, "m": 0, "r": 28, "w": 2, "wd": 1, "nb": 0, "eco": 7.0
-        }
-      ],
-      "extras": { "b": 0, "lb": 2, "wd": 3, "nb": 0, "total": 5 },
-      "totals": { "r": 220, "w": 4, "o": 20 }
-    }
-  ]
-}
-```
-
-**Use for:** Post-match scorecard display (not needed for live polling).
-
----
-
-### 4. Match Squad
-```
-GET /v1/match_squad?apikey={key}&id={cricapi_id}
-```
-Playing XI for each team. Available when `hasSquad: true`.
-
-**Key response fields:**
-```json
-[
-  {
-    "teamName": "Mumbai Indians",
-    "players": [
-      {
-        "id": "...",
-        "name": "Rohit Sharma",
-        "role": "Batsman",
-        "battingStyle": "Right Handed Bat",
-        "bowlingStyle": "Right-arm medium",
-        "country": "India",
-        "playerImg": "https://..."
-      }
-    ]
-  }
-]
-```
-
-**Use for:** Showing playing 11 before/during match. Cache in DB — fetch once per match.
-
----
-
-### 5. Series Info
-```
-GET /v1/series_info?apikey={key}&id={series_id}
-```
-Full match list for a series (e.g. IPL 2026).
-
-> ⚠️ Marked "Very HEAVY" by CricAPI — max 2-3 calls/day. Use to import fixtures at start of season only.
-
-**Use for:** Bulk importing IPL 2026 fixtures into our DB.
-
----
-
-## Response Envelope (all endpoints)
+## Response envelope (all endpoints)
 
 ```json
 {
   "apikey": "...",
-  "data": { ... },     // or array
+  "data": { },
   "status": "success",
   "info": {
     "hitsToday": 45,
@@ -197,100 +27,100 @@ Full match list for a series (e.g. IPL 2026).
 }
 ```
 
-Always check `status === "success"` before reading `data`.
+Always check `status === "success"` before reading `data`. On failure, `status` is `"failure"` and a `reason` string explains the error (e.g. BBB not available for that match).  
 Monitor `hitsToday` / `hitsLimit` to stay within quota.
 
 ---
 
-## Polling Strategy
+## Endpoints this project uses
 
-| Endpoint | When to poll | Frequency |
-|---|---|---|
-| `currentMatches` | Always (background) | Every 5 min |
-| `match_bbb` | Only during live match | Every 30s |
-| `match_squad` | Once per match (on create) | On demand |
-| `series_info` | Once per season | Manual trigger |
-
-**Daily hit estimate (double-header day):**
-- `currentMatches`: 288 calls (every 5 min × 24h)
-- `match_bbb`: ~840 calls (2 matches × 3.5h × 2/min)
-- Total: ~1,130 / 10,000 = **11% of quota**
-
----
-
-## Match Linking
-
-Our `Match` model stores a `cricapi_id` field (the CricAPI match UUID).
-This is the join key between our DB and CricAPI.
+### 1. Current matches
 
 ```
-Our DB Match.cricapi_id  ←→  CricAPI match "id" field
+GET /v1/currentMatches?apikey={key}&offset=0
 ```
 
-When creating a match in admin, paste the CricAPI match ID.
-Alternatively, use the series import flow to auto-populate.
+Paginated list of matches the provider considers “current” (live pipeline, offset in steps of 25).
 
----
+**Typical fields per row** (shape varies by match):
 
-## Auto-Settle Logic
-
-When `match_bbb` or `currentMatches` poll returns `matchEnded: true`:
-
-```python
-if data["matchEnded"] and data["matchWinner"]:
-    winner = data["matchWinner"]  # e.g. "Mumbai Indians"
-    # winner must match match.team1 or match.team2 exactly
-    await settle_match(match_id=our_match.id, winner=winner)
-```
-
-The `matchWinner` string matches the full team name stored in our `team1`/`team2` fields — this is why we use full team names in our DB.
-
----
-
-## Fantasy Points API
-
-Useful for calculating per-player fantasy points if we ever add a fantasy layer.
-
-```
-GET /v1/match_points?apikey={key}&id={cricapi_id}&ruleset=0
-```
-
-**Parameters:**
-- `ruleset`: `0` = default ruleset. Custom rulesets created in member area.
-
-**Response:**
 ```json
 {
-  "data": {
-    "innings": [
-      {
-        "inning": "Mumbai Indians Inning 1",
-        "batting": [{ "name": "Rohit Sharma", "id": "...", "points": 54 }],
-        "bowling": [{ "name": "Bumrah", "id": "...", "points": 38 }],
-        "catching": [{ "name": "Pollard", "id": "...", "points": 8 }]
-      }
-    ],
-    "totals": [
-      { "name": "Rohit Sharma", "id": "...", "points": 54 }
-    ]
-  }
+  "id": "e02475c1-...",
+  "name": "Mumbai Indians vs KKR, 2nd Match",
+  "matchType": "t20",
+  "status": "Mumbai Indians won by 6 wkts",
+  "venue": "Wankhede Stadium, Mumbai",
+  "date": "2026-03-29",
+  "dateTimeGMT": "2026-03-29T14:00:00",
+  "teams": ["Mumbai Indians", "Kolkata Knight Riders"],
+  "teamInfo": [{ "name": "Mumbai Indians", "shortname": "MI", "img": "..." }],
+  "score": [
+    { "r": 220, "w": 4, "o": 20, "inning": "Mumbai Indians Inning 1" },
+    { "r": 224, "w": 4, "o": 19.1, "inning": "KKR Inning 1" }
+  ],
+  "tossWinner": "Mumbai Indians",
+  "tossChoice": "bat",
+  "matchWinner": "Mumbai Indians",
+  "series_id": "87c62aac-...",
+  "matchStarted": true,
+  "matchEnded": true,
+  "fantasyEnabled": true,
+  "bbbEnabled": false,
+  "hasSquad": true
 }
 ```
 
-> Points fluctuate during live matches. Only stable once `matchEnded: true`.
-> Not all matches are available in Fantasy APIs — check `fantasyEnabled: true` on the match before calling.
+**Use in this repo:** background poller, finding a row by `id` (`cricapi_id`), toss/result discovery. **Do not rely on this list alone for the hero line score** — see *Live matches* below.
+
+**Cache:** `CRICAPI_CURRENT_MATCHES_CACHE_SECONDS` (default `60`) in `backend/cricapi.py`.
 
 ---
 
-## Scorecard API (Full Batting/Bowling)
+### 2. Match info (primary for line score + status)
+
+```
+GET /v1/match_info?apikey={key}&id={cricapi_id}
+```
+
+Single-match snapshot: same broad shape as a `currentMatches` row (not ball-by-ball).
+
+**Important fields for UI and settlement:**
+
+| Field | Role |
+|--------|------|
+| `status` | Human-readable state: result, “Team opt to bowl”, chase equation, etc. |
+| `score` | **Line innings** array: `{ "r", "w", "o", "inning" }` per innings when the feed has them |
+| `matchStarted` / `matchEnded` | Lifecycle flags |
+| `matchWinner` | When finished |
+| `tossWinner` / `tossChoice` | Toss outcome when known |
+| `teams`, `teamInfo`, `venue`, `date`, `dateTimeGMT` | Metadata |
+
+**Use in this repo:** **`GET /matches/{id}/live`** uses **`match_info` only** (`_cricapi_match_snapshot`). The JSON field **`bbb`** on that response is always **`[]`** (reserved for a future feed). Toss merging uses `currentMatches` then `match_info` then `match_scorecard` (`backend/routes/matches.py`).
+
+**Cache:** `CRICAPI_MATCH_INFO_CACHE_SECONDS` (default `20`).
+
+---
+
+### 3. Ball-by-ball (`match_bbb`) — not used
+
+CricAPI exposes `GET /v1/match_bbb` for per-ball data. **This app does not call it** (one scoring source is enough: `match_info`). The provider often returns failures for smaller fixtures anyway.
+
+---
+
+### 4. Match scorecard
 
 ```
 GET /v1/match_scorecard?apikey={key}&id={cricapi_id}
 ```
 
-**Response — `scorecard[]` per innings:**
+Full batting/bowling per innings, plus the same top-level **`score[]`** line innings and toss/winner fields as `match_info` when the provider has a card.
+
+**Per-innings object (simplified):**
+
 ```json
 {
+  "inning": "Mumbai Indians Inning 1",
   "batting": [
     {
       "batsman": { "id": "...", "name": "Rohit Sharma" },
@@ -304,21 +134,101 @@ GET /v1/match_scorecard?apikey={key}&id={cricapi_id}
       "o": 4, "m": 0, "r": 28, "w": 2, "wd": 1, "nb": 0, "eco": 7.0
     }
   ],
-  "catching": [{ "fielder": "...", "catch": 1, "stumped": 0, "runout": 0 }],
   "extras": { "b": 0, "lb": 2, "wd": 3, "nb": 0, "total": 5 },
-  "totals": { "r": 220, "w": 4, "o": 20 },
-  "inning": "Mumbai Indians Inning 1"
+  "totals": { "r": 220, "w": 4, "o": 20 }
 }
 ```
 
-Also includes top-level: `tossWinner`, `tossChoice`, `matchWinner`, `teams`, `score[]`.
+Before a card exists you may get **failure** (e.g. scorecard not found). **`totals`** can be empty in some payloads; **`score[]`** at the root is still the reliable line score when present.
+
+**Use in this repo:** `GET /matches/{id}/scorecard` and toss fallbacks — not used for the minimal match-page score hero (that uses `/live` only).
+
+**Cache:** `CRICAPI_MATCH_SCORECARD_CACHE_SECONDS` (default `20`).
 
 ---
 
-## Team Name Mapping (IPL 2026)
+### 5. Match squad
 
-| Full Name (DB + CricAPI) | Short Code | Hex Color |
-|---|---|---|
+```
+GET /v1/match_squad?apikey={key}&id={cricapi_id}
+```
+
+Playing XI per team when `hasSquad: true` on the fixture.
+
+---
+
+### 6. Series info
+
+```
+GET /v1/series_info?apikey={key}&id={series_id}
+```
+
+> Heavy — use sparingly (e.g. bulk import at season start).
+
+---
+
+## Live matches: what you actually get
+
+These behaviours were checked by calling the API for real `cricapi_id` values (see `backend/scripts/probe_cricapi_score.py`).
+
+1. **Toss / not started yet**  
+   `status` often reads like *“Lucknow Super Giants opt to bowl”*. **`score` is usually `[]`** on `match_info`, `currentMatches`, and scorecard until play produces a counted innings. The UI correctly shows narrative only.
+
+2. **Line innings `score[]`**  
+   Carried on **`match_info`** and on **`match_scorecard`** (root) when present. Each element is typically `{ "r", "w", "o", "inning" }`.
+
+3. **`currentMatches` vs `match_info`**  
+   For the same `id`, the **list row** can still show **`score: []`** while **`match_info` already returns two innings** (list lag). **`/live`** reads **`match_info` only** for the hero line score.
+
+---
+
+## How `/live` gets its payload
+
+`_cricapi_match_snapshot` in `backend/routes/matches.py` returns **`fetch_match_info(cricapi_id)`** (or `{}` on failure). Pre-start and completed DB-only shortcuts on `/live` are unchanged — see route code.
+
+---
+
+## Polling and quota (rough guide)
+
+| Endpoint | Role in this app | Typical cadence |
+|----------|------------------|-----------------|
+| `currentMatches` | Poller / discovery | ~5 min (cached ~60s server-side) |
+| `match_info` | `/live`, poller when CM thin, first-innings | Per client poll of `/live`; cached ~20s |
+| `match_scorecard` | `/scorecard` route, toss fallback | On demand |
+| `match_squad` | Once per match | On demand |
+| `series_info` | Imports | Rare |
+
+Exact TTLs: env vars in `backend/cricapi.py` (`CRICAPI_*_CACHE_SECONDS`).
+
+---
+
+## Match linking
+
+Our `Match.cricapi_id` is the CricAPI **`id`** string. Admin paste or series import fills it.
+
+---
+
+## Auto-settle (high level)
+
+Poller and routes watch **`matchEnded`**, **`matchWinner`**, toss fields from **`currentMatches`**, **`match_info`**, and sometimes **`match_scorecard`** (see `SETTLEMENT.md`).  
+`matchWinner` strings are aligned with DB `team1` / `team2` full names.
+
+---
+
+## Fantasy points (optional)
+
+```
+GET /v1/match_points?apikey={key}&id={cricapi_id}&ruleset=0
+```
+
+Not wired into core flows. Use only when `fantasyEnabled: true` on the fixture; points stabilise after `matchEnded`.
+
+---
+
+## Team name mapping (IPL 2026)
+
+| Full name (DB + CricAPI) | Short | Hex |
+|--------------------------|-------|-----|
 | Mumbai Indians | MI | #004BA0 |
 | Chennai Super Kings | CSK | #F9CD05 |
 | Royal Challengers Bengaluru | RCB | #C8102E |

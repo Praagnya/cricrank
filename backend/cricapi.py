@@ -18,7 +18,7 @@ _current_matches_expires: float = 0.0
 _match_payload_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 DEFAULT_CM_TTL = "60"
-# BBB / match_info / scorecard — lower = fresher line scores (live UX); raise via env if quota tight.
+# match_info / scorecard — lower = fresher line scores (live UX); raise via env if quota tight.
 DEFAULT_MATCH_TTL = "20"
 
 
@@ -107,16 +107,6 @@ def _cached_match_request(
                 _, payload = _match_payload_cache[cache_key]
                 return dict(payload)
         raise
-
-
-def fetch_match_bbb(cricapi_id: str):
-    return _cached_match_request(
-        f"bbb:{cricapi_id}",
-        "match_bbb",
-        cricapi_id,
-        "CRICAPI_MATCH_BBB_CACHE_SECONDS",
-        DEFAULT_MATCH_TTL,
-    )
 
 
 def fetch_match_scorecard(cricapi_id: str):
