@@ -96,7 +96,7 @@ Single-match snapshot: same broad shape as a `currentMatches` row (not ball-by-b
 | `tossWinner` / `tossChoice` | Toss outcome when known |
 | `teams`, `teamInfo`, `venue`, `date`, `dateTimeGMT` | Metadata |
 
-**Use in this repo:** **`GET /matches/{id}/live`** uses **`match_info` only** (`_cricapi_match_snapshot`). The JSON field **`bbb`** on that response is always **`[]`** (reserved for a future feed). Toss merging uses `currentMatches` then `match_info` then `match_scorecard` (`backend/routes/matches.py`).
+**Use in this repo:** **`GET /matches/{id}/live`** calls **`match_info`** plus the matching row from **`currentMatches`** when present (`_cricapi_match_snapshot`). Top-level fields merge with the list row winning key clashes; **`score[]`** is taken from whichever source looks **fresher** (higher max overs, then total runs). The JSON field **`bbb`** is always **`[]`**. Toss merging uses the same three sources in order: `currentMatches` → `match_info` → `match_scorecard` (`backend/routes/matches.py`).
 
 **Cache:** `CRICAPI_MATCH_INFO_CACHE_SECONDS` (default `20`).
 
@@ -178,13 +178,13 @@ These behaviours were checked by calling the API for real `cricapi_id` values (s
    Carried on **`match_info`** and on **`match_scorecard`** (root) when present. Each element is typically `{ "r", "w", "o", "inning" }`.
 
 3. **`currentMatches` vs `match_info`**  
-   For the same `id`, the **list row** can still show **`score: []`** while **`match_info` already returns two innings** (list lag). **`/live`** reads **`match_info` only** for the hero line score.
+   For the same `id`, either side can **lag** the other on **`score[]`**. **`/live`** merges both and keeps the **richer** innings snapshot so the hero line tracks the feed that has moved forward more.
 
 ---
 
 ## How `/live` gets its payload
 
-`_cricapi_match_snapshot` in `backend/routes/matches.py` returns **`fetch_match_info(cricapi_id)`** (or `{}` on failure). Pre-start and completed DB-only shortcuts on `/live` are unchanged — see route code.
+`_cricapi_match_snapshot` in `backend/routes/matches.py`: **`fetch_match_info`**, **`fetch_current_matches`** (to find the row by `id`), merge `{**info, **row}`, then **`score[]` = whichever of the two lists scores higher on (max `o`/`overs`, then sum of `r`/`runs`)**. Pre-start and completed DB-only shortcuts on `/live` are unchanged — see route code.
 
 ---
 
@@ -192,8 +192,8 @@ These behaviours were checked by calling the API for real `cricapi_id` values (s
 
 | Endpoint | Role in this app | Typical cadence |
 |----------|------------------|-----------------|
-| `currentMatches` | Poller / discovery | ~5 min (cached ~60s server-side) |
-| `match_info` | `/live`, poller when CM thin, first-innings | Per client poll of `/live`; cached ~20s |
+| `currentMatches` | Poller / discovery, **`/live`** row lookup | ~5 min poller; list cached ~60s server-side |
+| `match_info` | **`/live`**, poller when CM thin, first-innings | Per `/live` poll; cached ~20s per match |
 | `match_scorecard` | `/scorecard` route, toss fallback | On demand |
 | `match_squad` | Once per match | On demand |
 | `series_info` | Imports | Rare |

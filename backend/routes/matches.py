@@ -224,15 +224,60 @@ def _find_current_match_payload(cricapi_id: str) -> dict | None:
     return None
 
 
+def _line_score_richness(score: list | None) -> tuple[float, int]:
+    """Higher tuple ≈ likelier more up-to-date innings lines (max overs, then total runs)."""
+    max_o = -1.0
+    total_r = 0
+    for row in score or []:
+        if not isinstance(row, dict):
+            continue
+        raw_o = row.get("o") if row.get("o") is not None else row.get("overs")
+        if raw_o is not None:
+            try:
+                max_o = max(max_o, float(raw_o))
+            except (TypeError, ValueError):
+                pass
+        for key in ("r", "runs"):
+            if key in row:
+                try:
+                    total_r += int(float(row[key]))
+                except (TypeError, ValueError):
+                    pass
+                break
+    return (max_o, total_r)
+
+
+def _pick_line_score(a: list | None, b: list | None) -> list:
+    """Choose the score[] list that looks fresher; prefer non-empty over empty."""
+    a = a if isinstance(a, list) else []
+    b = b if isinstance(b, list) else []
+    if not b:
+        return a
+    if not a:
+        return b
+    return a if _line_score_richness(a) >= _line_score_richness(b) else b
+
+
 def _cricapi_match_snapshot(cricapi_id: str) -> dict:
     """
-    Live line score from match_info only (see CRICAPI.md). Same id as Match.cricapi_id.
+    Live snapshot: match_info + currentMatches row (same id). Both carry score[] / status;
+    either can lag the other, so we merge top-level fields and take the richer score[].
     """
+    info: dict = {}
     try:
         raw = fetch_match_info(cricapi_id) or {}
-        return dict(raw) if isinstance(raw, dict) else {}
+        if isinstance(raw, dict):
+            info = dict(raw)
     except CricAPIError:
-        return {}
+        pass
+
+    cm = _find_current_match_payload(cricapi_id) or {}
+    si = info.get("score") if isinstance(info.get("score"), list) else []
+    sm = cm.get("score") if isinstance(cm.get("score"), list) else []
+
+    out = {**info, **cm}
+    out["score"] = _pick_line_score(si, sm)
+    return out
 
 
 def _status_text_fallback(match: Match) -> str | None:
