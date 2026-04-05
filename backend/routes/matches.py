@@ -741,8 +741,16 @@ def get_match_scorecard(match_id: str, db: Session = Depends(get_db)):
         except CricAPIError:
             pass
 
+    # Toss / very early live: feed often has status but no batting tables yet. Do not 502 —
+    # clients retry for a long time and the UI sticks on "Loading…". Empty 200 matches
+    # pre-start behaviour and shows "No detailed batting card yet" copy.
     if not (payload.get("score") or []) and not (payload.get("scorecard") or []):
-        raise HTTPException(status_code=502, detail="Scorecard not available")
+        return MatchScorecardResponse(
+            match_id=match.id,
+            cricapi_id=match.cricapi_id,
+            score=[],
+            scorecard=[],
+        )
 
     return MatchScorecardResponse(
         match_id=match.id,

@@ -254,7 +254,9 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
             )}
             {!detailLoading && !detailErr && !hasBattingTables && (
               <p className="text-[13px] text-[#737373] font-sans leading-relaxed">
-                No detailed batting card yet — line scores above follow the live feed.
+                {isLivePulse
+                  ? "Full batting lines usually appear after a few overs — the summary above updates from the live feed."
+                  : "No detailed batting card yet — line scores above follow the live feed."}
               </p>
             )}
             {scorecardRows.map((inn, idx) => {
