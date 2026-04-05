@@ -7,6 +7,7 @@ import {
   FirstInningsPickResponse,
   FirstInningsStatusResponse,
   MatchLiveResponse,
+  MatchScorecardResponse,
   User,
   LeaderboardEntry,
   Prediction,
@@ -99,6 +100,8 @@ export const api = {
     /** No client TTL — stale line scores felt "stuck"; backend still dedupes CricAPI (~30–60s). */
     live: (matchId: string) =>
       getNoStore<MatchLiveResponse>(`/matches/${encodeURIComponent(matchId)}/live`),
+    scorecard: (matchId: string) =>
+      getNoStore<MatchScorecardResponse>(`/matches/${encodeURIComponent(matchId)}/scorecard`),
     aiPrediction: (id: string) => getNoStore<AIPrediction>(`/matches/${encodeURIComponent(id)}/prediction`),
     crowd: (id: string) => getNoStore<CrowdPrediction>(`/matches/${encodeURIComponent(id)}/crowd`),
     tossStatus: async (matchId: string, googleId: string) => {
