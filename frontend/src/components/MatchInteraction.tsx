@@ -22,16 +22,27 @@ export default function MatchInteraction({ matchId, team1, team2, tossTime, star
   const googleId = user?.id ?? null;
 
   useEffect(() => {
-    if (!googleId) return;
+    if (!googleId) {
+      setExistingPrediction(null);
+      return;
+    }
+    setExistingPrediction(null);
+    let cancelled = false;
     api.predictions
       .byUser(googleId)
       .then((preds) => {
+        if (cancelled) return;
         const found = preds.find(
           (p: { match_id: string; selected_team: string }) => p.match_id === matchId
         );
-        if (found) setExistingPrediction(found.selected_team);
+        setExistingPrediction(found ? found.selected_team : null);
       })
-      .catch(() => null);
+      .catch(() => {
+        if (!cancelled) setExistingPrediction(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [googleId, matchId]);
 
   if (loading) {

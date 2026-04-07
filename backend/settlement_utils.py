@@ -64,6 +64,14 @@ def _canonical_side(name: str | None, team1: str, team2: str) -> str | None:
     return None
 
 
+def match_has_participant_winner(match) -> bool:
+    """True only when winner is exactly one of the two sides (not null, not junk like \"No Winner\")."""
+    w = match.winner
+    if w is None or not str(w).strip():
+        return False
+    return w in (match.team1, match.team2)
+
+
 def coerce_match_winner_in_place(match) -> bool:
     """
     If match.winner is set but is not exactly team1 or team2, clear it.

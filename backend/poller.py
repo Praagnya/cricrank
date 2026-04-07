@@ -58,6 +58,7 @@ def _ensure_autosettle_for_match(db: Session, match: Match) -> None:
     """
     from routes.matches import _settle_all_toss_plays_for_match, _settle_first_innings_picks
     from routes.predictions import _settle_match_internal
+    from settlement_utils import match_has_participant_winner
 
     try:
         if match.toss_winner:
@@ -75,7 +76,7 @@ def _ensure_autosettle_for_match(db: Session, match: Match) -> None:
                 _settle_all_toss_plays_for_match(db, match)
                 db.commit()
 
-        if match.status == MatchStatus.completed and match.winner:
+        if match.status == MatchStatus.completed and match_has_participant_winner(match):
             unsettled_pred = (
                 db.query(Prediction)
                 .filter(Prediction.match_id == match.id, Prediction.is_correct.is_(None))
@@ -212,13 +213,15 @@ def job_check_result(match_id: str) -> None:
     """Update match status/winner from CricAPI and auto-settle when match ends."""
     from cricapi import CricAPIError, fetch_match_info
     from routes.matches import _match_status_from_payload
+    from settlement_utils import match_has_participant_winner
+
     db: Session = SessionLocal()
     try:
         match = db.query(Match).filter(Match.id == match_id).first()
         if not match or not match.cricapi_id:
             return
-        # Completed + winner: normally nothing to do; still backfill summary if empty.
-        if match.status == MatchStatus.completed and match.winner:
+        # Completed + real side winner only — junk strings must fall through to refresh/void.
+        if match.status == MatchStatus.completed and match_has_participant_winner(match):
             if _try_backfill_result_summary(db, match):
                 db.commit()
                 logger.info("poller/result: backfilled result_summary for match %s", match_id)
@@ -312,9 +315,9 @@ def job_check_result(match_id: str) -> None:
             _settle_all_toss_plays_for_match(db, match)
             db.commit()
 
-        # Auto-settle predictions and challenges once match is complete
+        # Auto-settle predictions and challenges once match is complete with a real winner
         predictions_settled = 0
-        if match.status == MatchStatus.completed and match.winner:
+        if match.status == MatchStatus.completed and match_has_participant_winner(match):
             from routes.predictions import _settle_match_internal
             result = _settle_match_internal(db, match)
             predictions_settled = result.get("predictions_updated", 0)

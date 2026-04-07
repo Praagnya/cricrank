@@ -29,8 +29,9 @@ export default function PredictionButtons({
   const isPostToss = predState === "post_toss";
 
   useEffect(() => {
-    if (existingPrediction) setSelected(existingPrediction);
-  }, [existingPrediction]);
+    setSelected(existingPrediction ?? null);
+    setError(null);
+  }, [existingPrediction, matchId]);
 
   async function predict(team: string) {
     if (!googleId) { onRequireAuth(); return; }
