@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check, CloudOff } from "lucide-react";
 import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
+
+/** Sort / label key: real settlement time when scored, else scheduled match start. */
+function predictionLedgerTimeMs(p: PredictionWithMatch): number {
+  if (p.settled_at) return new Date(p.settled_at).getTime();
+  return new Date(p.match.start_time).getTime();
+}
 import { streakTierColor, teamFullName, teamHex, teamShortCode, teamTextColor } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -318,7 +324,7 @@ export default function ProfileView({
   const brokenFromMap: Record<string, number> = {};
   {
     const sorted = [...predictions].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) => new Date(a.match.start_time).getTime() - new Date(b.match.start_time).getTime()
     );
     let run = 0;
     for (const p of sorted) {
@@ -684,9 +690,7 @@ export default function ProfileView({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {[...predictions].sort((a, b) =>
-              new Date(b.match.start_time).getTime() - new Date(a.match.start_time).getTime()
-            ).slice(0, visiblePredCount).map((pred) => {
+            {[...predictions].sort((a, b) => predictionLedgerTimeMs(b) - predictionLedgerTimeMs(a)).slice(0, visiblePredCount).map((pred) => {
               const isUnlocked = pred.is_correct === null && new Date(pred.match.toss_time) > new Date();
               const isChanging = changingPredId === pred.id;
 
@@ -876,10 +880,17 @@ export default function ProfileView({
                     </span>
                     {/* Date — single readable line */}
                     <span className="text-[7.5px] sm:text-[10px] text-[#737373] font-bold tracking-wider text-center leading-[1.2] sm:leading-snug mt-0.5 sm:mt-0">
-                      {new Date(pred.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      <br className="hidden sm:block" />
-                      <span className="sm:hidden"> </span>
-                      {new Date(pred.created_at).getFullYear()}
+                      {(() => {
+                        const d = new Date(pred.settled_at ?? pred.match.start_time);
+                        return (
+                          <>
+                            {d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                            <br className="hidden sm:block" />
+                            <span className="sm:hidden"> </span>
+                            {d.getFullYear()}
+                          </>
+                        );
+                      })()}
                     </span>
                   </div>
 

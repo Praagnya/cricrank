@@ -130,6 +130,7 @@ class Prediction(Base):
     is_post_toss = Column(Boolean, default=False, nullable=False)  # True if predicted after toss
     points_awarded = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    settled_at = Column(DateTime(timezone=True), nullable=True)  # when match result was applied (ledger date)
 
     user = relationship("User", back_populates="predictions")
     match = relationship("Match", back_populates="predictions")

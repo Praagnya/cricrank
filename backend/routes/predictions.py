@@ -10,29 +10,51 @@ router = APIRouter()
 
 
 def _recompute_user_prediction_stats(db: Session, user: User) -> None:
-    """Rebuild points, streaks, and counts from settled predictions (after voiding a match)."""
-    preds = (
+    """
+    Rebuild points, streaks, and counts.
+
+    Points / accuracy counts use only settled predictions (is_correct set).
+
+    Streaks: walks all picks in match start order. Rows with is_correct NULL are neutral
+    (no result, not started, or not yet settled) — they neither extend nor break the run.
+    So a rain-off after a hit does not zero current_streak.
+    """
+    settled = (
         db.query(Prediction)
         .join(Match, Prediction.match_id == Match.id)
         .filter(Prediction.user_id == user.id, Prediction.is_correct.isnot(None))
         .order_by(Match.start_time.asc())
         .all()
     )
-    user.settled_predictions = len(preds)
-    user.correct_predictions = sum(1 for p in preds if p.is_correct == 1)
-    user.points = sum(p.points_awarded for p in preds)
+    user.settled_predictions = len(settled)
+    user.correct_predictions = sum(1 for p in settled if p.is_correct == 1)
+    user.points = sum(p.points_awarded for p in settled)
+
+    all_rows = (
+        db.query(Prediction, Match)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(Prediction.user_id == user.id)
+        .order_by(Match.start_time.asc())
+        .all()
+    )
+
     run = 0
     longest = 0
-    for p in preds:
-        if p.is_correct == 1:
+    for pred, _m in all_rows:
+        if pred.is_correct is None:
+            continue
+        if pred.is_correct == 1:
             run += 1
             longest = max(longest, run)
         else:
             run = 0
     user.longest_streak = longest
+
     run = 0
-    for p in reversed(preds):
-        if p.is_correct == 1:
+    for pred, _m in reversed(all_rows):
+        if pred.is_correct is None:
+            continue
+        if pred.is_correct == 1:
             run += 1
         else:
             break
@@ -47,10 +69,12 @@ def void_match_prediction_settlement(db: Session, match: Match) -> dict:
     """
     mid = match.id
     preds = db.query(Prediction).filter(Prediction.match_id == mid).all()
-    touched_users = {p.user_id for p in preds if p.is_correct is not None}
+    # Recompute everyone who picked this match — NR void changes neutral tail for streaks.
+    touched_users = {p.user_id for p in preds}
     for p in preds:
         p.is_correct = None
         p.points_awarded = 0
+        p.settled_at = None
     match.winner = None
     for uid in touched_users:
         u = db.query(User).filter(User.id == uid).first()
@@ -186,6 +210,7 @@ def _settle_match_internal(db: Session, match: Match) -> dict:
     predictions = db.query(Prediction).filter(Prediction.match_id == mid).all()
     updated = 0
     if valid_winner:
+        settled_now = datetime.now(timezone.utc)
         for pred in predictions:
             if pred.is_correct is not None:
                 continue
@@ -194,6 +219,7 @@ def _settle_match_internal(db: Session, match: Match) -> dict:
                 continue
 
             user.settled_predictions += 1
+            pred.settled_at = settled_now
             if pred.selected_team == winner:
                 pred.is_correct = 1
                 user.current_streak += 1

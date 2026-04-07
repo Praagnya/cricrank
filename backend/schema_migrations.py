@@ -174,6 +174,45 @@ def ensure_poller_events_schema(engine) -> None:
             ))
 
 
+def ensure_prediction_settled_at_schema(engine) -> None:
+    """predictions.settled_at — when pick was scored; ledger UI uses this instead of created_at."""
+    inspector = inspect(engine)
+    if "predictions" not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns("predictions")}
+    if "settled_at" in cols:
+        return
+    dialect = engine.dialect.name
+    with engine.begin() as connection:
+        if dialect == "postgresql":
+            connection.execute(
+                text("ALTER TABLE predictions ADD COLUMN settled_at TIMESTAMPTZ")
+            )
+            connection.execute(
+                text("""
+                    UPDATE predictions AS p
+                    SET settled_at = m.start_time
+                    FROM matches AS m
+                    WHERE p.match_id = m.id
+                      AND p.is_correct IS NOT NULL
+                      AND p.settled_at IS NULL
+                """)
+            )
+        else:
+            connection.execute(
+                text("ALTER TABLE predictions ADD COLUMN settled_at TIMESTAMP")
+            )
+            connection.execute(
+                text("""
+                    UPDATE predictions
+                    SET settled_at = (
+                        SELECT start_time FROM matches WHERE matches.id = predictions.match_id
+                    )
+                    WHERE is_correct IS NOT NULL AND settled_at IS NULL
+                """)
+            )
+
+
 def ensure_match_schema_upgrades(engine) -> None:
     inspector = inspect(engine)
     if "matches" not in inspector.get_table_names():

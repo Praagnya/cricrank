@@ -222,6 +222,7 @@ class PredictionPublic(BaseModel):
     is_post_toss: bool = False
     points_awarded: int
     created_at: datetime
+    settled_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

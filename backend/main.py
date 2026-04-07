@@ -5,7 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from database import engine, Base
-from schema_migrations import ensure_match_schema_upgrades, ensure_toss_winner_schema, ensure_first_innings_schema, ensure_challenge_schema, ensure_toss_stake_schema, ensure_poller_events_schema, ensure_referral_schema
+from schema_migrations import (
+    ensure_match_schema_upgrades,
+    ensure_prediction_settled_at_schema,
+    ensure_toss_winner_schema,
+    ensure_first_innings_schema,
+    ensure_challenge_schema,
+    ensure_toss_stake_schema,
+    ensure_poller_events_schema,
+    ensure_referral_schema,
+)
 
 load_dotenv()
 
@@ -16,6 +25,7 @@ import models  # noqa: F401 — register CoinTransaction etc. before create_all
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_match_schema_upgrades(engine)
+    ensure_prediction_settled_at_schema(engine)
     ensure_toss_winner_schema(engine)
     ensure_first_innings_schema(engine)
     ensure_challenge_schema(engine)

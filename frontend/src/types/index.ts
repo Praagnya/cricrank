@@ -129,6 +129,8 @@ export interface Prediction {
   is_post_toss: boolean;
   points_awarded: number;
   created_at: string;
+  /** When the pick was scored (settlement time); ledger shows this instead of created_at when set */
+  settled_at?: string | null;
 }
 
 export interface PredictionWithMatch extends Prediction {
