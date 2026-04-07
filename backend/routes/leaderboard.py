@@ -5,10 +5,21 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User, ContestEntry, Follow, Prediction
+from models import Match, User, ContestEntry, Follow, Prediction
 from schemas import LeaderboardEntry, ContestLeaderboardEntry
 
 router = APIRouter()
+
+
+def _period_prediction_time_filters(min_date: datetime):
+    """
+    Weekly/monthly boards use the match's scheduled start (match day), not when the pick was submitted.
+    Only settled predictions count (void / pending picks are excluded).
+    """
+    return (
+        Match.start_time >= min_date,
+        Prediction.is_correct.isnot(None),
+    )
 
 
 def _following_network_ids(db: Session, user: User) -> list:
@@ -28,7 +39,8 @@ def dynamic_leaderboard(db: Session, limit: int, days: int) -> list[LeaderboardE
             func.sum(Prediction.is_correct).label("period_correct"),
         )
         .join(Prediction, User.id == Prediction.user_id)
-        .filter(Prediction.created_at >= min_date)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(*_period_prediction_time_filters(min_date))
         .group_by(User.id)
         .order_by(desc("period_points"), desc("period_settled"), desc("period_correct"))
         .limit(limit)
@@ -71,7 +83,8 @@ def dynamic_leaderboard_for_user_ids(
             func.sum(Prediction.is_correct).label("period_correct"),
         )
         .join(Prediction, User.id == Prediction.user_id)
-        .filter(User.id.in_(user_ids), Prediction.created_at >= min_date)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(User.id.in_(user_ids), *_period_prediction_time_filters(min_date))
         .group_by(User.id)
         .order_by(desc("period_points"), desc("period_settled"), desc("period_correct"))
         .limit(limit)
@@ -288,22 +301,28 @@ def my_rank(
 
     days = 7 if period == "weekly" else 30
     min_date = datetime.now(timezone.utc) - timedelta(days=days)
+    pf = _period_prediction_time_filters(min_date)
 
     user_pts = (
         db.query(func.sum(Prediction.points_awarded))
-        .filter(Prediction.user_id == user.id, Prediction.created_at >= min_date)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(Prediction.user_id == user.id, *pf)
         .scalar()
         or 0
     )
-    has_preds = db.query(Prediction).filter(
-        Prediction.user_id == user.id, Prediction.created_at >= min_date
-    ).first()
+    has_preds = (
+        db.query(Prediction)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(Prediction.user_id == user.id, *pf)
+        .first()
+    )
     if not has_preds:
         return None
 
     higher = (
         db.query(Prediction.user_id)
-        .filter(Prediction.created_at >= min_date)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(*pf)
         .group_by(Prediction.user_id)
         .having(func.sum(Prediction.points_awarded) > user_pts)
         .subquery()
@@ -317,7 +336,8 @@ def my_rank(
             func.count(Prediction.is_correct).label("settled"),
             func.sum(Prediction.is_correct).label("correct"),
         )
-        .filter(Prediction.user_id == user.id, Prediction.created_at >= min_date)
+        .join(Match, Prediction.match_id == Match.id)
+        .filter(Prediction.user_id == user.id, *pf)
         .first()
     )
     pts, total, settled, correct = stats.pts or 0, stats.total or 0, stats.settled or 0, stats.correct or 0

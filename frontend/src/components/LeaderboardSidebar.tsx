@@ -111,6 +111,11 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
             </button>
           ))}
         </div>
+        {(period === "weekly" || period === "monthly") && (
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[#525252] mb-3 leading-relaxed">
+            Points count in the week/month of each match&apos;s start, not when you locked your pick.
+          </p>
+        )}
 
         {leaders.length === 0 ? (
           <div className="border border-[#262626] bg-[#050505] p-8 text-center flex flex-col items-center">

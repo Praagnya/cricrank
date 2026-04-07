@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check } from "lucide-react";
+import { Trophy, Target, Zap, Activity, AlertTriangle, ChevronLeft, Edit2, X, Shirt, RefreshCw, Coins, Users, Copy, Check, CloudOff } from "lucide-react";
 import Link from "next/link";
 import { PredictionWithMatch, User, LeaderboardEntry, Squad, FollowUser } from "@/types";
 import { streakTierColor, teamFullName, teamHex, teamShortCode, teamTextColor } from "@/lib/utils";
@@ -781,7 +781,70 @@ export default function ProfileView({
                 );
               }
 
-              /* ── SETTLED (hit / miss / still pending after toss) ── */
+              /* ── NO RESULT: match completed with no decisive winner — not scored, not "pending" ── */
+              const matchHasNoWinner =
+                pred.match.winner == null || String(pred.match.winner).trim() === "";
+              const isNoResultLedger =
+                pred.is_correct === null &&
+                pred.match.status === "completed" &&
+                matchHasNoWinner;
+
+              if (isNoResultLedger) {
+                const nrHex = "#64748b";
+                const summary = (pred.match.result_summary || "").trim();
+                return (
+                  <div
+                    key={pred.id}
+                    className="bg-[#000000] border border-[#262626] overflow-hidden hover:bg-[#050505] transition-colors flex"
+                    style={{ borderLeft: `3px solid ${nrHex}` }}
+                  >
+                    <div
+                      className="flex flex-col items-center justify-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2.5 sm:py-5 border-r border-[#161616] shrink-0 min-w-[56px] sm:min-w-[80px]"
+                      style={{ backgroundColor: `${nrHex}12` }}
+                    >
+                      <CloudOff className="w-3.5 h-3.5 sm:w-5 sm:h-5" style={{ color: nrHex }} strokeWidth={2} />
+                      <span
+                        className="font-gaming text-[9px] sm:text-xs tracking-widest text-center leading-tight mt-0.5 sm:mt-0 px-0.5"
+                        style={{ color: nrHex }}
+                      >
+                        NO
+                        <br className="sm:hidden" />
+                        <span className="hidden sm:inline"> </span>
+                        RESULT
+                      </span>
+                      <span className="text-[7.5px] sm:text-[10px] text-[#737373] font-bold tracking-wider text-center leading-[1.2] mt-0.5">
+                        {new Date(pred.match.start_time).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                      </span>
+                    </div>
+                    <div className="flex-1 px-3 sm:px-5 py-2 sm:py-4 flex flex-col justify-center gap-1 overflow-hidden min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
+                          {teamShortCode(pred.match.team1)}
+                        </span>
+                        <span className="text-[8px] sm:text-[10px] text-[#737373] font-black italic tracking-widest shrink-0">VS</span>
+                        <span className="font-gaming text-lg sm:text-3xl tracking-widest leading-none truncate text-[#c8c8c8]">
+                          {teamShortCode(pred.match.team2)}
+                        </span>
+                      </div>
+                      {summary ? (
+                        <p className="text-[9px] sm:text-[10px] text-[#737373] font-bold tracking-wide uppercase leading-snug line-clamp-2">
+                          {summary}
+                        </p>
+                      ) : (
+                        <p className="text-[9px] sm:text-[10px] text-[#525252] font-bold tracking-widest uppercase">
+                          No winner declared — pick not scored
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-center justify-center gap-1 px-2.5 sm:px-5 py-2.5 sm:py-4 border-l border-[#161616] shrink-0 min-w-[56px] sm:min-w-[88px]">
+                      <span className="font-gaming text-lg sm:text-2xl text-[#525252] leading-none">0</span>
+                      <span className="text-[7px] sm:text-[9px] text-[#525252] font-black tracking-widest uppercase">pts</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              /* ── SETTLED (hit / miss / still waiting on result) ── */
               const isHit  = pred.is_correct === 1;
               const isMiss = pred.is_correct === 0;
               const statusHex  = isHit ? "#22c55e" : isMiss ? "#ef4444" : "#525252";

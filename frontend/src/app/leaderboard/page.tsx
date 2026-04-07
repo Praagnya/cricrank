@@ -77,9 +77,12 @@ export default async function LeaderboardPage({
   }
   const myRank = myEntry?.rank ?? null;
 
-  const periodLabel = period === "weekly" ? "Last 7 Days"
-    : period === "monthly" ? "Last 30 Days"
-    : "All Time";
+  const periodLabel =
+    period === "weekly"
+      ? "Last 7 days · by match date"
+      : period === "monthly"
+        ? "Last 30 days · by match date"
+        : "All Time";
 
   const scopeLabel = view === "following" ? "Following" : "Global";
 
