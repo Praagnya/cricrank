@@ -106,6 +106,8 @@ export interface User {
   email: string;
   points: number;
   total_predictions: number;
+  /** Picks that have been scored (matches accuracy denominator) */
+  settled_predictions: number;
   correct_predictions: number;
   accuracy: number;
   current_streak: number;

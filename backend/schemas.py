@@ -29,6 +29,7 @@ class UserPublic(BaseModel):
     avatar_url: Optional[str] = None
     points: int
     total_predictions: int
+    settled_predictions: int
     correct_predictions: int
     accuracy: float
     current_streak: int

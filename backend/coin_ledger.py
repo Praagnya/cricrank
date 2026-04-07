@@ -17,7 +17,7 @@ from models import CoinTransaction, User
 IST = ZoneInfo("Asia/Kolkata")
 
 # Daily login reward (IST calendar day, once per day per user)
-DAILY_LOGIN_COINS = 25
+DAILY_LOGIN_COINS = 100
 
 
 def ist_calendar_date() -> date:

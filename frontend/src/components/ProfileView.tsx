@@ -617,7 +617,7 @@ export default function ProfileView({
               <p className="font-gaming text-3xl sm:text-4xl tracking-widest leading-none">{dbUser.accuracy.toFixed(1)}</p>
               <span className="text-[#737373] text-lg sm:text-xl font-gaming mb-0.5">%</span>
             </div>
-            <p className="text-[8px] sm:text-[9px] font-bold text-[#525252] mt-1.5 sm:mt-2 uppercase tracking-widest">{dbUser.correct_predictions}/{dbUser.total_predictions} Hits</p>
+            <p className="text-[8px] sm:text-[9px] font-bold text-[#525252] mt-1.5 sm:mt-2 uppercase tracking-widest">{dbUser.correct_predictions}/{dbUser.settled_predictions} Hits</p>
           </div>
         </div>
 
