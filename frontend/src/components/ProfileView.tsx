@@ -439,8 +439,8 @@ export default function ProfileView({
           </button>
         )}
 
-        <div className="flex flex-col gap-4 relative z-10">
-          <span className="text-[#737373] text-[10px] font-black tracking-[0.3em] uppercase">Player Profile</span>
+        <div className="flex flex-col gap-1.5 relative z-10">
+          <span className="text-[#737373] text-[9px] font-black tracking-[0.28em] uppercase leading-none">Player Profile</span>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
           <div className="flex items-center gap-5 sm:gap-8">
             {/* Jersey — bigger */}
