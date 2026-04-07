@@ -24,7 +24,7 @@ from schemas import (
     FirstInningsPickResponse,
     FirstInningsStatusResponse,
 )
-from settlement_utils import resolve_match_winner_from_cricapi
+from settlement_utils import coerce_match_winner_in_place, resolve_match_winner_from_cricapi
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
 router = APIRouter()
@@ -183,11 +183,15 @@ def _sync_predictions_for_match(db: Session, match: Match) -> int:
 
 
 def _sync_winner(match: Match) -> int:
-    canonical = canonicalize_winner(match.winner)
-    if canonical != match.winner:
-        match.winner = canonical
-        return 1
-    return 0
+    changed = 0
+    if match.winner:
+        canonical = canonicalize_winner(match.winner)
+        if canonical != match.winner:
+            match.winner = canonical
+            changed = 1
+    if coerce_match_winner_in_place(match):
+        changed = 1
+    return changed
 
 
 def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequest, resolved_series_name: str) -> None:
@@ -208,6 +212,7 @@ def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequ
     match.toss_time = start_time - timedelta(minutes=30)
     match.status = _match_status_from_payload(fixture)
     match.winner = resolve_match_winner_from_cricapi(fixture, match.team1, match.team2)
+    coerce_match_winner_in_place(match)
     match.result_summary = fixture.get("status") or match.result_summary
 
 

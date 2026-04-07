@@ -241,7 +241,11 @@ def job_check_result(match_id: str) -> None:
                  detail="match_info returned empty for this cricapi_id")
             return
 
-        from settlement_utils import resolve_match_winner_from_cricapi, status_indicates_void_or_no_result
+        from settlement_utils import (
+            coerce_match_winner_in_place,
+            resolve_match_winner_from_cricapi,
+            status_indicates_void_or_no_result,
+        )
 
         void_st = status_indicates_void_or_no_result(payload.get("status"))
         w = resolve_match_winner_from_cricapi(payload, match.team1, match.team2)
@@ -274,6 +278,9 @@ def job_check_result(match_id: str) -> None:
 
         if w is not None and match.winner != w:
             match.winner = w
+            changed = True
+
+        if coerce_match_winner_in_place(match):
             changed = True
 
         if new_status == MatchStatus.completed and not (match.result_summary and match.result_summary.strip()):
@@ -567,7 +574,11 @@ def bootstrap_scheduler(db: Session) -> None:
     # Recovery: fix completed matches with missing winner or unsettled predictions
     from routes.predictions import _settle_match_internal, void_match_prediction_settlement
     from cricapi import CricAPIError, fetch_match_info
-    from settlement_utils import resolve_match_winner_from_cricapi, status_indicates_void_or_no_result
+    from settlement_utils import (
+        coerce_match_winner_in_place,
+        resolve_match_winner_from_cricapi,
+        status_indicates_void_or_no_result,
+    )
 
     # Also check live matches that may need recovery (e.g. stuck in live with no winner)
     stuck_matches = (
@@ -585,12 +596,13 @@ def bootstrap_scheduler(db: Session) -> None:
                 try:
                     info = fetch_match_info(match.cricapi_id) or {}
                     void_st = status_indicates_void_or_no_result(info.get("status"))
+                    changed_bs = False
                     if void_st and info.get("matchEnded") and match.winner is not None:
                         void_match_prediction_settlement(db, match)
                         st = (info.get("status") or "").strip()
                         if st:
                             match.result_summary = st
-                        db.commit()
+                        changed_bs = True
                         logger.warning(
                             "poller: voided prediction settlement (no-result) for match %s",
                             match.id,
@@ -600,8 +612,17 @@ def bootstrap_scheduler(db: Session) -> None:
                         match.winner = w
                         if info.get("matchEnded") and match.status != MatchStatus.completed:
                             match.status = MatchStatus.completed
+                        changed_bs = True
+                    if coerce_match_winner_in_place(match):
+                        changed_bs = True
+                    if changed_bs:
                         db.commit()
-                        logger.warning("poller: recovered winner for match %s → %s", match.id, match.winner)
+                        if match.winner:
+                            logger.warning(
+                                "poller: recovered winner for match %s → %s",
+                                match.id,
+                                match.winner,
+                            )
                 except CricAPIError:
                     pass
 

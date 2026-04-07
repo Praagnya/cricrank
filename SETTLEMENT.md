@@ -126,6 +126,18 @@ POST /predictions/void-match/{match_id}?result_summary=No+result
 
 Clears `match.winner`, resets all predictions for that match to unsettled, recomputes streaks/points for affected users. Use when the feed had no decisive winner but settlement already ran incorrectly.
 
+### What the `matches` row should look like (no-result / abandoned)
+
+So prediction **streaks are not touched**:
+
+| Field | Value |
+|--------|--------|
+| `status` | `completed` once the fixture is closed (including washout). |
+| `winner` | **`NULL`** — must be one of the two sides or empty. Never store strings like `No Winner`, `Tie`, or `Draw` as `winner`; the app clears non-participant values and will not score predictions without a real team. |
+| `result_summary` | Human line from the feed, e.g. `No result (due to rain)`. |
+
+The poller uses **`resolve_match_winner_from_cricapi`** + **`coerce_match_winner_in_place`** so junk `matchWinner` values from the API do not stay on the row.
+
 ---
 
 ## 3. First Innings Score Settlement

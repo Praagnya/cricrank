@@ -64,6 +64,21 @@ def _canonical_side(name: str | None, team1: str, team2: str) -> str | None:
     return None
 
 
+def coerce_match_winner_in_place(match) -> bool:
+    """
+    If match.winner is set but is not exactly team1 or team2, clear it.
+    Stops feeds like \"No Winner\" / \"Tie\" from triggering wrong-side settlement.
+    Returns True if the row was modified.
+    """
+    w = match.winner
+    if w is None or not str(w).strip():
+        return False
+    if w in (match.team1, match.team2):
+        return False
+    match.winner = None
+    return True
+
+
 def resolve_match_winner_from_cricapi(payload: dict, team1: str, team2: str) -> str | None:
     """
     Return canonical team1/team2 winner, or None if the fixture has no decisive result
