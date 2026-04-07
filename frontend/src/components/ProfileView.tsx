@@ -19,6 +19,27 @@ import CountdownTimer from "./CountdownTimer";
 
 const SQUAD_SUGGESTIONS = ["Dream XI", "Home Ground", "Office XI", "Champions", "Work Gang", "Super Over"];
 
+const NO_RESULT_SNIPPETS = [
+  "no result",
+  "without result",
+  "abandoned",
+  "called off",
+  "washout",
+  "washed out",
+  "no play possible",
+  "match tied",
+  "ended in a tie",
+  "scores are level",
+  "match drawn",
+  "ends in a draw",
+];
+
+function statusLooksNoResult(summary: string | null | undefined): boolean {
+  const s = (summary ?? "").trim().toLowerCase();
+  if (!s) return false;
+  return NO_RESULT_SNIPPETS.some((snippet) => s.includes(snippet));
+}
+
 interface ProfileViewProps {
   userId: string;
   isEditable?: boolean;
@@ -788,10 +809,12 @@ export default function ProfileView({
               /* ── NO RESULT: match completed with no decisive winner — not scored, not "pending" ── */
               const matchHasNoWinner =
                 pred.match.winner == null || String(pred.match.winner).trim() === "";
+              const hasNoResultSummary = statusLooksNoResult(pred.match.result_summary);
               const isNoResultLedger =
                 pred.is_correct === null &&
                 pred.match.status === "completed" &&
-                matchHasNoWinner;
+                matchHasNoWinner &&
+                hasNoResultSummary;
 
               if (isNoResultLedger) {
                 const nrHex = "#64748b";
