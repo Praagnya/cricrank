@@ -212,8 +212,6 @@ def job_check_result(match_id: str) -> None:
     """Update match status/winner from CricAPI and auto-settle when match ends."""
     from cricapi import CricAPIError, fetch_match_info
     from routes.matches import _match_status_from_payload
-    from team_metadata import canonicalize_winner
-
     db: Session = SessionLocal()
     try:
         match = db.query(Match).filter(Match.id == match_id).first()
@@ -237,29 +235,27 @@ def job_check_result(match_id: str) -> None:
         except CricAPIError:
             payload = {}
 
-        # Last resort: parse winner from result status text
-        # e.g. "Sunrisers Hyderabad won by 65 runs" → matchWinner = "Sunrisers Hyderabad"
-        if payload.get("matchEnded") and not payload.get("matchWinner") and payload.get("status"):
-            status_text = payload["status"].lower()
-            for team in (match.team1, match.team2):
-                if team.lower() in status_text and "won" in status_text:
-                    payload["matchWinner"] = team
-                    break
-
-        log_payload = {
-            "matchStarted": payload.get("matchStarted"),
-            "matchEnded": payload.get("matchEnded"),
-            "matchWinner": payload.get("matchWinner"),
-            "tossWinner": payload.get("tossWinner"),
-            "status": payload.get("status"),
-            "score": payload.get("score"),
-        }
-
         if not payload:
             logger.info("poller/result: no payload yet for match %s", match_id)
             _log(db, "result", match.id, "no_data",
                  detail="match_info returned empty for this cricapi_id")
             return
+
+        from settlement_utils import resolve_match_winner_from_cricapi, status_indicates_void_or_no_result
+
+        void_st = status_indicates_void_or_no_result(payload.get("status"))
+        w = resolve_match_winner_from_cricapi(payload, match.team1, match.team2)
+
+        log_payload = {
+            "matchStarted": payload.get("matchStarted"),
+            "matchEnded": payload.get("matchEnded"),
+            "matchWinner": payload.get("matchWinner"),
+            "resolvedWinner": w,
+            "voidOrNoResult": void_st,
+            "tossWinner": payload.get("tossWinner"),
+            "status": payload.get("status"),
+            "score": payload.get("score"),
+        }
 
         changed = False
         new_status = _match_status_from_payload(payload)
@@ -267,8 +263,17 @@ def job_check_result(match_id: str) -> None:
             match.status = new_status
             changed = True
 
-        if payload.get("matchWinner") and not match.winner:
-            match.winner = canonicalize_winner(payload["matchWinner"])
+        if void_st and payload.get("matchEnded") and match.winner is not None:
+            from routes.predictions import void_match_prediction_settlement
+
+            void_match_prediction_settlement(db, match)
+            st = (payload.get("status") or "").strip()
+            if st:
+                match.result_summary = st
+            changed = True
+
+        if w is not None and match.winner != w:
+            match.winner = w
             changed = True
 
         if new_status == MatchStatus.completed and not (match.result_summary and match.result_summary.strip()):
@@ -560,9 +565,9 @@ def bootstrap_scheduler(db: Session) -> None:
          detail=f"scheduled jobs for {len(matches)} upcoming/live matches")
 
     # Recovery: fix completed matches with missing winner or unsettled predictions
-    from routes.predictions import _settle_match_internal
+    from routes.predictions import _settle_match_internal, void_match_prediction_settlement
     from cricapi import CricAPIError, fetch_match_info
-    from team_metadata import canonicalize_winner
+    from settlement_utils import resolve_match_winner_from_cricapi, status_indicates_void_or_no_result
 
     # Also check live matches that may need recovery (e.g. stuck in live with no winner)
     stuck_matches = (
@@ -576,13 +581,23 @@ def bootstrap_scheduler(db: Session) -> None:
     )
     for match in stuck_matches:
         try:
-            # If winner is missing, try to fetch it from match_info
-            if not match.winner and match.cricapi_id:
+            if match.cricapi_id:
                 try:
                     info = fetch_match_info(match.cricapi_id) or {}
-                    mw = info.get("matchWinner")
-                    if mw:
-                        match.winner = canonicalize_winner(mw)
+                    void_st = status_indicates_void_or_no_result(info.get("status"))
+                    if void_st and info.get("matchEnded") and match.winner is not None:
+                        void_match_prediction_settlement(db, match)
+                        st = (info.get("status") or "").strip()
+                        if st:
+                            match.result_summary = st
+                        db.commit()
+                        logger.warning(
+                            "poller: voided prediction settlement (no-result) for match %s",
+                            match.id,
+                        )
+                    w = resolve_match_winner_from_cricapi(info, match.team1, match.team2)
+                    if w and not match.winner:
+                        match.winner = w
                         if info.get("matchEnded") and match.status != MatchStatus.completed:
                             match.status = MatchStatus.completed
                         db.commit()

@@ -24,6 +24,7 @@ from schemas import (
     FirstInningsPickResponse,
     FirstInningsStatusResponse,
 )
+from settlement_utils import resolve_match_winner_from_cricapi
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
 router = APIRouter()
@@ -206,7 +207,7 @@ def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequ
     match.start_time = start_time
     match.toss_time = start_time - timedelta(minutes=30)
     match.status = _match_status_from_payload(fixture)
-    match.winner = canonicalize_winner(fixture.get("matchWinner") or match.winner)
+    match.winner = resolve_match_winner_from_cricapi(fixture, match.team1, match.team2)
     match.result_summary = fixture.get("status") or match.result_summary
 
 
@@ -295,19 +296,21 @@ def sync_series(payload: SeriesSyncRequest, db: Session = Depends(get_db)):
             existing_by_key[_fixture_key(existing.team1, existing.team2, existing.start_time)] = existing
             continue
 
+        t1 = canonicalize_team(teams[0])
+        t2 = canonicalize_team(teams[1])
         match = Match(
             cricapi_id=fixture["id"],
             series_id=payload.series_id,
             series_name=resolved_series_name,
             league=payload.league,
             season=payload.season,
-            team1=canonicalize_team(teams[0]),
-            team2=canonicalize_team(teams[1]),
+            team1=t1,
+            team2=t2,
             venue=fixture.get("venue") or "TBA",
             start_time=start_time,
             toss_time=start_time - timedelta(minutes=30),
             status=_match_status_from_payload(fixture),
-            winner=canonicalize_winner(fixture.get("matchWinner")),
+            winner=resolve_match_winner_from_cricapi(fixture, t1, t2),
         )
         db.add(match)
         created += 1
