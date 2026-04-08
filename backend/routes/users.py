@@ -10,6 +10,9 @@ from coin_ledger import claim_daily_login, apply_credit
 
 router = APIRouter()
 
+NEXT_LOGIN_GRANT_COINS = 5000
+NEXT_LOGIN_GRANT_CAMPAIGN = "next_login_grant_2026_04"
+
 
 def _user_by_identifier(identifier: str, db: Session) -> User | None:
     """Resolve profile URL segment: username first (case-insensitive), then google_id."""
@@ -77,6 +80,16 @@ def upsert_user(payload: UserCreate, db: Session = Depends(get_db)):
 
     db.flush()
     daily_awarded = claim_daily_login(db, user)
+    # One-time campaign: grant coins on each user's next successful login/upsert.
+    apply_credit(
+        db,
+        user.id,
+        NEXT_LOGIN_GRANT_COINS,
+        "campaign_bonus",
+        idempotency_key=f"{NEXT_LOGIN_GRANT_CAMPAIGN}:{user.id}",
+        ref_type="campaign",
+        ref_id=NEXT_LOGIN_GRANT_CAMPAIGN,
+    )
 
     # Process referral bonus (only once per user, never self-referral)
     referral_awarded = 0

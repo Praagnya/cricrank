@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     if (!error && authData?.session?.user) {
       const user = authData.session.user;
       const metadata = user.user_metadata;
+      const pendingRef = cookieStore.get("cricrank_pending_ref")?.value || null;
       
       // Sync the user to our fastAPI backend
       try {
@@ -45,13 +46,21 @@ export async function GET(request: NextRequest) {
             name: metadata?.full_name ?? user.email?.split("@")[0] ?? "Anonymous",
             email: user.email ?? "unknown@example.com",
             avatar_url: metadata?.avatar_url ?? null,
+            ref_code: pendingRef,
           }),
         });
       } catch (err) {
         console.error("Failed to sync user to backend", err);
       }
-
-      return NextResponse.redirect(`${origin}${next}`);
+      const response = NextResponse.redirect(`${origin}${next}`);
+      if (pendingRef) {
+        response.cookies.set("cricrank_pending_ref", "", {
+          path: "/",
+          maxAge: 0,
+          sameSite: "lax",
+        });
+      }
+      return response;
     }
   }
 
