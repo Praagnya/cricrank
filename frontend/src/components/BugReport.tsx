@@ -7,7 +7,7 @@ import { Bug, X } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 
 const SUPPORT_EMAIL =
-  process.env.NEXT_PUBLIC_BUG_REPORT_EMAIL?.trim() || "hello@cricrank.com";
+  process.env.NEXT_PUBLIC_BUG_REPORT_EMAIL?.trim() || "n.praagnya@gmail.com";
 
 function BugReportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
