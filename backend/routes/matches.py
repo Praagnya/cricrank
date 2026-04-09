@@ -213,7 +213,17 @@ def _apply_fixture_to_match(match: Match, fixture: dict, payload: SeriesSyncRequ
     match.status = _match_status_from_payload(fixture)
     match.winner = resolve_match_winner_from_cricapi(fixture, match.team1, match.team2)
     coerce_match_winner_in_place(match)
-    match.result_summary = fixture.get("status") or match.result_summary
+    fs = (fixture.get("status") or "").strip()
+    if match.status == MatchStatus.completed:
+        from settlement_utils import normalize_completed_result_summary, prematch_schedule_status_line
+
+        normalized = normalize_completed_result_summary(fs, match.winner, match.team1, match.team2)
+        if normalized is not None:
+            match.result_summary = normalized
+        elif fs and not prematch_schedule_status_line(fs):
+            match.result_summary = fs
+    else:
+        match.result_summary = fs or match.result_summary
 
 
 def _cricapi_match_snapshot(cricapi_id: str) -> dict:

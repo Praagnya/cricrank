@@ -161,13 +161,17 @@ class MatchPublic(BaseModel):
     @model_validator(mode="after")
     def default_result_summary_when_missing(self):
         """Feed often omits status text; we still have winner after settlement."""
-        if (
-            self.status == MatchStatus.completed
-            and self.winner
-            and not (self.result_summary and self.result_summary.strip())
-        ):
-            return self.model_copy(update={"result_summary": f"{self.winner} won"})
-        return self
+        from settlement_utils import normalize_completed_result_summary, prematch_schedule_status_line
+
+        if self.status != MatchStatus.completed or not self.winner:
+            return self
+        rs = (self.result_summary or "").strip()
+        if rs and not prematch_schedule_status_line(rs):
+            return self
+        normalized = normalize_completed_result_summary(rs or None, self.winner, self.team1, self.team2)
+        if normalized:
+            return self.model_copy(update={"result_summary": normalized})
+        return self.model_copy(update={"result_summary": f"{self.winner} won"})
 
 
 class SeriesSyncRequest(BaseModel):

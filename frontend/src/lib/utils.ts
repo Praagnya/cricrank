@@ -11,16 +11,20 @@ export function formatMatchTime(isoString: string): string {
   });
 }
 
+const MS_PER_DAY = 86400000;
+
+/** Calendar-day difference (Asia/Kolkata) between an instant and "now". */
+function diffCalendarDaysIstFromNow(targetMs: number): number {
+  const targetKey = new Date(targetMs).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const nowKey = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const [ty, tm, td] = targetKey.split("-").map(Number);
+  const [ny, nm, nd] = nowKey.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(ny, nm - 1, nd)) / MS_PER_DAY);
+}
+
 export function formatRelativeDate(isoString: string): string {
   const date = new Date(isoString);
-  const now = new Date();
-
-  const dateIST = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-  const nowIST = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-
-  const dateDay = new Date(dateIST.getFullYear(), dateIST.getMonth(), dateIST.getDate());
-  const nowDay = new Date(nowIST.getFullYear(), nowIST.getMonth(), nowIST.getDate());
-  const diffDays = Math.round((dateDay.getTime() - nowDay.getTime()) / 86400000);
+  const diffDays = diffCalendarDaysIstFromNow(date.getTime());
 
   const timeStr = date.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -71,6 +75,28 @@ export function formatShortDate(isoString: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+/** CricAPI sometimes leaves pre-match schedule text in result_summary after the match is completed. */
+export function prematchScheduleStatusLine(summary: string | null | undefined): boolean {
+  const s = (summary ?? "").trim().toLowerCase();
+  if (!s) return false;
+  if (s.includes("match starts") || s.includes("match yet to begin") || s.includes("yet to begin")) return true;
+  if (s.includes("starts at") && /\b(gmt|utc|ist|local time)\b/i.test(s)) return true;
+  return false;
+}
+
+/** One line to show under recent completed fixtures (never a stale "Match starts at…" blurb). */
+export function recentResultSummaryLine(m: {
+  status: string;
+  result_summary: string | null;
+  winner: string | null;
+}): string | null {
+  const raw = m.result_summary?.trim() || null;
+  if (m.status !== "completed") return raw;
+  if (raw && !prematchScheduleStatusLine(raw)) return raw;
+  if (m.winner) return `${m.winner} won`;
+  return raw;
 }
 
 export type PredictionState = "open" | "post_toss" | "locked";

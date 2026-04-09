@@ -1,5 +1,5 @@
 import { Match } from "@/types";
-import { teamShortCode, formatShortDate } from "@/lib/utils";
+import { teamShortCode, formatShortDate, recentResultSummaryLine } from "@/lib/utils";
 
 export default function RecentResults({ matches }: { matches: Match[] }) {
   if (!matches.length) return null;
@@ -13,9 +13,7 @@ export default function RecentResults({ matches }: { matches: Match[] }) {
       </div>
       <ul className="flex flex-col gap-4">
         {matches.map((m) => {
-          const summary =
-            m.result_summary?.trim() ||
-            (m.status === "completed" && m.winner ? `${m.winner} won` : null);
+          const summary = recentResultSummaryLine(m);
           return (
             <li key={m.id} className="flex flex-col gap-1.5 border-b border-[#1a1a1a] last:border-0 pb-4 last:pb-0">
               <div className="flex flex-wrap items-center justify-between gap-2">

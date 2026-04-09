@@ -36,6 +36,48 @@ def status_indicates_void_or_no_result(status: str | None) -> bool:
     return any(snippet in s for snippet in _VOID_STATUS_SNIPPETS)
 
 
+_PREMATCH_SCHEDULE_MARKERS: tuple[str, ...] = (
+    "match starts",
+    "match yet to begin",
+    "yet to begin",
+)
+
+
+def prematch_schedule_status_line(status: str | None) -> bool:
+    """
+    True when the CricAPI `status` line is a fixture schedule blurb, not a result.
+    Those strings are sometimes left on the row after the match is marked completed.
+    """
+    if not status or not str(status).strip():
+        return False
+    s = str(status).lower()
+    if any(m in s for m in _PREMATCH_SCHEDULE_MARKERS):
+        return True
+    if "starts at" in s and re.search(r"\b(gmt|utc|ist|local time)\b", s):
+        return True
+    return False
+
+
+def normalize_completed_result_summary(
+    status_line: str | None,
+    winner: str | None,
+    team1: str,
+    team2: str,
+) -> str | None:
+    """
+    Pick a sensible persisted/display line for a completed match.
+    Prefer a real result string; never keep a pre-match schedule line when we have a side winner.
+    """
+    s = (status_line or "").strip()
+    if status_indicates_void_or_no_result(s):
+        return s if s else None
+    if s and not prematch_schedule_status_line(s):
+        return s
+    if winner and winner in (team1, team2):
+        return f"{winner} won"
+    return None
+
+
 def _flex_team_pattern(team: str) -> str:
     parts = [p for p in team.strip().split() if p]
     if not parts:

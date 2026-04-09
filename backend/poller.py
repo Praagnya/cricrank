@@ -165,9 +165,12 @@ def _try_backfill_result_summary(db: Session, match: Match) -> bool:
     Always writes a non-empty summary when this runs (API line or "{winner} won")
     so we do not call match_info on every subsequent result job / bootstrap pass.
     """
+    from settlement_utils import normalize_completed_result_summary, prematch_schedule_status_line
+
     if match.status != MatchStatus.completed or not match.winner or not match.cricapi_id:
         return False
-    if match.result_summary and str(match.result_summary).strip():
+    existing = (match.result_summary or "").strip()
+    if existing and not prematch_schedule_status_line(existing):
         return False
     from cricapi import CricAPIError, fetch_match_info
 
@@ -177,9 +180,11 @@ def _try_backfill_result_summary(db: Session, match: Match) -> bool:
         summary = (info.get("status") or "").strip()
     except CricAPIError:
         pass
-    if not summary:
-        summary = f"{match.winner} won"
-    match.result_summary = summary
+    normalized = normalize_completed_result_summary(summary, match.winner, match.team1, match.team2)
+    if normalized:
+        match.result_summary = normalized
+    else:
+        match.result_summary = f"{match.winner} won"
     return True
 
 
@@ -197,8 +202,11 @@ def _run_backfill_missing_summaries(db: Session, days: int = 30) -> int:
         .all()
     )
     filled = 0
+    from settlement_utils import prematch_schedule_status_line
+
     for match in rows:
-        if match.result_summary and str(match.result_summary).strip():
+        rs = (match.result_summary or "").strip()
+        if rs and not prematch_schedule_status_line(rs):
             continue
         if _try_backfill_result_summary(db, match):
             db.commit()
@@ -246,6 +254,8 @@ def job_check_result(match_id: str) -> None:
 
         from settlement_utils import (
             coerce_match_winner_in_place,
+            normalize_completed_result_summary,
+            prematch_schedule_status_line,
             resolve_match_winner_from_cricapi,
             status_indicates_void_or_no_result,
         )
@@ -286,12 +296,14 @@ def job_check_result(match_id: str) -> None:
         if coerce_match_winner_in_place(match):
             changed = True
 
-        if new_status == MatchStatus.completed and not (match.result_summary and match.result_summary.strip()):
-            summary = (payload.get("status") or "").strip() or None
-            if not summary and match.winner:
-                summary = f"{match.winner} won"
-            if summary:
-                match.result_summary = summary
+        if new_status == MatchStatus.completed:
+            raw = (payload.get("status") or "").strip() or None
+            prev = (match.result_summary or "").strip()
+            candidate = normalize_completed_result_summary(raw, match.winner, match.team1, match.team2)
+            if not candidate and match.winner:
+                candidate = f"{match.winner} won"
+            if candidate and (not prev or prematch_schedule_status_line(prev)):
+                match.result_summary = candidate
                 changed = True
 
         if changed:
