@@ -30,7 +30,7 @@ async function fetchLeaders(period: Period, limit: number): Promise<LeaderboardE
 
 export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders: LeaderboardEntry[] }) {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>(initialLeaders);
-  const [period, setPeriod] = useState<Period>("alltime");
+  const [period, setPeriod] = useState<Period>("weekly");
   const [pulse, setPulse] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
 
@@ -69,9 +69,9 @@ export default function LeaderboardSidebar({ initialLeaders }: { initialLeaders:
   const myRank = myIndex >= 0 ? myIndex + 1 : null;
 
   const tabs: { label: string; value: Period }[] = [
-    { label: "All", value: "alltime" },
     { label: "Week", value: "weekly" },
     { label: "Month", value: "monthly" },
+    { label: "All", value: "alltime" },
   ];
 
   return (

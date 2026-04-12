@@ -7,9 +7,9 @@ import LeaderboardSidebar from "@/components/LeaderboardSidebar";
 import Link from "next/link";
 
 const PERIOD_TABS = [
-  { value: "alltime", label: "All Time" },
-  { value: "weekly",  label: "Weekly" },
+  { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "alltime", label: "All Time" },
 ];
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ export default async function LeaderboardPage({
   const providerId = user?.id;
 
   const p = await searchParams;
-  let period = p.period || "alltime";
+  let period = p.period || "weekly";
   let view: "global" | "following" = p.view === "following" ? "following" : "global";
   // Legacy links used ?period=following
   if (period === "following") {
@@ -86,7 +86,7 @@ export default async function LeaderboardPage({
 
   const scopeLabel = view === "following" ? "Following" : "Global";
 
-  const sidebarLeaders = await api.leaderboard.global(3).catch(() => []);
+  const sidebarLeaders = await api.leaderboard.weekly(3).catch(() => []);
 
   return (
     <>
