@@ -220,7 +220,6 @@ def _run_backfill_missing_summaries(db: Session, days: int = 30) -> int:
 def job_check_result(match_id: str) -> None:
     """Update match status/winner from CricAPI and auto-settle when match ends."""
     from cricapi import CricAPIError, fetch_match_info
-    from routes.matches import _match_status_from_payload
     from settlement_utils import match_has_participant_winner
 
     db: Session = SessionLocal()
@@ -252,13 +251,8 @@ def job_check_result(match_id: str) -> None:
                  detail="match_info returned empty for this cricapi_id")
             return
 
-        from settlement_utils import (
-            coerce_match_winner_in_place,
-            normalize_completed_result_summary,
-            prematch_schedule_status_line,
-            resolve_match_winner_from_cricapi,
-            status_indicates_void_or_no_result,
-        )
+        from routes.matches import sync_match_row_from_cricapi_info
+        from settlement_utils import resolve_match_winner_from_cricapi, status_indicates_void_or_no_result
 
         void_st = status_indicates_void_or_no_result(payload.get("status"))
         w = resolve_match_winner_from_cricapi(payload, match.team1, match.team2)
@@ -274,37 +268,7 @@ def job_check_result(match_id: str) -> None:
             "score": payload.get("score"),
         }
 
-        changed = False
-        new_status = _match_status_from_payload(payload)
-        if new_status != match.status:
-            match.status = new_status
-            changed = True
-
-        if void_st and payload.get("matchEnded") and match.winner is not None:
-            from routes.predictions import void_match_prediction_settlement
-
-            void_match_prediction_settlement(db, match)
-            st = (payload.get("status") or "").strip()
-            if st:
-                match.result_summary = st
-            changed = True
-
-        if w is not None and match.winner != w:
-            match.winner = w
-            changed = True
-
-        if coerce_match_winner_in_place(match):
-            changed = True
-
-        if new_status == MatchStatus.completed:
-            raw = (payload.get("status") or "").strip() or None
-            prev = (match.result_summary or "").strip()
-            candidate = normalize_completed_result_summary(raw, match.winner, match.team1, match.team2)
-            if not candidate and match.winner:
-                candidate = f"{match.winner} won"
-            if candidate and (not prev or prematch_schedule_status_line(prev)):
-                match.result_summary = candidate
-                changed = True
+        changed = sync_match_row_from_cricapi_info(db, match, payload)
 
         if changed:
             db.commit()

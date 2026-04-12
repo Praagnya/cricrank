@@ -24,7 +24,14 @@ from schemas import (
     FirstInningsPickResponse,
     FirstInningsStatusResponse,
 )
-from settlement_utils import coerce_match_winner_in_place, resolve_match_winner_from_cricapi
+from settlement_utils import (
+    coerce_match_winner_in_place,
+    match_has_participant_winner,
+    normalize_completed_result_summary,
+    prematch_schedule_status_line,
+    resolve_match_winner_from_cricapi,
+    status_indicates_void_or_no_result,
+)
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
 router = APIRouter()
@@ -162,6 +169,54 @@ def _match_status_from_payload(payload: dict) -> MatchStatus:
     if payload.get("matchStarted"):
         return MatchStatus.live
     return MatchStatus.upcoming
+
+
+def sync_match_row_from_cricapi_info(db: Session, match: Match, payload: dict) -> bool:
+    """
+    Apply CricAPI match_info payload to the Match row (status, winner, result_summary, void NR).
+    Same rules as the result poller job so live traffic keeps the DB in sync and predictions can settle.
+
+    Returns True if any match field was changed. Caller should commit the session.
+    """
+    if not payload or not isinstance(payload, dict):
+        return False
+
+    from routes.predictions import void_match_prediction_settlement
+
+    changed = False
+    void_st = status_indicates_void_or_no_result(payload.get("status"))
+    w = resolve_match_winner_from_cricapi(payload, match.team1, match.team2)
+
+    new_status = _match_status_from_payload(payload)
+    if new_status != match.status:
+        match.status = new_status
+        changed = True
+
+    if void_st and payload.get("matchEnded") and match.winner is not None:
+        void_match_prediction_settlement(db, match)
+        st = (payload.get("status") or "").strip()
+        if st:
+            match.result_summary = st
+        changed = True
+
+    if w is not None and match.winner != w:
+        match.winner = w
+        changed = True
+
+    if coerce_match_winner_in_place(match):
+        changed = True
+
+    if match.status == MatchStatus.completed:
+        raw = (payload.get("status") or "").strip() or None
+        prev = (match.result_summary or "").strip()
+        candidate = normalize_completed_result_summary(raw, match.winner, match.team1, match.team2)
+        if not candidate and match.winner:
+            candidate = f"{match.winner} won"
+        if candidate and (not prev or prematch_schedule_status_line(prev)):
+            match.result_summary = candidate
+            changed = True
+
+    return changed
 
 
 def _fixture_key(team1: str, team2: str, start_time: datetime) -> tuple[tuple[str, str], str]:
@@ -633,23 +688,32 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     source = _cricapi_match_snapshot(match.cricapi_id)
 
     if source:
-        status = _match_status_from_payload(source)
-        if status != match.status:
-            match.status = status
+        sync_match_row_from_cricapi_info(db, match, source)
+        status = match.status
+        match_started = match.status != MatchStatus.upcoming
+        match_ended = match.status == MatchStatus.completed
     else:
         status = MatchStatus.live if match.status == MatchStatus.live else match.status
-    match_started = bool(source.get("matchStarted")) if source else match.status in (MatchStatus.live, MatchStatus.completed)
-    match_ended = bool(source.get("matchEnded")) if source else match.status == MatchStatus.completed
-    status_text = source.get("status") or _status_text_fallback(match)
+        match_started = match.status in (MatchStatus.live, MatchStatus.completed)
+        match_ended = match.status == MatchStatus.completed
+    status_text = (source.get("status") if source else None) or _status_text_fallback(match)
     match_winner = (
-        canonicalize_winner(source.get("matchWinner"))
+        canonicalize_winner(source.get("matchWinner") if source else None)
         or canonicalize_winner(match.winner)
     )
-    result_summary = source.get("status") or match.result_summary or status_text
+    result_summary = (
+        (match.result_summary and match.result_summary.strip())
+        or (source.get("status") if source else None)
+        or status_text
+    )
 
     _refresh_match_toss_winner(db, match)
     _settle_all_toss_plays_for_match(db, match)
     try:
+        if match.status == MatchStatus.completed and match_has_participant_winner(match):
+            from routes.predictions import _settle_match_internal
+
+            _settle_match_internal(db, match)
         db.commit()
     except Exception:
         db.rollback()

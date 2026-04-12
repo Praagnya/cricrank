@@ -86,13 +86,32 @@ def _flex_team_pattern(team: str) -> str:
 
 
 def _winner_from_status_line(status: str, team1: str, team2: str) -> str | None:
-    """Only when the line clearly says a full team name won (avoids toss / DRS noise)."""
+    """Only when the line clearly names a winner (full name, short code, or Team A beat Team B)."""
     if not status:
         return None
+    participants = {team1, team2}
     for t in sorted((team1, team2), key=len, reverse=True):
         pat = rf"(?i){_flex_team_pattern(t)}\s+won\b"
         if re.search(pat, status):
             return t
+    # Feeds often use codes: "RCB won by 7 wickets" (full-name regex would miss).
+    from team_metadata import LEGACY_TEAM_NAMES
+
+    for alias, canonical in LEGACY_TEAM_NAMES.items():
+        if canonical not in participants:
+            continue
+        if re.search(rf"(?i)\b{re.escape(alias)}\s+won\b", status):
+            return canonical
+    # e.g. "Royal Challengers Bengaluru beat Mumbai Indians by 7 wickets"
+    for a in sorted((team1, team2), key=len, reverse=True):
+        for b in (team1, team2):
+            if a == b:
+                continue
+            if re.search(
+                rf"(?i){_flex_team_pattern(a)}\s+beat\s+{_flex_team_pattern(b)}\b",
+                status,
+            ):
+                return a
     return None
 
 
