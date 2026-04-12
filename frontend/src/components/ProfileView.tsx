@@ -929,6 +929,26 @@ export default function ProfileView({
                         {teamShortCode(pred.match.team2)}
                       </span>
                     </div>
+                    {/* Pending: show which side they picked (match in progress / awaiting result) */}
+                    {!isHit && !isMiss && pred.selected_team && (
+                      <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0">
+                        <span className="text-[8px] sm:text-[9px] font-black tracking-[0.2em] text-[#737373] uppercase shrink-0">
+                          {isEditable ? "Your pick" : "Pick"}
+                        </span>
+                        <span
+                          className="font-gaming text-base sm:text-xl tracking-widest shrink-0"
+                          style={{
+                            color: teamTextColor(pred.selected_team),
+                            textShadow: `0 0 14px ${teamHex(pred.selected_team)}55`,
+                          }}
+                        >
+                          {teamShortCode(pred.selected_team)}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-[#a3a3a3] uppercase tracking-wide truncate">
+                          {teamFullName(pred.selected_team)}
+                        </span>
+                      </div>
+                    )}
 
                   </div>
 
