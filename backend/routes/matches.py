@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -293,6 +293,23 @@ def _cricapi_match_snapshot(cricapi_id: str) -> dict:
         return dict(raw) if isinstance(raw, dict) else {}
     except CricAPIError:
         return {}
+
+
+def _cricapi_match_info_meaningful(payload: dict) -> bool:
+    """False for `{}` from not-found / errors — those must not skip CricAPI sync via `if payload:`."""
+    if not payload or not isinstance(payload, dict):
+        return False
+    if (payload.get("status") or "").strip():
+        return True
+    if payload.get("matchStarted") is not None or payload.get("matchEnded") is not None:
+        return True
+    if payload.get("matchWinner"):
+        return True
+    if payload.get("score"):
+        return True
+    if payload.get("tossWinner"):
+        return True
+    return False
 
 
 def _status_text_fallback(match: Match) -> str | None:
@@ -645,7 +662,8 @@ def play_toss(
 
 
 @router.get("/{match_id}/live", response_model=MatchLiveResponse)
-def get_live_match(match_id: str, db: Session = Depends(get_db)):
+def get_live_match(match_id: str, response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
     match = db.query(Match).filter(Match.id == match_id).first()
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
@@ -676,16 +694,20 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             db.commit()
         except Exception:
             db.rollback()
-        fb = (match.result_summary and match.result_summary.strip()) or f"{match.winner} won"
+        raw_rs = (match.result_summary or "").strip()
+        if not raw_rs or status_looks_in_progress_chase(raw_rs):
+            display_line = f"{match.winner} won"
+        else:
+            display_line = raw_rs
         return MatchLiveResponse(
             match_id=match.id,
             cricapi_id=match.cricapi_id,
             status=MatchStatus.completed,
             match_started=True,
             match_ended=True,
-            status_text=fb,
+            status_text=display_line,
             match_winner=canonicalize_winner(match.winner),
-            result_summary=(match.result_summary and match.result_summary.strip()) or fb,
+            result_summary=display_line,
             score=[],
             bbb=[],
         )
@@ -696,7 +718,12 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
     except CricAPIError:
         source = _cricapi_match_snapshot(match.cricapi_id)
 
-    if source:
+    if not _cricapi_match_info_meaningful(source):
+        alt = fetch_match_info(match.cricapi_id) or {}
+        if _cricapi_match_info_meaningful(alt):
+            source = dict(alt)
+
+    if _cricapi_match_info_meaningful(source):
         sync_match_row_from_cricapi_info(db, match, source)
         status = match.status
         match_started = match.status != MatchStatus.upcoming

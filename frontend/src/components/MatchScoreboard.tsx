@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { MatchLiveResponse, MatchScorecardResponse, MatchStatus } from "@/types";
+import { statusLooksInProgressChase } from "@/lib/utils";
 
 type Props = {
   matchId: string;
@@ -127,7 +128,20 @@ export default function MatchScoreboard({ matchId, matchStatus, cricapiId }: Pro
 
   const loadingLive = !live && !liveErr;
   const scores = live?.score ?? [];
-  const statusLine = live?.status_text?.trim();
+  /** Prefer final lines when the API marks the match ended but status_text is still a chase equation. */
+  const statusLine = (() => {
+    if (!live) return undefined;
+    const t = live.status_text?.trim() || null;
+    const ended = live.match_ended || live.status === "completed";
+    const w = live.match_winner?.trim() || null;
+    const rs = live.result_summary?.trim() || null;
+    if (ended && w) {
+      if (rs && !statusLooksInProgressChase(rs)) return rs;
+      if (t && !statusLooksInProgressChase(t)) return t;
+      return `${w} won`;
+    }
+    return t ?? undefined;
+  })();
   const hasSummary = scores.length > 0 || Boolean(statusLine);
   const isLivePulse = matchStatus === "live" && !live?.match_ended;
 
