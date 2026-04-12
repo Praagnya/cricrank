@@ -696,7 +696,13 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         status = MatchStatus.live if match.status == MatchStatus.live else match.status
         match_started = match.status in (MatchStatus.live, MatchStatus.completed)
         match_ended = match.status == MatchStatus.completed
-    status_text = (source.get("status") if source else None) or _status_text_fallback(match)
+    # After sync, DB may be completed while CricAPI `status` still shows a stale chase line;
+    # prefer persisted result_summary so the UI does not stay on "need X runs".
+    rs = (match.result_summary or "").strip()
+    if match.status == MatchStatus.completed and rs:
+        status_text = rs
+    else:
+        status_text = (source.get("status") if source else None) or _status_text_fallback(match)
     match_winner = (
         canonicalize_winner(source.get("matchWinner") if source else None)
         or canonicalize_winner(match.winner)
