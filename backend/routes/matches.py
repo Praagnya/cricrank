@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from coin_ledger import apply_credit, apply_debit
-from cricapi import CricAPIError, fetch_match_info, fetch_match_scorecard, fetch_series_info
+from cricapi import CricAPIError, fetch_match_info, fetch_match_info_refresh, fetch_match_scorecard, fetch_series_info
 from database import get_db
 from models import Match, MatchStatus, Prediction, TossPlay, FirstInningsPick, User
 from prediction_agent import get_prediction_safe
@@ -31,6 +31,7 @@ from settlement_utils import (
     prematch_schedule_status_line,
     resolve_match_winner_from_cricapi,
     status_indicates_void_or_no_result,
+    status_looks_in_progress_chase,
 )
 from team_metadata import canonicalize_team, canonicalize_winner, league_aliases, normalize_team_pair, normalize_text
 
@@ -212,7 +213,11 @@ def sync_match_row_from_cricapi_info(db: Session, match: Match, payload: dict) -
         candidate = normalize_completed_result_summary(raw, match.winner, match.team1, match.team2)
         if not candidate and match.winner:
             candidate = f"{match.winner} won"
-        if candidate and (not prev or prematch_schedule_status_line(prev)):
+        if candidate and (
+            not prev
+            or prematch_schedule_status_line(prev)
+            or status_looks_in_progress_chase(prev)
+        ):
             match.result_summary = candidate
             changed = True
 
@@ -685,7 +690,11 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
             bbb=[],
         )
 
-    source = _cricapi_match_snapshot(match.cricapi_id)
+    try:
+        raw = fetch_match_info_refresh(match.cricapi_id) or {}
+        source = dict(raw) if isinstance(raw, dict) else {}
+    except CricAPIError:
+        source = _cricapi_match_snapshot(match.cricapi_id)
 
     if source:
         sync_match_row_from_cricapi_info(db, match, source)
@@ -696,11 +705,15 @@ def get_live_match(match_id: str, db: Session = Depends(get_db)):
         status = MatchStatus.live if match.status == MatchStatus.live else match.status
         match_started = match.status in (MatchStatus.live, MatchStatus.completed)
         match_ended = match.status == MatchStatus.completed
-    # After sync, DB may be completed while CricAPI `status` still shows a stale chase line;
-    # prefer persisted result_summary so the UI does not stay on "need X runs".
+    # Completed: never show a stored live chase line once we have a side winner.
     rs = (match.result_summary or "").strip()
-    if match.status == MatchStatus.completed and rs:
-        status_text = rs
+    if match.status == MatchStatus.completed:
+        if match.winner and (not rs or status_looks_in_progress_chase(rs)):
+            status_text = f"{match.winner} won"
+        elif rs:
+            status_text = rs
+        else:
+            status_text = _status_text_fallback(match)
     else:
         status_text = (source.get("status") if source else None) or _status_text_fallback(match)
     match_winner = (

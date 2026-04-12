@@ -118,3 +118,34 @@ def fetch_match_info(cricapi_id: str):
         "CRICAPI_MATCH_INFO_CACHE_SECONDS",
         DEFAULT_MATCH_TTL,
     )
+
+
+def fetch_match_info_refresh(cricapi_id: str) -> dict:
+    """
+    Always hit the network for match_info, then refresh the shared in-process cache.
+    Used by GET /matches/:id/live so the UI is not stuck on a stale chase line for the TTL window.
+    """
+    cache_key = f"info:{cricapi_id}"
+    ttl = _cache_ttl("CRICAPI_MATCH_INFO_CACHE_SECONDS", DEFAULT_MATCH_TTL)
+    now = time.monotonic()
+    try:
+        data = _request("match_info", id=cricapi_id) or {}
+        if not isinstance(data, dict):
+            data = {}
+        out = dict(data)
+        with _cache_lock:
+            _not_found_cache.pop(cache_key, None)
+            _match_payload_cache[cache_key] = (now + ttl, out)
+        return out
+    except CricAPIError as exc:
+        if _is_not_found_error(str(exc)):
+            with _cache_lock:
+                _not_found_cache[cache_key] = now + _cache_ttl(
+                    "CRICAPI_NOT_FOUND_COOLDOWN_SECONDS", DEFAULT_NOT_FOUND_COOLDOWN
+                )
+            return {}
+        with _cache_lock:
+            if cache_key in _match_payload_cache:
+                _, payload = _match_payload_cache[cache_key]
+                return dict(payload)
+        raise

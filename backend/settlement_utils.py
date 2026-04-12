@@ -43,6 +43,26 @@ _PREMATCH_SCHEDULE_MARKERS: tuple[str, ...] = (
 )
 
 
+def status_looks_in_progress_chase(status: str | None) -> bool:
+    """
+    True when the feed line is a live chase equation, not a final result.
+    CricAPI sometimes keeps this text alongside matchEnded/matchWinner for a short window,
+    or it was persisted to result_summary while the match was still live.
+    """
+    if not status or not str(status).strip():
+        return False
+    s = str(status).lower()
+    if re.search(r"\bneed\s+\d+\s+runs?\b", s):
+        return True
+    if "runs in" in s and "ball" in s:
+        return True
+    if "runs to win" in s:
+        return True
+    if re.search(r"\brequire[s]?\s+\d+\s+runs?\b", s):
+        return True
+    return False
+
+
 def prematch_schedule_status_line(status: str | None) -> bool:
     """
     True when the CricAPI `status` line is a fixture schedule blurb, not a result.
@@ -72,6 +92,8 @@ def normalize_completed_result_summary(
     if status_indicates_void_or_no_result(s):
         return s if s else None
     if s and not prematch_schedule_status_line(s):
+        if winner and winner in (team1, team2) and status_looks_in_progress_chase(s):
+            return f"{winner} won"
         return s
     if winner and winner in (team1, team2):
         return f"{winner} won"
