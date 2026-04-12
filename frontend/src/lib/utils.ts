@@ -77,17 +77,6 @@ export function formatShortDate(isoString: string): string {
   });
 }
 
-/** Live feed chase equation — not a final result (may linger next to matchEnded/matchWinner). */
-export function statusLooksInProgressChase(summary: string | null | undefined): boolean {
-  const s = (summary ?? "").trim().toLowerCase();
-  if (!s) return false;
-  if (/\bneed\s+\d+\s+runs?\b/.test(s)) return true;
-  if (s.includes("runs in") && s.includes("ball")) return true;
-  if (s.includes("runs to win")) return true;
-  if (/\brequire[s]?\s+\d+\s+runs?\b/.test(s)) return true;
-  return false;
-}
-
 /** CricAPI sometimes leaves pre-match schedule text in result_summary after the match is completed. */
 export function prematchScheduleStatusLine(summary: string | null | undefined): boolean {
   const s = (summary ?? "").trim().toLowerCase();
@@ -105,7 +94,7 @@ export function recentResultSummaryLine(m: {
 }): string | null {
   const raw = m.result_summary?.trim() || null;
   if (m.status !== "completed") return raw;
-  if (raw && !prematchScheduleStatusLine(raw) && !statusLooksInProgressChase(raw)) return raw;
+  if (raw && !prematchScheduleStatusLine(raw)) return raw;
   if (m.winner) return `${m.winner} won`;
   return raw;
 }
