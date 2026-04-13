@@ -77,6 +77,17 @@ export function formatShortDate(isoString: string): string {
   });
 }
 
+/** Live chase equation — not a final result (often left in DB while match is completed + winner set). */
+export function statusLooksInProgressChase(summary: string | null | undefined): boolean {
+  const s = (summary ?? "").trim().toLowerCase();
+  if (!s) return false;
+  if (/\bneed\s+\d+\s+runs?\b/.test(s)) return true;
+  if (s.includes("runs in") && s.includes("ball")) return true;
+  if (s.includes("runs to win")) return true;
+  if (/\brequire[s]?\s+\d+\s+runs?\b/.test(s)) return true;
+  return false;
+}
+
 /** CricAPI sometimes leaves pre-match schedule text in result_summary after the match is completed. */
 export function prematchScheduleStatusLine(summary: string | null | undefined): boolean {
   const s = (summary ?? "").trim().toLowerCase();
@@ -86,7 +97,7 @@ export function prematchScheduleStatusLine(summary: string | null | undefined): 
   return false;
 }
 
-/** One line to show under recent completed fixtures (never a stale "Match starts at…" blurb). */
+/** One line to show under recent completed fixtures (never schedule blurbs or stale live chase lines). */
 export function recentResultSummaryLine(m: {
   status: string;
   result_summary: string | null;
@@ -94,6 +105,13 @@ export function recentResultSummaryLine(m: {
 }): string | null {
   const raw = m.result_summary?.trim() || null;
   if (m.status !== "completed") return raw;
+  if (
+    m.winner &&
+    raw &&
+    (prematchScheduleStatusLine(raw) || statusLooksInProgressChase(raw))
+  ) {
+    return `${m.winner} won`;
+  }
   if (raw && !prematchScheduleStatusLine(raw)) return raw;
   if (m.winner) return `${m.winner} won`;
   return raw;
