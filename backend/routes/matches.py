@@ -324,6 +324,66 @@ def _status_text_fallback(match: Match) -> str | None:
     return None
 
 
+def _result_summary_looks_complete(rs: str) -> bool:
+    """Heuristic: line already has margin / method (e.g. 'won by 7 wkts')."""
+    s = rs.strip().lower()
+    if not s:
+        return False
+    if " by " in s and ("run" in s or "wk" in s or "wicket" in s):
+        return True
+    return False
+
+
+def _result_summary_should_try_enrichment(match: Match) -> bool:
+    """When DB line is empty, stale chase, schedule blurb, or only generic '{winner} won'."""
+    if match.status != MatchStatus.completed or not match.winner or not match.cricapi_id:
+        return False
+    rs = (match.result_summary or "").strip()
+    if _result_summary_looks_complete(rs):
+        return False
+    if not rs:
+        return True
+    if prematch_schedule_status_line(rs):
+        return True
+    if status_looks_in_progress_chase(rs):
+        return True
+    generic = f"{match.winner} won"
+    if rs.casefold() == generic.casefold():
+        return True
+    return False
+
+
+def _enrich_match_result_summary_from_cricapi(db: Session, match: Match) -> bool:
+    """
+    Fetch fresh match_info and persist a fuller result line (margins) when the API has it.
+    Returns True if the match row was updated.
+    """
+    if not match.cricapi_id:
+        return False
+    try:
+        payload = fetch_match_info_refresh(match.cricapi_id) or {}
+    except CricAPIError:
+        try:
+            payload = fetch_match_info(match.cricapi_id) or {}
+        except CricAPIError:
+            return False
+    if not payload or not isinstance(payload, dict):
+        return False
+    raw = (payload.get("status") or "").strip()
+    if not raw:
+        return False
+    cand = normalize_completed_result_summary(raw, match.winner, match.team1, match.team2)
+    if not cand and match.winner:
+        cand = f"{match.winner} won"
+    if not cand or status_looks_in_progress_chase(cand):
+        return False
+    prev = (match.result_summary or "").strip()
+    if cand == prev:
+        return False
+    match.result_summary = cand
+    return True
+
+
 @router.get("/", response_model=list[MatchPublic])
 def list_matches(
     league: str = Query(None),
@@ -447,13 +507,23 @@ def recent_completed_matches(
     db: Session = Depends(get_db),
 ):
     """Most recently finished matches by start time (proxy for recency)."""
-    return (
+    rows = (
         db.query(Match)
         .filter(Match.status == MatchStatus.completed)
         .order_by(desc(Match.start_time))
         .limit(limit)
         .all()
     )
+    changed = False
+    for m in rows:
+        if _result_summary_should_try_enrichment(m) and _enrich_match_result_summary_from_cricapi(db, m):
+            changed = True
+    if changed:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+    return rows
 
 
 @router.post("/{match_id}/settle-toss")
