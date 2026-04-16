@@ -1097,7 +1097,7 @@ def play_first_innings(
         .all()
     )
 
-    # Try settling any unsettled picks before checking count
+    # Try settling any unsettled picks before checking count! --- 
     if existing_rows and any(r.actual_score is None for r in existing_rows) and match.cricapi_id:
         _settle_first_innings_picks(db, match)
         try:
