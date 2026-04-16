@@ -91,6 +91,25 @@ async function postNoStore<T>(path: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function deleteNoStore(path: string): Promise<void> {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `API error ${res.status}`;
+    try {
+      const j = (await res.json()) as { detail?: string | unknown };
+      if (j.detail !== undefined) {
+        detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+      }
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+}
+
 export const api = {
   matches: {
     upcoming: (limit = 10, days?: number) => get<Match[]>(`/matches/upcoming?limit=${limit}${days ? `&days=${days}` : ''}`),
@@ -165,6 +184,10 @@ export const api = {
         match_id: matchId,
         selected_team: selectedTeam,
       }),
+    remove: (googleId: string, matchId: string) =>
+      deleteNoStore(
+        `/predictions/${encodeURIComponent(matchId)}?google_id=${encodeURIComponent(googleId)}`
+      ),
     byUser: (googleId: string) =>
       getNoStore<Prediction[]>(`/predictions/user/${encodeURIComponent(googleId)}`),
   },

@@ -177,6 +177,45 @@ def submit_prediction(
     return prediction
 
 
+@router.delete("/{match_id}")
+def delete_prediction(match_id: str, google_id: str, db: Session = Depends(get_db)):
+    """
+    Remove this user's prediction for a match before it starts (opt out / clear pick).
+    Same lock rules as POST — not allowed once the match is live or completed.
+    """
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    match = db.query(Match).filter(Match.id == str(match_id)).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    if match.status == MatchStatus.completed:
+        raise HTTPException(status_code=400, detail="Match already completed")
+
+    now = datetime.now(timezone.utc)
+    if match.status == MatchStatus.live or now >= match.start_time:
+        raise HTTPException(status_code=400, detail="Match is live — predictions closed")
+
+    existing = db.query(Prediction).filter(
+        Prediction.user_id == user.id,
+        Prediction.match_id == match.id,
+    ).first()
+
+    if not existing:
+        return {"deleted": False}
+
+    if existing.is_correct is not None:
+        raise HTTPException(status_code=400, detail="Prediction already settled")
+
+    db.delete(existing)
+    user.total_predictions = max(0, user.total_predictions - 1)
+    db.commit()
+
+    return {"deleted": True}
+
+
 @router.get("/user/{google_id}", response_model=list[PredictionWithMatch])
 def user_predictions(google_id: str, db: Session = Depends(get_db)):
     """All predictions made by a user with joined match details."""

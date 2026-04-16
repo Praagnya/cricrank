@@ -101,6 +101,7 @@ export default function MatchInteraction({ matchId, team1, team2, tossTime, star
       googleId={googleId}
       existingPrediction={existingPrediction}
       onRequireAuth={() => setShowAuthPrompt(true)}
+      onPredictionChange={setExistingPrediction}
     />
   );
 }

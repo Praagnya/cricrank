@@ -16,10 +16,21 @@ interface Props {
   googleId: string | null;
   existingPrediction?: string | null;
   onRequireAuth: () => void;
+  /** Keeps parent list in sync after submit / clear (optional). */
+  onPredictionChange?: (selectedTeam: string | null) => void;
 }
 
 export default function PredictionButtons({
-  matchId, team1, team2, tossTime, startTime, matchStatus, googleId, existingPrediction, onRequireAuth,
+  matchId,
+  team1,
+  team2,
+  tossTime,
+  startTime,
+  matchStatus,
+  googleId,
+  existingPrediction,
+  onRequireAuth,
+  onPredictionChange,
 }: Props) {
   const [selected, setSelected] = useState<string | null>(existingPrediction ?? null);
   const [loading,  setLoading]  = useState<string | null>(null);
@@ -33,14 +44,45 @@ export default function PredictionButtons({
     setError(null);
   }, [existingPrediction, matchId]);
 
+  async function clearPrediction() {
+    if (!googleId) { onRequireAuth(); return; }
+    if (locked || loading) return;
+    setLoading("__clear__");
+    setError(null);
+    try {
+      await api.predictions.remove(googleId, matchId);
+      setSelected(null);
+      onPredictionChange?.(null);
+    } catch (e: unknown) {
+      const raw = e instanceof Error ? e.message : String(e);
+      const networkish =
+        /failed to fetch/i.test(raw) ||
+        /load failed/i.test(raw) ||
+        /networkerror/i.test(raw) ||
+        /abort/i.test(raw);
+      setError(
+        networkish
+          ? "Couldn’t reach the server. Check your connection and tap again."
+          : raw || "Failed to clear prediction"
+      );
+    } finally {
+      setLoading(null);
+    }
+  }
+
   async function predict(team: string) {
     if (!googleId) { onRequireAuth(); return; }
     if (locked || loading) return;
+    if (selected === team) {
+      await clearPrediction();
+      return;
+    }
     setLoading(team);
     setError(null);
     try {
       await api.predictions.submit(googleId, matchId, team);
       setSelected(team);
+      onPredictionChange?.(team);
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : String(e);
       const networkish =
@@ -108,7 +150,9 @@ export default function PredictionButtons({
               ) : "Pick Your Team"}
             </span>
             <span className="text-[10px] text-[#737373] font-black uppercase tracking-[0.2em] mt-0.5">
-              {selected ? "Tap to change your prediction" : "Who wins this match?"}
+              {selected
+                ? "Tap the other team to switch, or your pick again to clear"
+                : "Who wins this match?"}
             </span>
           </div>
         </div>
@@ -131,7 +175,7 @@ export default function PredictionButtons({
       <div className="grid grid-cols-1 sm:grid-cols-2">
         {[team1, team2].map((team, idx) => {
           const isSelected = selected === team;
-          const isLoading  = loading === team;
+          const isLoading  = loading === team || (isSelected && loading === "__clear__");
           const hex = teamHex(team);
 
           return (
@@ -201,6 +245,19 @@ export default function PredictionButtons({
           );
         })}
       </div>
+
+      {selected && (
+        <div className="px-6 py-3 border-t border-[#262626] bg-[#0a0a0a] flex justify-center">
+          <button
+            type="button"
+            onClick={() => void clearPrediction()}
+            disabled={!!loading}
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-[#737373] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            Not playing — remove my pick
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="px-6 py-3 border-t border-[#262626] bg-[#ef4444]/10">
