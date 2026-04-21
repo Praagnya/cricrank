@@ -246,18 +246,7 @@ export default function PredictionButtons({
         })}
       </div>
 
-      {selected && (
-        <div className="px-6 py-3 border-t border-[#262626] bg-[#0a0a0a] flex justify-center">
-          <button
-            type="button"
-            onClick={() => void clearPrediction()}
-            disabled={!!loading}
-            className="text-[10px] font-black uppercase tracking-[0.2em] text-[#737373] hover:text-white disabled:opacity-40 disabled:pointer-events-none transition-colors"
-          >
-            Not playing — remove my pick
-          </button>
-        </div>
-      )}
+
 
       {error && (
         <div className="px-6 py-3 border-t border-[#262626] bg-[#ef4444]/10">
